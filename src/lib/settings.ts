@@ -45,3 +45,18 @@ export function wasStoragePersistRequested(): boolean {
 export function markStoragePersistRequested(): void {
   localStorage.setItem(KEYS.storagePersistRequested, '1');
 }
+
+const DEFAULT_REMINDER_HOUR = '19:00';
+
+/**
+ * Horário do lembrete diário, por perfil. Fica em localStorage (não no IndexedDB dos
+ * perfis) porque só serve pra gerar o .ics — é uma preferência deste aparelho, sem relação
+ * com o resto do modelo de dados nem com a mesclagem do importar.
+ */
+export function getReminderHour(perfilId: string): string {
+  return localStorage.getItem(`memoriza:reminderHour:${perfilId}`) ?? DEFAULT_REMINDER_HOUR;
+}
+
+export function setReminderHour(perfilId: string, horaHHMM: string): void {
+  localStorage.setItem(`memoriza:reminderHour:${perfilId}`, horaHHMM);
+}

@@ -1,0 +1,121 @@
+import { getEspaco, setEspacoArquivado } from '../../db/espacos';
+import { createTema, listTemas } from '../../db/temas';
+import { getDB } from '../../db/schema';
+import { escapeHtml } from '../../lib/dom';
+import { navigate } from '../router';
+
+export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
+  const espaco = await getEspaco(espacoId);
+  if (!espaco) {
+    container.innerHTML = `<p class="text-muted">Espaço não encontrado.</p>`;
+    return;
+  }
+  const temas = await listTemas(espacoId);
+  const notaCounts = await countNotasPorTema(temas.map((t) => t.id));
+
+  container.innerHTML = `
+    <div class="breadcrumb">
+      <button class="link" data-back type="button">← Espaços</button>
+    </div>
+
+    <div class="section-header">
+      <span class="section-header__title">${escapeHtml(espaco.nome)}</span>
+      <div style="display:flex; gap: var(--space-2);">
+        <button class="btn btn--secondary btn--sm" id="btn-arquivar" type="button">
+          ${espaco.arquivado ? 'Reativar' : 'Arquivar'}
+        </button>
+        ${
+          !espaco.arquivado
+            ? `<button class="btn btn--primary btn--sm" id="btn-novo-tema" type="button">+ Novo tema</button>`
+            : ''
+        }
+      </div>
+    </div>
+
+    ${
+      espaco.arquivado
+        ? `<div class="banner banner--warning"><span>Este espaço está arquivado — não é possível criar novos temas ou notas nele, mas as revisões já agendadas continuam normalmente.</span></div>`
+        : ''
+    }
+
+    <div id="form-novo-tema" style="display:none" class="card">
+      <div class="field">
+        <label class="field__label" for="input-nome-tema">Nome do tema</label>
+        <input class="input" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" />
+      </div>
+      <div class="field" style="margin-top: var(--space-3);">
+        <label class="field__label" for="input-categoria-tema">Categoria (opcional)</label>
+        <input class="input" id="input-categoria-tema" type="text" placeholder="Ex: Fundamentos" maxlength="80" />
+      </div>
+      <div class="form-actions" style="margin-top: var(--space-3);">
+        <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar</button>
+        <button class="btn btn--secondary btn--sm" id="btn-cancelar-tema" type="button">Cancelar</button>
+      </div>
+    </div>
+
+    ${
+      temas.length === 0
+        ? `
+      <div class="empty-state">
+        <div class="empty-state__icon" aria-hidden="true">🗂️</div>
+        <div class="empty-state__title">Nenhum tema neste espaço ainda</div>
+        <p class="empty-state__hint">Temas organizam as notas dentro de um espaço — ex: "Renda Fixa", "Renda Variável".</p>
+      </div>
+    `
+        : `
+      <div class="item-list">
+        ${temas
+          .map(
+            (t) => `
+          <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left;">
+            <span class="item-row__main">
+              <span class="item-row__title">${escapeHtml(t.nome)}</span>
+              <span class="item-row__meta">${escapeHtml(t.categoria || 'Sem categoria')} · ${notaCounts.get(t.id) ?? 0} nota(s)</span>
+            </span>
+          </button>
+        `,
+          )
+          .join('')}
+      </div>
+    `
+    }
+  `;
+
+  container.querySelector('[data-back]')?.addEventListener('click', () => navigate('espacos'));
+
+  container.querySelector('#btn-arquivar')?.addEventListener('click', async () => {
+    await setEspacoArquivado(espaco.id, !espaco.arquivado);
+    renderEspacoDetail(container, espacoId);
+  });
+
+  const form = container.querySelector<HTMLElement>('#form-novo-tema');
+  container.querySelector('#btn-novo-tema')?.addEventListener('click', () => {
+    if (form) form.style.display = 'block';
+    container.querySelector<HTMLInputElement>('#input-nome-tema')?.focus();
+  });
+  container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
+    if (form) form.style.display = 'none';
+  });
+  container.querySelector('#btn-salvar-tema')?.addEventListener('click', async () => {
+    const nomeInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;
+    const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema')!;
+    const nome = nomeInput.value.trim();
+    if (!nome) return;
+    const novoTema = await createTema(espacoId, nome, categoriaInput.value.trim());
+    navigate(`temas/${novoTema.id}`);
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
+    btn.addEventListener('click', () => navigate(`temas/${btn.dataset.open}`));
+  });
+}
+
+async function countNotasPorTema(temaIds: string[]): Promise<Map<string, number>> {
+  const db = await getDB();
+  const counts = new Map<string, number>();
+  for (const id of temaIds) {
+    const notas = await db.getAllFromIndex('notas', 'tema_id', id);
+    counts.set(id, notas.length);
+  }
+  return counts;
+}

@@ -1,5 +1,6 @@
 import { getDB } from './schema';
 import type { Perfil } from '../types';
+import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
 
 /**
@@ -37,4 +38,21 @@ export async function ensureDefaultProfiles(): Promise<Perfil[]> {
 export async function getProfile(id: string): Promise<Perfil | undefined> {
   const db = await getDB();
   return db.get('perfis', id);
+}
+
+export async function createProfile(nome: string): Promise<Perfil> {
+  const db = await getDB();
+  const now = nowISO();
+  const perfil: Perfil = { id: uuid(), nome, criado_em: now, atualizado_em: now };
+  await db.put('perfis', perfil);
+  return perfil;
+}
+
+export async function renameProfile(id: string, novoNome: string): Promise<void> {
+  const db = await getDB();
+  const perfil = await db.get('perfis', id);
+  if (!perfil) return;
+  perfil.nome = novoNome;
+  perfil.atualizado_em = nowISO();
+  await db.put('perfis', perfil);
 }

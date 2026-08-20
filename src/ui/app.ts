@@ -3,23 +3,25 @@ import { getProfile } from '../db/profiles';
 import { escapeHtml } from '../lib/dom';
 import { getLastExportAt, getSelectedProfileId, setSelectedProfileId } from '../lib/settings';
 import { daysBetweenISODates, toLondonISODate } from '../lib/time';
-import { getCurrentRoute, navigate, onRouteChange, type Route } from './router';
+import { getCurrentRoute, navigate, navigateTop, onRouteChange, topLevelFor, type TopLevelRoute } from './router';
 import { renderProfileSelect } from './screens/profile-select';
 import { renderToday } from './screens/today';
-import { renderSpaces } from './screens/spaces';
+import { renderEspacos } from './screens/espacos';
+import { renderEspacoDetail } from './screens/espaco-detail';
+import { renderTemaDetail } from './screens/tema-detail';
+import { renderNotaForm } from './screens/nota-form';
 import { renderSettings } from './screens/settings';
 import type { Perfil } from '../types';
 
 const BACKUP_REMINDER_DAYS = 14;
 
-const NAV_ITEMS: { route: Route; label: string; icon: string }[] = [
+const NAV_ITEMS: { route: TopLevelRoute; label: string; icon: string }[] = [
   { route: 'hoje', label: 'Hoje', icon: '🗓️' },
   { route: 'espacos', label: 'Espaços', icon: '📚' },
   { route: 'config', label: 'Configurações', icon: '⚙️' },
 ];
 
-const SCREEN_TITLES: Record<Route, string> = {
-  perfil: 'Memoriza',
+const TOP_LEVEL_TITLES: Record<TopLevelRoute, string> = {
   hoje: 'Hoje',
   espacos: 'Espaços',
   config: 'Configurações',
@@ -49,6 +51,7 @@ async function render(root: HTMLElement): Promise<void> {
   }
 
   const route = getCurrentRoute();
+  const topLevel = topLevelFor(route);
 
   root.innerHTML = `
     <div class="app-shell">
@@ -58,7 +61,7 @@ async function render(root: HTMLElement): Promise<void> {
           <button
             class="app-nav__item"
             data-route="${item.route}"
-            ${item.route === route ? 'aria-current="page"' : ''}
+            ${item.route === topLevel ? 'aria-current="page"' : ''}
             type="button"
           >
             <span class="app-nav__icon" aria-hidden="true">${item.icon}</span>
@@ -69,7 +72,7 @@ async function render(root: HTMLElement): Promise<void> {
       </nav>
       <div class="app-content">
         <header class="app-header">
-          <span class="app-header__title">${SCREEN_TITLES[route]}</span>
+          <span class="app-header__title">${TOP_LEVEL_TITLES[topLevel]}</span>
           <span class="app-header__profile">${escapeHtml(perfil.nome)}</span>
         </header>
         <main class="app-main" id="screen-content"></main>
@@ -78,7 +81,7 @@ async function render(root: HTMLElement): Promise<void> {
   `;
 
   root.querySelectorAll<HTMLButtonElement>('.app-nav__item').forEach((btn) => {
-    btn.addEventListener('click', () => navigate(btn.dataset.route as Route));
+    btn.addEventListener('click', () => navigateTop(btn.dataset.route as TopLevelRoute));
   });
 
   const content = root.querySelector<HTMLElement>('#screen-content')!;
@@ -87,15 +90,27 @@ async function render(root: HTMLElement): Promise<void> {
   const screenContainer = document.createElement('div');
   content.appendChild(screenContainer);
 
-  switch (route) {
+  switch (route.name) {
     case 'hoje':
-      renderToday(screenContainer);
+      await renderToday(screenContainer, { perfilId: perfil.id });
       break;
     case 'espacos':
-      renderSpaces(screenContainer);
+      await renderEspacos(screenContainer, { perfilId: perfil.id });
+      break;
+    case 'espaco':
+      await renderEspacoDetail(screenContainer, route.id);
+      break;
+    case 'tema':
+      await renderTemaDetail(screenContainer, route.id);
+      break;
+    case 'nota-nova':
+      await renderNotaForm(screenContainer, { mode: 'nova', temaId: route.temaId });
+      break;
+    case 'nota':
+      await renderNotaForm(screenContainer, { mode: 'editar', notaId: route.id });
       break;
     case 'config':
-      renderSettings(screenContainer, {
+      await renderSettings(screenContainer, {
         perfil,
         onSwitchProfile: () => {
           setSelectedProfileId(null);
@@ -105,7 +120,7 @@ async function render(root: HTMLElement): Promise<void> {
       });
       break;
     default:
-      renderToday(screenContainer);
+      await renderToday(screenContainer, { perfilId: perfil.id });
   }
 }
 

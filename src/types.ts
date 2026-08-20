@@ -26,14 +26,13 @@ export interface Tema {
   atualizado_em: string;
 }
 
-export type TipoNota = 'conceito' | 'formula' | 'fato_com_validade';
-
 export interface Nota {
   id: string;
   tema_id: string;
   conteudo: string;
   fonte: string;
-  tipo: TipoNota;
+  /** "Esse conteúdo pode ficar desatualizado?" — habilita o aviso de validade na revisão. */
+  pode_desatualizar: boolean;
   validade_ate?: string;
   criado_em: string;
   atualizado_em: string;

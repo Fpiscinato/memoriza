@@ -34,3 +34,15 @@ export function daysBetweenISODates(a: string, b: string): number {
 export function nowISO(): string {
   return new Date().toISOString();
 }
+
+/**
+ * Soma `days` dias corridos a uma data-calendário YYYY-MM-DD. Trabalha em UTC de propósito:
+ * `data_agendada`/`data_concluida`/`validade_ate` representam um dia do calendário de
+ * Londres, não um instante — uma vez convertidos para YYYY-MM-DD (via toLondonISODate), a
+ * aritmética de dias não deve reintroduzir fuso horário nem DST.
+ */
+export function addDaysToISODate(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}

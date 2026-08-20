@@ -1,7 +1,15 @@
 import { exportAll, exportProfile, downloadExportFile, parseExportFile, importData } from '../../db/export-import';
+import { createProfile, listProfiles, renameProfile } from '../../db/profiles';
 import { escapeHtml } from '../../lib/dom';
-import { getLastExportAt, setLastExportAt, type ThemePreference } from '../../lib/settings';
+import {
+  getLastExportAt,
+  getReminderHour,
+  setLastExportAt,
+  setReminderHour,
+  type ThemePreference,
+} from '../../lib/settings';
 import { currentTheme, setTheme } from '../../lib/theme';
+import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import type { Perfil } from '../../types';
 
 export interface SettingsContext {
@@ -15,9 +23,11 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Escuro' },
 ];
 
-export function renderSettings(container: HTMLElement, ctx: SettingsContext): void {
+export async function renderSettings(container: HTMLElement, ctx: SettingsContext): Promise<void> {
   const theme = currentTheme();
   const lastExport = getLastExportAt();
+  const perfis = await listProfiles();
+  const horaLembrete = getReminderHour(ctx.perfil.id);
 
   container.innerHTML = `
     <div class="stack">
@@ -29,6 +39,39 @@ export function renderSettings(container: HTMLElement, ctx: SettingsContext): vo
             <div class="settings-row__desc">Perfil atual neste aparelho</div>
           </div>
           <button class="btn btn--secondary btn--sm" id="btn-switch-profile" type="button">Trocar de perfil</button>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <div class="settings-section__title">Gerenciar perfis</div>
+        <div class="card stack">
+          <div class="item-list">
+            ${perfis
+              .map(
+                (p) => `
+              <div class="item-row" data-perfil-id="${escapeHtml(p.id)}">
+                <span class="item-row__main" data-view-nome>
+                  <span class="item-row__title">${escapeHtml(p.nome)}</span>
+                </span>
+                <div class="item-row__actions">
+                  <button class="btn btn--secondary btn--sm" data-renomear="${escapeHtml(p.id)}" type="button">Renomear</button>
+                </div>
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+          <div id="form-novo-perfil" style="display:none;">
+            <div class="field">
+              <label class="field__label" for="input-novo-perfil">Nome do novo perfil</label>
+              <input class="input" id="input-novo-perfil" type="text" maxlength="60" />
+            </div>
+            <div class="form-actions" style="margin-top: var(--space-3);">
+              <button class="btn btn--primary btn--sm" id="btn-salvar-perfil" type="button">Adicionar</button>
+              <button class="btn btn--secondary btn--sm" id="btn-cancelar-perfil" type="button">Cancelar</button>
+            </div>
+          </div>
+          <button class="btn btn--secondary btn--sm" id="btn-novo-perfil" type="button" style="align-self: flex-start;">+ Adicionar perfil</button>
         </div>
       </section>
 
@@ -87,11 +130,23 @@ export function renderSettings(container: HTMLElement, ctx: SettingsContext): vo
 
       <section class="settings-section">
         <div class="settings-section__title">Lembretes</div>
-        <div class="card">
+        <div class="card stack">
           <p class="text-muted">
-            O Memoriza não envia notificações. Para lembrar de revisar todos os dias,
-            configure um lembrete recorrente no app de Calendário ou Lembretes do seu
-            celular — é mais confiável do que depender do navegador.
+            O Memoriza não envia notificações. Escolha um horário e baixe um lembrete diário
+            para o app de Calendário/Lembretes do seu celular.
+          </p>
+          <div class="field" style="max-width: 160px;">
+            <label class="field__label" for="input-hora-lembrete">Horário</label>
+            <input class="input" id="input-hora-lembrete" type="time" value="${escapeHtml(horaLembrete)}" />
+          </div>
+          <button class="btn btn--primary btn--sm" id="btn-baixar-lembrete" type="button" style="align-self:flex-start;">
+            Baixar lembrete para o celular
+          </button>
+          <p class="settings-row__desc">
+            Depois de adicionado, esse lembrete passa a ser gerenciado direto no app de
+            Calendário/Lembretes do celular — editar horário ou cancelar se faz por lá, sem
+            conexão contínua com o Memoriza. Se trocar o horário aqui depois, baixe um novo
+            arquivo e apague o antigo manualmente no Calendário.
           </p>
         </div>
       </section>
@@ -155,6 +210,58 @@ export function renderSettings(container: HTMLElement, ctx: SettingsContext): vo
     } finally {
       fileInput.value = '';
     }
+  });
+
+  const formNovoPerfil = container.querySelector<HTMLElement>('#form-novo-perfil')!;
+  container.querySelector('#btn-novo-perfil')?.addEventListener('click', () => {
+    formNovoPerfil.style.display = 'block';
+    container.querySelector<HTMLInputElement>('#input-novo-perfil')?.focus();
+  });
+  container.querySelector('#btn-cancelar-perfil')?.addEventListener('click', () => {
+    formNovoPerfil.style.display = 'none';
+  });
+  container.querySelector('#btn-salvar-perfil')?.addEventListener('click', async () => {
+    const input = container.querySelector<HTMLInputElement>('#input-novo-perfil')!;
+    const nome = input.value.trim();
+    if (!nome) return;
+    await createProfile(nome);
+    renderSettings(container, ctx);
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('[data-renomear]').forEach((btn) => {
+    btn.onclick = () => {
+      const perfilId = btn.dataset.renomear!;
+      const row = container.querySelector<HTMLElement>(`[data-perfil-id="${perfilId}"]`);
+      const view = row?.querySelector<HTMLElement>('[data-view-nome]');
+      if (!row || !view) return;
+      const nomeAtual = view.textContent?.trim() ?? '';
+      view.innerHTML = `
+        <input class="input" type="text" value="${escapeHtml(nomeAtual)}" maxlength="60" style="max-width:200px;" />
+      `;
+      const input = view.querySelector<HTMLInputElement>('input')!;
+      input.focus();
+      input.select();
+      btn.textContent = 'Salvar';
+
+      const onSalvar = async () => {
+        const novoNome = input.value.trim();
+        if (novoNome) {
+          await renameProfile(perfilId, novoNome);
+          if (perfilId === ctx.perfil.id) ctx.perfil = { ...ctx.perfil, nome: novoNome };
+        }
+        renderSettings(container, ctx);
+      };
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') onSalvar();
+      });
+      btn.onclick = onSalvar;
+    };
+  });
+
+  container.querySelector('#btn-baixar-lembrete')?.addEventListener('click', () => {
+    const hora = container.querySelector<HTMLInputElement>('#input-hora-lembrete')!.value || '19:00';
+    setReminderHour(ctx.perfil.id, hora);
+    downloadICS(generateDailyReminderICS(hora));
   });
 }
 
