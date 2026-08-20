@@ -7,11 +7,16 @@ no servidor.
 **Fase 1a** entregou a fundação: estrutura do projeto, armazenamento local,
 seletor de perfil, exportar/importar, esqueleto visual e deploy.
 
-**Fase 1b** (este estado do projeto) entrega a funcionalidade real de
-estudo: CRUD de Espaços/Temas/Notas, a fila de revisão diária com recall
-ativo, o algoritmo híbrido de repetição espaçada (marco fixo + auto-avaliação)
-e o lembrete diário via `.ics`. Ainda não há painel/estatísticas nem
-automação de alertas — isso é a Fase 1c.
+**Fase 1b** entregou a funcionalidade real de estudo: CRUD de
+Espaços/Temas/Notas, a fila de revisão diária com recall ativo, o algoritmo
+híbrido de repetição espaçada (marco fixo + auto-avaliação) e o lembrete
+diário via `.ics`.
+
+**Fase 1c** (este estado do projeto) entrega editar/excluir em todos os
+níveis (com exclusão em cascata e confirmação explícita), agrupamento por
+categoria também nos Espaços, o Painel com estatísticas simples, e exportar
+um Espaço como PDF. Ainda não há nada relacionado à Fase 2 (Google Drive,
+multiusuário público).
 
 ## Stack e decisões de arquitetura
 
@@ -87,6 +92,42 @@ automação de alertas — isso é a Fase 1c.
   serve pra gerar o `.ics`), sem relação com a mesclagem do importar.
 - **Sem infraestrutura de tradução.** Todo texto está direto em português nos
   arquivos de UI — não há camada de i18n, por instrução explícita do escopo.
+- **Espaço ganhou `categoria` (texto livre), igual Tema já tinha.** A Fase 1b
+  tinha o campo em Tema mas só o exibia como texto — não agrupava de fato a
+  listagem por ele. A Fase 1c corrige os dois: `agruparPorCategoria`
+  (`src/lib/group.ts`) é a mesma função pura usada para agrupar Espaços,
+  Temas dentro de um Espaço, e as seções do PDF — categoria em branco vira
+  o grupo "Sem categoria", sempre por último.
+- **Exclusão é sempre em cascata e sempre pede confirmação contando o
+  estrago antes** (`confirmAction`, `src/ui/components/confirm-modal.ts`):
+  excluir um Espaço apaga Temas → Notas → Itens de Revisão numa única
+  transação IndexedDB por nível (`deleteEspacoCascade`, `deleteTemaCascade`,
+  `deleteNota`). O modal mostra a contagem real (consultada antes de
+  executar), não um aviso genérico.
+- **Ações destrutivas ficam atrás de um menu "⋯"** (`<details>/<summary>`
+  nativos, sem JS de posicionamento) em vez de um botão ao lado de
+  "Arquivar" — de propósito, pra não ficar fácil demais clicar sem querer.
+  Editar continua com botão visível (não é destrutivo).
+- **Editar o conteúdo de uma Nota não toca no Item de Revisão.**
+  `updateNota` (`src/db/notas.ts`) só grava campos da própria Nota — o
+  estágio e a `data_agendada` do item pendente continuam intocados,
+  intencionalmente, desde a Fase 1b (a Fase 1c só formaliza isso como
+  requisito e confirma via teste manual).
+- **PDF via CSS de impressão (`@media print`) + `window.print()`, não uma
+  biblioteca de geração de PDF.** Mais simples de manter, sem dependência
+  nova, sem gerenciar layout/paginação manualmente — o navegador já faz
+  isso bem. A tela `#/espacos/:id/pdf` (`src/ui/screens/espaco-pdf.ts`)
+  renderiza o conteúdo normalmente; a folha de estilo esconde nav/cabeçalho
+  e ajusta cores só na hora de imprimir/exportar.
+- **"Nota fraca" (`isNotaFraca`, `src/domain/stats.ts`) é pura**: conta
+  quantas vezes o histórico de Itens de Revisão daquela nota tem avaliação
+  `'dificil'` vs `'facil'` — mais difícil que fácil marca a nota. Reusada
+  tanto no PDF (ícone ⚠️) quanto no ranking do Painel (agregado por Tema).
+- **Streak de dias seguidos (`computeStreak`, `src/domain/stats.ts`) não
+  quebra só porque hoje ainda não teve revisão** — só conta como quebrada
+  na primeira lacuna real (um dia inteiro sem nenhuma revisão feita),
+  senão bastaria abrir o app de manhã pra "perder" a sequência do dia
+  anterior antes mesmo de revisar.
 
 ## Estrutura do projeto
 
@@ -96,13 +137,18 @@ src/
   domain/
     algorithm.ts          computeNextReview — algoritmo híbrido, função pura
     validade.ts             precisaAvisoDeValidade (nota "pode desatualizar")
+    stats.ts                  computeStreak e isNotaFraca — cálculos puros do Painel/PDF
   db/
     schema.ts            abertura do IndexedDB e definição das object stores/índices
     profiles.ts           perfis: padrão, listar, criar, renomear
-    espacos.ts             CRUD de Espaços (criar, listar, arquivar/reativar)
-    temas.ts                 CRUD de Temas
-    notas.ts                  CRUD de Notas (criar já agenda o 1º Item de Revisão)
+    espacos.ts             CRUD de Espaços (criar, editar, arquivar/reativar,
+                              excluir em cascata, contar cascata)
+    temas.ts                 CRUD de Temas (idem, sem arquivar)
+    notas.ts                  CRUD de Notas (criar já agenda o 1º Item de Revisão;
+                              editar não mexe no agendamento; excluir em cascata)
     reviews.ts              fila de "Hoje", concluir revisão, parar de revisar
+    dashboard.ts          agrega os números do Painel (getDashboardStats)
+    pdf-data.ts             monta os dados agrupados pro export em PDF
     merge.ts               lógica pura de mesclagem (testada em tests/merge.test.ts)
     export-import.ts    monta o .json de export, dispara download, aplica import
   lib/
@@ -112,23 +158,29 @@ src/
     storage-persist.ts   pede armazenamento persistente ao navegador
     markdown.ts          parser markdown minimalista (sem dependência)
     ics.ts                    gera o .ics do lembrete diário, no navegador
+    group.ts                 agruparPorCategoria — usado por Espaços, Temas e PDF
     uuid.ts                  geração de UUID
     dom.ts                    escape de HTML para templates
   ui/
     app.ts                   shell (cabeçalho, navegação, aviso de backup) e roteamento
     router.ts               router baseado em hash, com rotas aninhadas
-                              (#/hoje, #/espacos/:id, #/temas/:id, #/notas/:id, #/config)
-    screens/                 profile-select, today, espacos, espaco-detail,
-                              tema-detail, nota-form, settings
+                              (#/hoje, #/espacos/:id[/pdf], #/temas/:id, #/notas/:id,
+                              #/painel, #/config)
+    components/
+      confirm-modal.ts    modal de confirmação genérico (usado antes de excluir)
+    screens/                 profile-select, today, espacos, espaco-detail, espaco-pdf,
+                              tema-detail, nota-form, painel, settings
   styles/
     tokens.css              variáveis de design (cores, tipografia, espaçamento, tema)
     base.css                  reset e estilos globais
-    components.css        botões, cartões, navegação, formulários, fila de revisão, etc.
+    components.css        botões, cartões, navegação, formulários, fila de revisão,
+                              modal, painel, folha de impressão do PDF, etc.
 scripts/
   generate-icons.mjs   gera os ícones PNG do PWA (sem dependências externas)
 tests/
   merge.test.ts           testes da lógica de mesclagem do importar
   algorithm.test.ts    testes da tabela de transição do algoritmo de repetição
+  stats.test.ts             testes de computeStreak, isNotaFraca, agruparPorCategoria
 ```
 
 ## Rodando localmente
@@ -197,7 +249,7 @@ Todo registro tem `id` (UUID) e `atualizado_em` (timestamp ISO) — é a base da
 mesclagem no importar/exportar.
 
 - `perfis`: `{ id, nome, criado_em, atualizado_em }`
-- `espacos`: `{ id, perfil_id, nome, criado_em, atualizado_em, arquivado }`
+- `espacos`: `{ id, perfil_id, nome, categoria, criado_em, atualizado_em, arquivado }`
 - `temas`: `{ id, espaco_id, nome, categoria, criado_em, atualizado_em }`
 - `notas`: `{ id, tema_id, conteudo, fonte, pode_desatualizar, validade_ate?, criado_em, atualizado_em }`
 - `itens_revisao`: `{ id, nota_id, perfil_id, estagio, data_agendada, data_concluida?, status, avaliacao?, streak_facil, criado_em, atualizado_em }`
@@ -265,6 +317,42 @@ direto por lá — o Memoriza não tem conexão contínua com ele; trocar o
 horário aqui exige baixar um novo arquivo e apagar o antigo manualmente no
 Calendário.
 
+## Editar e excluir
+
+Espaço, Tema e Nota têm "Editar" visível (nome/categoria, ou conteúdo/fonte/
+validade no caso da Nota) e "Excluir" atrás de um menu "⋯" — de propósito
+mais escondido que "Arquivar", pra reduzir o risco de apagar algo sem
+querer. Exclusão é sempre em cascata (Espaço → Temas → Notas → Itens de
+Revisão) e sempre passa por um modal de confirmação que mostra a contagem
+real do que vai sumir antes de executar.
+
+Editar o conteúdo de uma Nota nunca mexe no Item de Revisão em andamento —
+só atualiza os campos da própria Nota. O agendamento (estágio, próxima
+data) continua exatamente onde estava.
+
+## Painel
+
+Números simples pro perfil atual, sem gráfico:
+
+- Revisões feitas nos últimos 7 dias, e a sequência de dias seguidos com
+  pelo menos uma revisão feita (streak).
+- Ranking dos Temas com mais avaliações "Difícil" no histórico — os pontos
+  fracos reais, agregados por Tema a partir dos Itens de Revisão.
+- Contagem de Espaços ativos, Temas, Notas, e Itens de Revisão em
+  `'consulta'` (aposentados).
+
+## Exportar como PDF
+
+Em cada Espaço, o botão "PDF" abre uma tela de impressão
+(`#/espacos/:id/pdf`) com o conteúdo agrupado por categoria → Tema → Notas
+(ordem cronológica de criação). Cada nota cujo histórico de avaliações tem
+mais "Difícil" do que "Fácil" ganha um indicador "⚠️ Reforçar". O botão
+"Imprimir / Salvar como PDF" chama `window.print()` — sem biblioteca de PDF,
+sem chamada de rede; a folha de estilo (`@media print` em
+`components.css`) esconde a navegação e ajusta o layout só na hora de
+imprimir/exportar. Funciona igual num celular (o menu de compartilhar/
+imprimir do navegador também oferece "Salvar como PDF").
+
 ## Exportar / Importar
 
 Em Configurações → Dados:
@@ -303,11 +391,22 @@ npm run test
 
 Cobre a lógica de mesclagem do importar (`src/db/merge.ts`): registro só
 local, registro só no arquivo, local mais recente, arquivo mais recente, e
-IDs conflitantes dentro do mesmo lote. E a tabela de transição completa do
+IDs conflitantes dentro do mesmo lote. A tabela de transição completa do
 algoritmo de repetição (`src/domain/algorithm.ts`): todos os pares
 estágio × avaliação, os casos de borda em `1` e `180`, e o `streak_facil`
 chegando a 2 (testado tanto isolado quanto no fluxo real de duas fáceis
-seguidas).
+seguidas). E os cálculos puros do Painel/PDF (`src/domain/stats.ts`,
+`src/lib/group.ts`): sequência de dias sem quebrar por causa do dia atual,
+nota fraca por contagem de avaliações, e agrupamento por categoria com
+ordenação e "Sem categoria" por último.
+
+As funções que dependem de IndexedDB (CRUD, cascata de exclusão,
+agregações do Painel) não têm teste automatizado — foram validadas
+manualmente, ponta a ponta, num navegador real (Chromium via Playwright)
+durante o desenvolvimento desta fase, cobrindo criar/editar/excluir em
+cascata com contagem correta no modal, Painel refletindo os dados certos
+antes e depois de excluir, e o indicador de nota fraca aparecendo certo no
+PDF.
 
 ## Critérios de pronto verificados nesta fase
 
@@ -335,3 +434,16 @@ seguidas).
       (Cloudflare Workers com Static Assets, conectado ao Git nativamente —
       ver seção "Deploy" acima e a troca de domínio em relação ao
       `pages.dev` original).
+- [x] Editar o nome de um Espaço/Tema e o conteúdo de uma Nota persiste
+      (confirmado ponta a ponta num navegador real).
+- [x] Excluir um Tema com Notas mostra a contagem correta no modal
+      (verificado com um Tema de 0 notas e um Espaço com 2 temas/1 nota) e,
+      ao confirmar, remove tudo em cascata — confirmado no Painel antes e
+      depois (contagens de Temas/Notas e revisões/streak zerando junto).
+- [x] O Painel mostra números corretos comparados com dados de teste reais
+      (revisões dos últimos 7 dias, streak, ranking de "Difícil" por Tema,
+      contagens de Espaços/Temas/Notas/aposentadas).
+- [x] Exportar como PDF de um Espaço com 2 categorias e notas avaliadas
+      gera uma página agrupada corretamente (categoria → Tema → Notas em
+      ordem cronológica), com o indicador "⚠️ Reforçar" aparecendo só na
+      nota com mais avaliações Difícil do que Fácil.

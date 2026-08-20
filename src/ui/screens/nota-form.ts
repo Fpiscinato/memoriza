@@ -1,4 +1,4 @@
-import { createNota, getNota, updateNota } from '../../db/notas';
+import { createNota, deleteNota, getNota, updateNota } from '../../db/notas';
 import { getTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { devReviewNow, stopReviewing } from '../../db/reviews';
@@ -6,6 +6,7 @@ import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { navigate } from '../router';
+import { confirmAction } from '../components/confirm-modal';
 
 export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
 
@@ -44,6 +45,18 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
     <div class="section-header">
       <span class="section-header__title">${params.mode === 'nova' ? 'Nova nota' : 'Editar nota'}</span>
+      ${
+        params.mode === 'editar'
+          ? `
+        <details class="item-menu">
+          <summary aria-label="Mais opções">⋯</summary>
+          <div class="item-menu__panel">
+            <button id="btn-excluir-nota" class="danger" type="button">Excluir nota</button>
+          </div>
+        </details>
+      `
+          : ''
+      }
     </div>
 
     <div class="card stack">
@@ -160,6 +173,15 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     container.querySelector('#btn-revisar-agora')?.addEventListener('click', async () => {
       await devReviewNow(nota.id);
       navigate('hoje');
+    });
+    container.querySelector('#btn-excluir-nota')?.addEventListener('click', async () => {
+      const ok = await confirmAction({
+        title: 'Excluir esta nota?',
+        message: 'Isso vai apagar a nota e todo o seu histórico de revisões.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.',
+      });
+      if (!ok) return;
+      await deleteNota(nota.id);
+      navigate(backRoute);
     });
   }
 }

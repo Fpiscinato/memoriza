@@ -12,6 +12,8 @@ export interface Espaco {
   id: string;
   perfil_id: string;
   nome: string;
+  /** Texto livre (ex: "Cursos", "Livros") — agrupa os Espaços na listagem, igual Tema.categoria. */
+  categoria: string;
   criado_em: string;
   atualizado_em: string;
   arquivado: boolean;

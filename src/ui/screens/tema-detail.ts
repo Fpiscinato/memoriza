@@ -1,8 +1,9 @@
-import { getTema } from '../../db/temas';
+import { countTemaCascade, deleteTemaCascade, getTema, updateTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { listNotas } from '../../db/notas';
 import { escapeHtml } from '../../lib/dom';
 import { navigate } from '../router';
+import { confirmAction } from '../components/confirm-modal';
 
 function primeiraLinha(conteudo: string): string {
   const linha = conteudo.split('\n').find((l) => l.trim().length > 0) ?? '';
@@ -25,11 +26,35 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
 
     <div class="section-header">
       <span class="section-header__title">${escapeHtml(tema.nome)}</span>
-      ${
-        !espaco?.arquivado
-          ? `<button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">+ Nova nota</button>`
-          : ''
-      }
+      <div style="display:flex; gap: var(--space-2);">
+        <button class="btn btn--secondary btn--sm" id="btn-editar-tema" type="button">Editar</button>
+        ${
+          !espaco?.arquivado
+            ? `<button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">+ Nova nota</button>`
+            : ''
+        }
+        <details class="item-menu">
+          <summary aria-label="Mais opções">⋯</summary>
+          <div class="item-menu__panel">
+            <button id="btn-excluir-tema" class="danger" type="button">Excluir tema</button>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div id="form-editar-tema" style="display:none" class="card">
+      <div class="field">
+        <label class="field__label" for="input-nome-tema-editar">Nome</label>
+        <input class="input" id="input-nome-tema-editar" type="text" value="${escapeHtml(tema.nome)}" maxlength="120" />
+      </div>
+      <div class="field" style="margin-top: var(--space-3);">
+        <label class="field__label" for="input-categoria-tema-editar">Categoria (opcional)</label>
+        <input class="input" id="input-categoria-tema-editar" type="text" value="${escapeHtml(tema.categoria)}" maxlength="80" />
+      </div>
+      <div class="form-actions" style="margin-top: var(--space-3);">
+        <button class="btn btn--primary btn--sm" id="btn-salvar-edicao-tema" type="button">Salvar</button>
+        <button class="btn btn--secondary btn--sm" id="btn-cancelar-edicao-tema" type="button">Cancelar</button>
+      </div>
     </div>
 
     ${
@@ -70,5 +95,32 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   container.querySelector('#btn-nova-nota')?.addEventListener('click', () => navigate(`temas/${temaId}/nova-nota`));
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`notas/${btn.dataset.open}`));
+  });
+
+  const formEditar = container.querySelector<HTMLElement>('#form-editar-tema')!;
+  container.querySelector('#btn-editar-tema')?.addEventListener('click', () => {
+    formEditar.style.display = 'block';
+    container.querySelector<HTMLInputElement>('#input-nome-tema-editar')?.focus();
+  });
+  container.querySelector('#btn-cancelar-edicao-tema')?.addEventListener('click', () => {
+    formEditar.style.display = 'none';
+  });
+  container.querySelector('#btn-salvar-edicao-tema')?.addEventListener('click', async () => {
+    const nome = container.querySelector<HTMLInputElement>('#input-nome-tema-editar')!.value.trim();
+    const categoria = container.querySelector<HTMLInputElement>('#input-categoria-tema-editar')!.value.trim();
+    if (!nome) return;
+    await updateTema(tema.id, nome, categoria);
+    renderTemaDetail(container, temaId);
+  });
+
+  container.querySelector('#btn-excluir-tema')?.addEventListener('click', async () => {
+    const contagem = await countTemaCascade(tema.id);
+    const ok = await confirmAction({
+      title: `Excluir "${tema.nome}"?`,
+      message: `Isso vai apagar ${contagem.notas} nota(s), com todo o histórico de revisão delas.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
+    });
+    if (!ok) return;
+    await deleteTemaCascade(tema.id);
+    navigate(`espacos/${tema.espaco_id}`);
   });
 }

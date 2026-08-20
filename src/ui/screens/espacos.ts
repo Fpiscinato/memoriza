@@ -1,7 +1,9 @@
-import { createEspaco, listEspacos, setEspacoArquivado } from '../../db/espacos';
+import { countEspacoCascade, createEspaco, deleteEspacoCascade, listEspacos, setEspacoArquivado } from '../../db/espacos';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
+import { agruparPorCategoria } from '../../lib/group';
 import { navigate } from '../router';
+import { confirmAction } from '../components/confirm-modal';
 
 export interface EspacosContext {
   perfilId: string;
@@ -12,6 +14,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const ativos = todos.filter((e) => !e.arquivado);
   const arquivados = todos.filter((e) => e.arquivado);
   const temaCounts = await countTemasPorEspaco(todos.map((e) => e.id));
+  const grupos = agruparPorCategoria(ativos);
 
   container.innerHTML = `
     <div class="section-header">
@@ -23,6 +26,10 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       <div class="field">
         <label class="field__label" for="input-nome-espaco">Nome do espaço</label>
         <input class="input" id="input-nome-espaco" type="text" placeholder="Ex: Curso de Investimentos" maxlength="120" />
+      </div>
+      <div class="field" style="margin-top: var(--space-3);">
+        <label class="field__label" for="input-categoria-espaco">Categoria (opcional)</label>
+        <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos Bíblicos" maxlength="80" />
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-espaco" type="button">Criar</button>
@@ -39,25 +46,18 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         <p class="empty-state__hint">Crie um espaço (ex: "Curso de Investimentos") para organizar seus temas e notas.</p>
       </div>
     `
-        : `
-      <div class="item-list">
-        ${ativos
-          .map(
-            (e) => `
-          <div class="item-row" data-id="${escapeHtml(e.id)}">
-            <button class="item-row__main link" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
-              <span class="item-row__title">${escapeHtml(e.nome)}</span>
-              <span class="item-row__meta">${temaCounts.get(e.id) ?? 0} tema(s)</span>
-            </button>
-            <div class="item-row__actions">
-              <button class="btn btn--secondary btn--sm" data-archive="${escapeHtml(e.id)}" type="button">Arquivar</button>
-            </div>
-          </div>
-        `,
-          )
-          .join('')}
+        : grupos
+            .map(
+              (grupo) => `
+      <div class="category-group">
+        <div class="category-group__title">${escapeHtml(grupo.categoria || 'Sem categoria')}</div>
+        <div class="item-list">
+          ${grupo.itens.map((e) => renderRow(e, temaCounts.get(e.id) ?? 0)).join('')}
+        </div>
       </div>
-    `
+    `,
+            )
+            .join('')
     }
 
     ${
@@ -70,7 +70,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
             .map(
               (e) => `
             <div class="item-row" data-id="${escapeHtml(e.id)}">
-              <button class="item-row__main link" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
+              <button class="item-row__main" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
                 <span class="item-row__title">${escapeHtml(e.nome)}</span>
                 <span class="item-row__meta">Arquivado</span>
               </button>
@@ -98,9 +98,10 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   });
   container.querySelector('#btn-salvar-espaco')?.addEventListener('click', async () => {
     const input = container.querySelector<HTMLInputElement>('#input-nome-espaco')!;
+    const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco')!;
     const nome = input.value.trim();
     if (!nome) return;
-    const novo = await createEspaco(ctx.perfilId, nome);
+    const novo = await createEspaco(ctx.perfilId, nome, categoriaInput.value.trim());
     navigate(`espacos/${novo.id}`);
   });
 
@@ -119,6 +120,40 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       renderEspacos(container, ctx);
     });
   });
+  container.querySelectorAll<HTMLButtonElement>('[data-excluir]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.excluir!;
+      const nome = btn.dataset.nome ?? '';
+      const contagem = await countEspacoCascade(id);
+      const ok = await confirmAction({
+        title: `Excluir "${nome}"?`,
+        message: `Isso vai apagar ${contagem.temas} tema(s) e ${contagem.notas} nota(s), com todo o histórico de revisão delas.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
+      });
+      if (!ok) return;
+      await deleteEspacoCascade(id);
+      renderEspacos(container, ctx);
+    });
+  });
+}
+
+function renderRow(e: { id: string; nome: string }, temaCount: number): string {
+  return `
+    <div class="item-row" data-id="${escapeHtml(e.id)}">
+      <button class="item-row__main" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
+        <span class="item-row__title">${escapeHtml(e.nome)}</span>
+        <span class="item-row__meta">${temaCount} tema(s)</span>
+      </button>
+      <div class="item-row__actions">
+        <button class="btn btn--secondary btn--sm" data-archive="${escapeHtml(e.id)}" type="button">Arquivar</button>
+        <details class="item-menu">
+          <summary aria-label="Mais opções">⋯</summary>
+          <div class="item-menu__panel">
+            <button data-excluir="${escapeHtml(e.id)}" data-nome="${escapeHtml(e.nome)}" class="danger" type="button">Excluir</button>
+          </div>
+        </details>
+      </div>
+    </div>
+  `;
 }
 
 async function countTemasPorEspaco(espacoIds: string[]): Promise<Map<string, number>> {

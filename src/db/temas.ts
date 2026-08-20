@@ -28,3 +28,36 @@ export async function createTema(espacoId: string, nome: string, categoria: stri
   await db.put('temas', tema);
   return tema;
 }
+
+export async function updateTema(id: string, nome: string, categoria: string): Promise<void> {
+  const db = await getDB();
+  const tema = await db.get('temas', id);
+  if (!tema) return;
+  tema.nome = nome;
+  tema.categoria = categoria;
+  tema.atualizado_em = nowISO();
+  await db.put('temas', tema);
+}
+
+/** Conta o que seria apagado em cascata (Notas), pra mostrar no modal de confirmação. */
+export async function countTemaCascade(temaId: string): Promise<{ notas: number }> {
+  const db = await getDB();
+  const notas = await db.getAllFromIndex('notas', 'tema_id', temaId);
+  return { notas: notas.length };
+}
+
+/** Apaga o Tema e, em cascata, suas Notas e os Itens de Revisão delas. */
+export async function deleteTemaCascade(temaId: string): Promise<void> {
+  const db = await getDB();
+  const notas = await db.getAllFromIndex('notas', 'tema_id', temaId);
+  const itensPorNota = await Promise.all(
+    notas.map((nota) => db.getAllFromIndex('itens_revisao', 'nota_id', nota.id)),
+  );
+  const itens = itensPorNota.flat();
+
+  const tx = db.transaction(['temas', 'notas', 'itens_revisao'], 'readwrite');
+  await tx.objectStore('temas').delete(temaId);
+  for (const nota of notas) await tx.objectStore('notas').delete(nota.id);
+  for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+  await tx.done;
+}

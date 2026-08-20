@@ -1,8 +1,10 @@
-import { getEspaco, setEspacoArquivado } from '../../db/espacos';
+import { countEspacoCascade, deleteEspacoCascade, getEspaco, setEspacoArquivado, updateEspaco } from '../../db/espacos';
 import { createTema, listTemas } from '../../db/temas';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
+import { agruparPorCategoria } from '../../lib/group';
 import { navigate } from '../router';
+import { confirmAction } from '../components/confirm-modal';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
   const espaco = await getEspaco(espacoId);
@@ -12,6 +14,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   }
   const temas = await listTemas(espacoId);
   const notaCounts = await countNotasPorTema(temas.map((t) => t.id));
+  const grupos = agruparPorCategoria(temas);
 
   container.innerHTML = `
     <div class="breadcrumb">
@@ -21,14 +24,32 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     <div class="section-header">
       <span class="section-header__title">${escapeHtml(espaco.nome)}</span>
       <div style="display:flex; gap: var(--space-2);">
+        <button class="btn btn--secondary btn--sm" id="btn-editar" type="button">Editar</button>
         <button class="btn btn--secondary btn--sm" id="btn-arquivar" type="button">
           ${espaco.arquivado ? 'Reativar' : 'Arquivar'}
         </button>
-        ${
-          !espaco.arquivado
-            ? `<button class="btn btn--primary btn--sm" id="btn-novo-tema" type="button">+ Novo tema</button>`
-            : ''
-        }
+        <a class="btn btn--secondary btn--sm" href="#/espacos/${escapeHtml(espaco.id)}/pdf">PDF</a>
+        <details class="item-menu">
+          <summary aria-label="Mais opções">⋯</summary>
+          <div class="item-menu__panel">
+            <button id="btn-excluir" class="danger" type="button">Excluir espaço</button>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div id="form-editar-espaco" style="display:none" class="card">
+      <div class="field">
+        <label class="field__label" for="input-nome-espaco-editar">Nome</label>
+        <input class="input" id="input-nome-espaco-editar" type="text" value="${escapeHtml(espaco.nome)}" maxlength="120" />
+      </div>
+      <div class="field" style="margin-top: var(--space-3);">
+        <label class="field__label" for="input-categoria-espaco-editar">Categoria (opcional)</label>
+        <input class="input" id="input-categoria-espaco-editar" type="text" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
+      </div>
+      <div class="form-actions" style="margin-top: var(--space-3);">
+        <button class="btn btn--primary btn--sm" id="btn-salvar-edicao" type="button">Salvar</button>
+        <button class="btn btn--secondary btn--sm" id="btn-cancelar-edicao" type="button">Cancelar</button>
       </div>
     </div>
 
@@ -38,6 +59,9 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         : ''
     }
 
+    ${
+      !espaco.arquivado
+        ? `
     <div id="form-novo-tema" style="display:none" class="card">
       <div class="field">
         <label class="field__label" for="input-nome-tema">Nome do tema</label>
@@ -52,6 +76,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-tema" type="button">Cancelar</button>
       </div>
     </div>
+    <button class="btn btn--primary btn--sm" id="btn-novo-tema" type="button" style="margin-bottom: var(--space-5);">+ Novo tema</button>
+    `
+        : ''
+    }
 
     ${
       temas.length === 0
@@ -62,22 +90,29 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <p class="empty-state__hint">Temas organizam as notas dentro de um espaço — ex: "Renda Fixa", "Renda Variável".</p>
       </div>
     `
-        : `
-      <div class="item-list">
-        ${temas
-          .map(
-            (t) => `
-          <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left;">
-            <span class="item-row__main">
-              <span class="item-row__title">${escapeHtml(t.nome)}</span>
-              <span class="item-row__meta">${escapeHtml(t.categoria || 'Sem categoria')} · ${notaCounts.get(t.id) ?? 0} nota(s)</span>
-            </span>
-          </button>
-        `,
-          )
-          .join('')}
+        : grupos
+            .map(
+              (grupo) => `
+      <div class="category-group">
+        <div class="category-group__title">${escapeHtml(grupo.categoria || 'Sem categoria')}</div>
+        <div class="item-list">
+          ${grupo.itens
+            .map(
+              (t) => `
+            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left;">
+              <span class="item-row__main">
+                <span class="item-row__title">${escapeHtml(t.nome)}</span>
+                <span class="item-row__meta">${notaCounts.get(t.id) ?? 0} nota(s)</span>
+              </span>
+            </button>
+          `,
+            )
+            .join('')}
+        </div>
       </div>
-    `
+    `,
+            )
+            .join('')
     }
   `;
 
@@ -88,13 +123,40 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     renderEspacoDetail(container, espacoId);
   });
 
-  const form = container.querySelector<HTMLElement>('#form-novo-tema');
+  const formEditar = container.querySelector<HTMLElement>('#form-editar-espaco')!;
+  container.querySelector('#btn-editar')?.addEventListener('click', () => {
+    formEditar.style.display = 'block';
+    container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')?.focus();
+  });
+  container.querySelector('#btn-cancelar-edicao')?.addEventListener('click', () => {
+    formEditar.style.display = 'none';
+  });
+  container.querySelector('#btn-salvar-edicao')?.addEventListener('click', async () => {
+    const nome = container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')!.value.trim();
+    const categoria = container.querySelector<HTMLInputElement>('#input-categoria-espaco-editar')!.value.trim();
+    if (!nome) return;
+    await updateEspaco(espaco.id, nome, categoria);
+    renderEspacoDetail(container, espacoId);
+  });
+
+  container.querySelector('#btn-excluir')?.addEventListener('click', async () => {
+    const contagem = await countEspacoCascade(espaco.id);
+    const ok = await confirmAction({
+      title: `Excluir "${espaco.nome}"?`,
+      message: `Isso vai apagar ${contagem.temas} tema(s) e ${contagem.notas} nota(s), com todo o histórico de revisão delas.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
+    });
+    if (!ok) return;
+    await deleteEspacoCascade(espaco.id);
+    navigate('espacos');
+  });
+
+  const formTema = container.querySelector<HTMLElement>('#form-novo-tema');
   container.querySelector('#btn-novo-tema')?.addEventListener('click', () => {
-    if (form) form.style.display = 'block';
+    if (formTema) formTema.style.display = 'block';
     container.querySelector<HTMLInputElement>('#input-nome-tema')?.focus();
   });
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
-    if (form) form.style.display = 'none';
+    if (formTema) formTema.style.display = 'none';
   });
   container.querySelector('#btn-salvar-tema')?.addEventListener('click', async () => {
     const nomeInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;

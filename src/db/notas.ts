@@ -61,6 +61,10 @@ export async function createNota(temaId: string, input: NotaInput): Promise<Nota
   return nota;
 }
 
+/**
+ * Atualiza só os campos de conteúdo da Nota — não mexe no(s) Item(ns) de Revisão, de
+ * propósito: editar o texto de uma nota não deve resetar o agendamento em andamento.
+ */
 export async function updateNota(id: string, input: NotaInput): Promise<void> {
   const db = await getDB();
   const nota = await db.get('notas', id);
@@ -71,4 +75,14 @@ export async function updateNota(id: string, input: NotaInput): Promise<void> {
   nota.validade_ate = input.pode_desatualizar ? input.validade_ate : undefined;
   nota.atualizado_em = nowISO();
   await db.put('notas', nota);
+}
+
+/** Apaga a Nota e, em cascata, todos os seus Itens de Revisão (histórico incluso). */
+export async function deleteNota(id: string): Promise<void> {
+  const db = await getDB();
+  const itens = await db.getAllFromIndex('itens_revisao', 'nota_id', id);
+  const tx = db.transaction(['notas', 'itens_revisao'], 'readwrite');
+  await tx.objectStore('notas').delete(id);
+  for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+  await tx.done;
 }
