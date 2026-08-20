@@ -8,9 +8,10 @@ export type Route =
   | { name: 'nota-nova'; temaId: string }
   | { name: 'nota'; id: string }
   | { name: 'painel' }
+  | { name: 'favoritos' }
   | { name: 'config' };
 
-export type TopLevelRoute = 'hoje' | 'espacos' | 'painel' | 'config';
+export type TopLevelRoute = 'hoje' | 'espacos' | 'favoritos' | 'painel' | 'config';
 
 function segments(): string[] {
   return window.location.hash
@@ -26,6 +27,7 @@ export function getCurrentRoute(): Route {
   if (parts[0] === 'perfil') return { name: 'perfil' };
   if (parts[0] === 'config') return { name: 'config' };
   if (parts[0] === 'painel') return { name: 'painel' };
+  if (parts[0] === 'favoritos') return { name: 'favoritos' };
   if (parts[0] === 'espacos') {
     if (parts.length === 1) return { name: 'espacos' };
     if (parts.length === 2) return { name: 'espaco', id: parts[1] };
@@ -47,6 +49,8 @@ export function topLevelFor(route: Route): TopLevelRoute {
       return 'config';
     case 'painel':
       return 'painel';
+    case 'favoritos':
+      return 'favoritos';
     case 'espacos':
     case 'espaco':
     case 'espaco-pdf':

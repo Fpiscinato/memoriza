@@ -2,11 +2,18 @@ import { getDB } from './schema';
 import type { Espaco } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
+import { distinctCategorias } from '../lib/group';
 
 export async function listEspacos(perfilId: string): Promise<Espaco[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
   return all.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+/** Categorias já usadas em Espaços deste perfil — pra sugerir no autocomplete. */
+export async function listCategoriasEspacos(perfilId: string): Promise<string[]> {
+  const espacos = await listEspacos(perfilId);
+  return distinctCategorias(espacos.map((e) => e.categoria));
 }
 
 export async function getEspaco(id: string): Promise<Espaco | undefined> {

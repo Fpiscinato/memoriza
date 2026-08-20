@@ -56,3 +56,54 @@ export async function renameProfile(id: string, novoNome: string): Promise<void>
   perfil.atualizado_em = nowISO();
   await db.put('perfis', perfil);
 }
+
+export interface ProfileCascadeCount {
+  espacos: number;
+  temas: number;
+  notas: number;
+}
+
+/** Conta o que seria apagado em cascata (todo o conteúdo do perfil), pro modal de confirmação. */
+export async function countProfileCascade(perfilId: string): Promise<ProfileCascadeCount> {
+  const db = await getDB();
+  const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
+  let temas = 0;
+  let notas = 0;
+  for (const espaco of espacos) {
+    const temasDoEspaco = await db.getAllFromIndex('temas', 'espaco_id', espaco.id);
+    temas += temasDoEspaco.length;
+    for (const tema of temasDoEspaco) {
+      notas += (await db.getAllFromIndex('notas', 'tema_id', tema.id)).length;
+    }
+  }
+  return { espacos: espacos.length, temas, notas };
+}
+
+/** Apaga o Perfil e, em cascata, todos os seus Espaços, Temas, Notas e Itens de Revisão. */
+export async function deleteProfileCascade(perfilId: string): Promise<void> {
+  const db = await getDB();
+  const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
+
+  const temasPorEspaco = await Promise.all(
+    espacos.map((espaco) => db.getAllFromIndex('temas', 'espaco_id', espaco.id)),
+  );
+  const temas = temasPorEspaco.flat();
+
+  const notasPorTema = await Promise.all(
+    temas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),
+  );
+  const notas = notasPorTema.flat();
+
+  const itensPorNota = await Promise.all(
+    notas.map((nota) => db.getAllFromIndex('itens_revisao', 'nota_id', nota.id)),
+  );
+  const itens = itensPorNota.flat();
+
+  const tx = db.transaction(['perfis', 'espacos', 'temas', 'notas', 'itens_revisao'], 'readwrite');
+  await tx.objectStore('perfis').delete(perfilId);
+  for (const espaco of espacos) await tx.objectStore('espacos').delete(espaco.id);
+  for (const tema of temas) await tx.objectStore('temas').delete(tema.id);
+  for (const nota of notas) await tx.objectStore('notas').delete(nota.id);
+  for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+  await tx.done;
+}

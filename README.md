@@ -12,11 +12,18 @@ Espaços/Temas/Notas, a fila de revisão diária com recall ativo, o algoritmo
 híbrido de repetição espaçada (marco fixo + auto-avaliação) e o lembrete
 diário via `.ics`.
 
-**Fase 1c** (este estado do projeto) entrega editar/excluir em todos os
-níveis (com exclusão em cascata e confirmação explícita), agrupamento por
-categoria também nos Espaços, o Painel com estatísticas simples, e exportar
-um Espaço como PDF. Ainda não há nada relacionado à Fase 2 (Google Drive,
-multiusuário público).
+**Fase 1c** entregou editar/excluir em todos os níveis (com exclusão em
+cascata e confirmação explícita), agrupamento por categoria também nos
+Espaços, o Painel com estatísticas simples, e exportar um Espaço como PDF.
+
+**Fase 1d** (este estado do projeto) corrige uso real da Fase 1c e fecha o
+backlog: separa Título (gatilho de recall) de Fonte (citação, só pós-reveal)
+— a correção mais importante, porque muda o que a fila "Hoje" mostra antes
+de revelar —, adiciona autocomplete e agrupamento case-insensitive de
+categoria, grupos recolhíveis, cor fixa por Espaço/Categoria, layout
+responsivo em colunas na largura de desktop, excluir perfil, e Favoritos
+(Temas e Notas) com tela própria. Ainda não há nada relacionado à Fase 2
+(Google Drive, multiusuário público).
 
 ## Stack e decisões de arquitetura
 
@@ -128,6 +135,60 @@ multiusuário público).
   na primeira lacuna real (um dia inteiro sem nenhuma revisão feita),
   senão bastaria abrir o app de manhã pra "perder" a sequência do dia
   anterior antes mesmo de revisar.
+- **`Nota.titulo` substitui `Fonte` como gatilho de recall — correção de
+  especificação da Fase 1d.** `Fonte` sempre foi pensada como
+  citação/referência, não como o texto mostrado antes de revelar a
+  resposta; faltava um campo próprio pra isso. Notas gravadas antes dessa
+  mudança não têm `titulo` no IndexedDB — `migrateNotasSemTitulo`
+  (`src/db/notas.ts`) faz a migração lazy (na primeira leitura de cada nota
+  antiga, não uma migração de schema formal): copia `fonte` pra `titulo` e
+  marca `titulo_revisado: false`, o que acende um aviso sutil na tela de
+  edição até o usuário salvar aquela nota de novo. Roda no bootstrap
+  (`main.ts`) e de novo depois de cada `importData`, pra cobrir tanto dados
+  locais antigos quanto um `.json` exportado por uma versão anterior.
+- **Categoria compara ignorando maiúsculas/minúsculas e espaços nas
+  pontas**, tanto pra agrupar (`agruparPorCategoria`) quanto pra sugerir no
+  autocomplete (`distinctCategorias`, `src/lib/group.ts`) — "Livros" e
+  "livros " não viram grupos diferentes por acidente de digitação. O rótulo
+  exibido do grupo é a primeira grafia encontrada; o autocomplete usa
+  `<input list>` + `<datalist>` nativos (sem componente customizado) — dá
+  sugestão e continua aceitando texto novo de graça.
+- **Grupos por categoria são `<details>/<summary>` nativos**, não um
+  componente de "collapse" próprio — recolhe/expande de graça, sem estado
+  em JS pra gerenciar (o estado não persiste entre re-renders da tela, o
+  que é aceitável: o pedido era só funcionar durante o uso, não persistir
+  entre sessões).
+- **Cor por Espaço/Categoria é hash determinístico sobre uma paleta fixa de
+  8 cores** (`accentIndexFor`, `src/lib/color.ts`), nunca gerada
+  aleatoriamente — a mesma chave (id do Espaço, ou categoria já normalizada
+  pra minúsculo/sem espaços) sempre cai na mesma cor, em qualquer tela. As
+  8 cores têm variantes claro/escuro em `tokens.css`, igual todo o resto da
+  paleta.
+- **`.app-main` ganhou um teto de largura bem mais generoso (1100px) e as
+  listas (`.item-list`) viram grid multi-coluna a partir de 720px** — o
+  problema apontado foi a interface parecer "mobile esticado" em telas
+  largas. Telas de formulário/foco único (editar Nota, cartão de revisão,
+  Configurações) usam a classe `.content-narrow` pra manter a coluna
+  estreita de sempre — largura maior só ajuda listas, não texto longo pra
+  ler/editar.
+- **Favorito existe em `Tema` e `Nota`, não em `Espaço`** (por instrução
+  explícita). A tela "Favoritos" (`src/ui/screens/favoritos.ts`,
+  `src/db/favorites.ts`) é uma aba própria, separada da fila "Hoje" —
+  mostra Temas favoritos agrupados por Espaço e Notas favoritas agrupadas
+  por Tema, reusando o mesmo padrão visual de agrupamento do resto do app.
+  No PDF, favorito vira só uma marcação (⭐) ao lado do título — igual o
+  indicador de nota fraca —, nunca uma seção separada.
+- **Bugs 0.1 ("criar Espaço sumindo"), 0.4 ("Hoje abre em modo de edição")
+  e 0.5 ("Preview trava o Salvar") não reproduziram** em teste ponta a
+  ponta (Chromium via Playwright, várias vezes, incluindo os cenários
+  exatos descritos). O código já criava o Espaço fora do estado vazio, já
+  tinha uma tela de revisão sem relação com a de edição, e o textarea do
+  editor mantém o valor normalmente estando oculto atrás da aba Preview.
+  Não alterei esse comportamento — só documentei que não encontrei a causa,
+  pra não mascarar um bug real com uma "correção" de algo que não estava
+  quebrado. Se acontecer de novo, o mais provável é cache do Service Worker
+  mostrando uma versão antiga — vale conferir a versão do app antes de
+  reportar de novo.
 
 ## Estrutura do projeto
 
@@ -140,15 +201,17 @@ src/
     stats.ts                  computeStreak e isNotaFraca — cálculos puros do Painel/PDF
   db/
     schema.ts            abertura do IndexedDB e definição das object stores/índices
-    profiles.ts           perfis: padrão, listar, criar, renomear
+    profiles.ts           perfis: padrão, listar, criar, renomear, excluir em cascata
     espacos.ts             CRUD de Espaços (criar, editar, arquivar/reativar,
-                              excluir em cascata, contar cascata)
-    temas.ts                 CRUD de Temas (idem, sem arquivar)
+                              excluir em cascata, contar cascata, categorias distintas)
+    temas.ts                 CRUD de Temas (idem, sem arquivar; + favoritar)
     notas.ts                  CRUD de Notas (criar já agenda o 1º Item de Revisão;
-                              editar não mexe no agendamento; excluir em cascata)
+                              editar não mexe no agendamento; excluir em cascata;
+                              favoritar; migrateNotasSemTitulo)
     reviews.ts              fila de "Hoje", concluir revisão, parar de revisar
     dashboard.ts          agrega os números do Painel (getDashboardStats)
     pdf-data.ts             monta os dados agrupados pro export em PDF
+    favorites.ts             Temas/Notas favoritados do perfil, com Espaço/Tema pai
     merge.ts               lógica pura de mesclagem (testada em tests/merge.test.ts)
     export-import.ts    monta o .json de export, dispara download, aplica import
   lib/
@@ -158,18 +221,19 @@ src/
     storage-persist.ts   pede armazenamento persistente ao navegador
     markdown.ts          parser markdown minimalista (sem dependência)
     ics.ts                    gera o .ics do lembrete diário, no navegador
-    group.ts                 agruparPorCategoria — usado por Espaços, Temas e PDF
+    group.ts                 agruparPorCategoria, distinctCategorias (Espaços, Temas, PDF)
+    color.ts                 accentIndexFor/accentVar — cor fixa por Espaço/Categoria
     uuid.ts                  geração de UUID
     dom.ts                    escape de HTML para templates
   ui/
     app.ts                   shell (cabeçalho, navegação, aviso de backup) e roteamento
     router.ts               router baseado em hash, com rotas aninhadas
                               (#/hoje, #/espacos/:id[/pdf], #/temas/:id, #/notas/:id,
-                              #/painel, #/config)
+                              #/painel, #/favoritos, #/config)
     components/
       confirm-modal.ts    modal de confirmação genérico (usado antes de excluir)
     screens/                 profile-select, today, espacos, espaco-detail, espaco-pdf,
-                              tema-detail, nota-form, painel, settings
+                              tema-detail, nota-form, painel, favoritos, settings
   styles/
     tokens.css              variáveis de design (cores, tipografia, espaçamento, tema)
     base.css                  reset e estilos globais
@@ -250,8 +314,8 @@ mesclagem no importar/exportar.
 
 - `perfis`: `{ id, nome, criado_em, atualizado_em }`
 - `espacos`: `{ id, perfil_id, nome, categoria, criado_em, atualizado_em, arquivado }`
-- `temas`: `{ id, espaco_id, nome, categoria, criado_em, atualizado_em }`
-- `notas`: `{ id, tema_id, conteudo, fonte, pode_desatualizar, validade_ate?, criado_em, atualizado_em }`
+- `temas`: `{ id, espaco_id, nome, categoria, favorito, criado_em, atualizado_em }`
+- `notas`: `{ id, tema_id, titulo, conteudo, fonte, pode_desatualizar, validade_ate?, favorito, titulo_revisado, criado_em, atualizado_em }`
 - `itens_revisao`: `{ id, nota_id, perfil_id, estagio, data_agendada, data_concluida?, status, avaliacao?, streak_facil, criado_em, atualizado_em }`
 
 `pode_desatualizar` substitui o campo `tipo` do desenho original da Fase 1a
@@ -397,16 +461,19 @@ estágio × avaliação, os casos de borda em `1` e `180`, e o `streak_facil`
 chegando a 2 (testado tanto isolado quanto no fluxo real de duas fáceis
 seguidas). E os cálculos puros do Painel/PDF (`src/domain/stats.ts`,
 `src/lib/group.ts`): sequência de dias sem quebrar por causa do dia atual,
-nota fraca por contagem de avaliações, e agrupamento por categoria com
-ordenação e "Sem categoria" por último.
+nota fraca por contagem de avaliações, e agrupamento/sugestão de categoria
+ignorando maiúsculas/minúsculas e espaços nas pontas.
 
 As funções que dependem de IndexedDB (CRUD, cascata de exclusão,
-agregações do Painel) não têm teste automatizado — foram validadas
-manualmente, ponta a ponta, num navegador real (Chromium via Playwright)
-durante o desenvolvimento desta fase, cobrindo criar/editar/excluir em
-cascata com contagem correta no modal, Painel refletindo os dados certos
-antes e depois de excluir, e o indicador de nota fraca aparecendo certo no
-PDF.
+agregações do Painel, migração de notas antigas) não têm teste
+automatizado — foram validadas manualmente, ponta a ponta, num navegador
+real (Chromium via Playwright), incluindo injetar um registro no formato
+pré-Fase-1d direto no IndexedDB e recarregar o app pra confirmar a
+migração (`migrateNotasSemTitulo`) rodando de verdade no bootstrap.
+
+Também cobre, das fases anteriores: criar/editar/excluir em cascata com
+contagem correta no modal, Painel refletindo os dados certos antes e
+depois de excluir, e o indicador de nota fraca aparecendo certo no PDF.
 
 ## Critérios de pronto verificados nesta fase
 
@@ -447,3 +514,32 @@ PDF.
       gera uma página agrupada corretamente (categoria → Tema → Notas em
       ordem cronológica), com o indicador "⚠️ Reforçar" aparecendo só na
       nota com mais avaliações Difícil do que Fácil.
+- [x] Criar Espaço funciona com a lista já populada e agrupada por
+      categoria (não reproduziu o bug reportado, testado várias vezes).
+- [x] Categoria digitada antes sugere via autocomplete em Espaço e Tema;
+      "Livros"/"livros "/" LIVROS" caem no mesmo grupo.
+- [x] Grupos por categoria recolhem/expandem ao clicar no cabeçalho, em
+      Espaços e em Temas dentro de um Espaço.
+- [x] Fila "Hoje": Título aparece antes de revelar, Fonte só depois, junto
+      do conteúdo — nunca abre a tela de edição por engano (não reproduziu
+      o bug reportado); "Editar nota" existe como ação separada e
+      deliberada dentro da tela de revisão.
+- [x] Salvar uma Nota funciona estando no modo Preview do editor (não
+      reproduziu o bug reportado).
+- [x] Nota gravada antes da Fase 1d (sem `titulo`) é migrada
+      automaticamente — testado injetando um registro no formato antigo
+      direto no IndexedDB, recarregando o app, e confirmando que o título
+      veio da Fonte antiga, o aviso "revisar título" apareceu, e sumiu
+      depois de editar e salvar.
+- [x] Espaço/Categoria têm cor fixa e consistente (hash determinístico
+      sobre paleta de 8 cores) em listas, cabeçalhos de grupo e Favoritos.
+- [x] `.item-list` vira grid multi-coluna a partir de 720px de largura;
+      formulários/cartão de revisão mantêm coluna estreita (`.content-narrow`)
+      mesmo em telas largas — testado em 375×667 e 1280×800.
+- [x] Dá pra excluir um perfil, com modal mostrando quantos
+      Espaços/Temas/Notas serão apagados antes de confirmar.
+- [x] Dá pra favoritar um Tema e uma Nota; a tela "Favoritos" mostra os
+      dois organizados (Temas por Espaço, Notas por Tema), numa aba própria
+      separada de "Hoje".
+- [x] PDF de um Espaço com itens favoritados mostra a marcação ⭐ ao lado
+      do título, sem seção separada de favoritos.

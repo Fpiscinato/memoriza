@@ -1,4 +1,4 @@
-import { createNota, deleteNota, getNota, updateNota } from '../../db/notas';
+import { createNota, deleteNota, getNota, toggleNotaFavorito, updateNota } from '../../db/notas';
 import { getTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { devReviewNow, stopReviewing } from '../../db/reviews';
@@ -48,21 +48,40 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       ${
         params.mode === 'editar'
           ? `
-        <details class="item-menu">
-          <summary aria-label="Mais opções">⋯</summary>
-          <div class="item-menu__panel">
-            <button id="btn-excluir-nota" class="danger" type="button">Excluir nota</button>
-          </div>
-        </details>
+        <div style="display:flex; gap: var(--space-2);">
+          <button class="btn btn--secondary btn--sm" id="btn-favoritar-nota" type="button">
+            ${nota?.favorito ? '★ Favorito' : '☆ Favoritar'}
+          </button>
+          <details class="item-menu">
+            <summary aria-label="Mais opções">⋯</summary>
+            <div class="item-menu__panel">
+              <button id="btn-excluir-nota" class="danger" type="button">Excluir nota</button>
+            </div>
+          </details>
+        </div>
       `
           : ''
       }
     </div>
 
+    ${
+      params.mode === 'editar' && nota && !nota.titulo_revisado
+        ? `<div class="banner banner--warning"><span>Esta nota foi migrada automaticamente — revise o título abaixo (hoje ele é uma cópia da Fonte antiga).</span></div>`
+        : ''
+    }
+
+    <div class="content-narrow">
     <div class="card stack">
+      <div class="field">
+        <label class="field__label" for="input-titulo">Título</label>
+        <input class="input" id="input-titulo" type="text" placeholder='Ex: "Duration e Convexity" ou "CDB vs LCI: qual a diferença?"' maxlength="200" value="${escapeHtml(nota?.titulo ?? '')}" />
+        <p class="settings-row__desc" style="margin:0;">É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.</p>
+      </div>
+
       <div class="field">
         <label class="field__label" for="input-fonte">Fonte (opcional)</label>
         <input class="input" id="input-fonte" type="text" placeholder='Ex: "Aula 4" ou "página 132"' maxlength="200" value="${escapeHtml(nota?.fonte ?? '')}" />
+        <p class="settings-row__desc" style="margin:0;">Citação/referência — só aparece depois de revelar a resposta, junto do conteúdo.</p>
       </div>
 
       <div>
@@ -112,6 +131,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     `
         : ''
     }
+    </div>
   `;
 
   const backRoute = `temas/${temaId}`;
@@ -123,6 +143,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const paneEditar = container.querySelector<HTMLElement>('#pane-editar')!;
   const panePreview = container.querySelector<HTMLElement>('#pane-preview')!;
   const conteudoInput = container.querySelector<HTMLTextAreaElement>('#input-conteudo')!;
+  const tituloInput = container.querySelector<HTMLInputElement>('#input-titulo')!;
 
   tabEditar.addEventListener('click', () => {
     tabEditar.setAttribute('aria-selected', 'true');
@@ -145,12 +166,18 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   });
 
   container.querySelector('#btn-salvar')?.addEventListener('click', async () => {
+    const titulo = tituloInput.value.trim();
+    if (!titulo) {
+      tituloInput.focus();
+      return;
+    }
     const conteudo = conteudoInput.value.trim();
     if (!conteudo) {
       conteudoInput.focus();
       return;
     }
     const input = {
+      titulo,
       conteudo,
       fonte: container.querySelector<HTMLInputElement>('#input-fonte')!.value.trim(),
       pode_desatualizar: checkboxDesatualizar.checked,
@@ -166,6 +193,10 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   });
 
   if (params.mode === 'editar' && nota) {
+    container.querySelector('#btn-favoritar-nota')?.addEventListener('click', async () => {
+      await toggleNotaFavorito(nota.id);
+      renderNotaForm(container, params);
+    });
     container.querySelector('#btn-parar-revisar')?.addEventListener('click', async () => {
       await stopReviewing(nota.id);
       renderNotaForm(container, params);

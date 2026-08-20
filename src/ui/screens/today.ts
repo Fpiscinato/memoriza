@@ -2,6 +2,7 @@ import { completeReview, getTodayQueue, type QueueEntry } from '../../db/reviews
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { precisaAvisoDeValidade } from '../../domain/validade';
+import { navigate } from '../router';
 import type { Avaliacao } from '../../types';
 
 export interface TodayContext {
@@ -51,8 +52,7 @@ function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry
                 (entry) => `
               <button class="item-row" data-id="${escapeHtml(entry.item.id)}" type="button" style="cursor:pointer; text-align:left;">
                 <span class="item-row__main">
-                  <span class="item-row__title">${escapeHtml(primeiraLinha(entry.nota.conteudo))}</span>
-                  <span class="item-row__meta">${escapeHtml(entry.nota.fonte || 'Sem fonte')}</span>
+                  <span class="item-row__title">${entry.nota.favorito ? '⭐ ' : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}</span>
                 </span>
                 ${precisaAvisoDeValidade(entry.nota) ? '<span class="badge badge--muted">⚠️ desatualizada?</span>' : ''}
               </button>
@@ -73,11 +73,6 @@ function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry
   });
 }
 
-function primeiraLinha(conteudo: string): string {
-  const linha = conteudo.split('\n').find((l) => l.trim().length > 0) ?? '';
-  return linha.length > 100 ? `${linha.slice(0, 100)}…` : linha;
-}
-
 function renderRevisao(
   container: HTMLElement,
   ctx: TodayContext,
@@ -90,12 +85,15 @@ function renderRevisao(
   container.innerHTML = `
     <div class="breadcrumb">
       <button class="link" data-voltar type="button">← Voltar à fila</button>
+      <button class="link" data-editar type="button" style="margin-left:auto;">✎ Editar nota</button>
     </div>
 
+    <div class="content-narrow">
     <div class="card review-card">
       <div class="review-card__meta">
-        ${escapeHtml(entry.tema.nome)}${entry.nota.fonte ? ` · ${escapeHtml(entry.nota.fonte)}` : ''}
+        ${escapeHtml(entry.tema.nome)}${revelado && entry.nota.fonte ? ` · ${escapeHtml(entry.nota.fonte)}` : ''}
       </div>
+      <div class="review-card__titulo">${entry.nota.favorito ? '⭐ ' : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}</div>
 
       ${aviso ? `<div class="banner banner--warning" style="margin-bottom:0;"><span>Isso pode estar desatualizado — confirme antes de confiar.</span></div>` : ''}
 
@@ -115,9 +113,11 @@ function renderRevisao(
       `
       }
     </div>
+    </div>
   `;
 
   container.querySelector('[data-voltar]')?.addEventListener('click', () => renderLista(container, ctx, filaCompleta));
+  container.querySelector('[data-editar]')?.addEventListener('click', () => navigate(`notas/${entry.nota.id}`));
   container.querySelector('#btn-revelar')?.addEventListener('click', () => {
     renderRevisao(container, ctx, entry, filaCompleta, true);
   });

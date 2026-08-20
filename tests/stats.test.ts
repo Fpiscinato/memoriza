@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeStreak, isNotaFraca } from '../src/domain/stats';
-import { agruparPorCategoria } from '../src/lib/group';
+import { agruparPorCategoria, distinctCategorias } from '../src/lib/group';
 
 describe('computeStreak', () => {
   it('é 0 quando não há nenhuma atividade recente', () => {
@@ -65,5 +65,32 @@ describe('agruparPorCategoria', () => {
     const itens: Item[] = [{ nome: 'A', categoria: '   ' }];
     const grupos = agruparPorCategoria(itens);
     expect(grupos).toEqual([{ categoria: '', itens }]);
+  });
+
+  it('ignora maiúsculas/minúsculas e espaços nas pontas ao agrupar', () => {
+    const itens: Item[] = [
+      { nome: 'A', categoria: 'Livros' },
+      { nome: 'B', categoria: 'livros' },
+      { nome: 'C', categoria: ' LIVROS ' },
+      { nome: 'D', categoria: 'livros  ' },
+    ];
+    const grupos = agruparPorCategoria(itens);
+    expect(grupos).toHaveLength(1);
+    expect(grupos[0].categoria).toBe('Livros'); // mantém a primeira grafia encontrada
+    expect(grupos[0].itens.map((i) => i.nome)).toEqual(['A', 'B', 'C', 'D']);
+  });
+});
+
+describe('distinctCategorias', () => {
+  it('deduplica ignorando maiúsculas/minúsculas e espaços, mantendo a primeira grafia', () => {
+    expect(distinctCategorias(['Cursos', 'livros', 'CURSOS', ' Livros '])).toEqual(['Cursos', 'livros']);
+  });
+
+  it('ordena alfabeticamente e ignora entradas em branco', () => {
+    expect(distinctCategorias(['Livros', '', '   ', 'Cursos'])).toEqual(['Cursos', 'Livros']);
+  });
+
+  it('retorna vazio sem categorias', () => {
+    expect(distinctCategorias([])).toEqual([]);
   });
 });

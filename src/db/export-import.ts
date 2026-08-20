@@ -1,5 +1,6 @@
 import { getDB } from './schema';
 import { combineSummaries, mergeRecords, type MergeSummary } from './merge';
+import { migrateNotasSemTitulo } from './notas';
 import { STORE_NAMES, type ExportFile, type MemorizaData, type StoreName } from '../types';
 import { nowISO } from '../lib/time';
 
@@ -127,6 +128,10 @@ export async function importData(file: ExportFile): Promise<ImportSummary> {
       mantidos: result.mantidos,
     };
   }
+
+  // Um .json exportado antes da Fase 1d traz notas sem `titulo` — corrige na hora, sem
+  // esperar o próximo carregamento do app.
+  await migrateNotasSemTitulo();
 
   return { ...combineSummaries(Object.values(porLoja)), porLoja };
 }

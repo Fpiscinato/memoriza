@@ -2,6 +2,7 @@ import { getDB } from './schema';
 import type { Tema } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
+import { distinctCategorias } from '../lib/group';
 
 export async function listTemas(espacoId: string): Promise<Tema[]> {
   const db = await getDB();
@@ -22,6 +23,7 @@ export async function createTema(espacoId: string, nome: string, categoria: stri
     espaco_id: espacoId,
     nome,
     categoria,
+    favorito: false,
     criado_em: now,
     atualizado_em: now,
   };
@@ -37,6 +39,30 @@ export async function updateTema(id: string, nome: string, categoria: string): P
   tema.categoria = categoria;
   tema.atualizado_em = nowISO();
   await db.put('temas', tema);
+}
+
+export async function toggleTemaFavorito(id: string): Promise<boolean> {
+  const db = await getDB();
+  const tema = await db.get('temas', id);
+  if (!tema) return false;
+  tema.favorito = !tema.favorito;
+  tema.atualizado_em = nowISO();
+  await db.put('temas', tema);
+  return tema.favorito;
+}
+
+/**
+ * Categorias já usadas em Temas deste perfil (em todos os Espaços dele) — pra sugerir no
+ * autocomplete. Escopo é o perfil inteiro, não só o Espaço atual, pra manter um vocabulário
+ * consistente entre Espaços diferentes.
+ */
+export async function listCategoriasTemas(perfilId: string): Promise<string[]> {
+  const db = await getDB();
+  const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
+  const temasPorEspaco = await Promise.all(
+    espacos.map((espaco) => db.getAllFromIndex('temas', 'espaco_id', espaco.id)),
+  );
+  return distinctCategorias(temasPorEspaco.flat().map((t) => t.categoria));
 }
 
 /** Conta o que seria apagado em cascata (Notas), pra mostrar no modal de confirmação. */

@@ -1,5 +1,5 @@
 import { exportAll, exportProfile, downloadExportFile, parseExportFile, importData } from '../../db/export-import';
-import { createProfile, listProfiles, renameProfile } from '../../db/profiles';
+import { countProfileCascade, createProfile, deleteProfileCascade, listProfiles, renameProfile } from '../../db/profiles';
 import { escapeHtml } from '../../lib/dom';
 import {
   getLastExportAt,
@@ -10,6 +10,7 @@ import {
 } from '../../lib/settings';
 import { currentTheme, setTheme } from '../../lib/theme';
 import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
+import { confirmAction } from '../components/confirm-modal';
 import type { Perfil } from '../../types';
 
 export interface SettingsContext {
@@ -30,7 +31,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   const horaLembrete = getReminderHour(ctx.perfil.id);
 
   container.innerHTML = `
-    <div class="stack">
+    <div class="stack content-narrow">
       <section class="settings-section">
         <div class="settings-section__title">Perfil</div>
         <div class="settings-row">
@@ -55,6 +56,18 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
                 </span>
                 <div class="item-row__actions">
                   <button class="btn btn--secondary btn--sm" data-renomear="${escapeHtml(p.id)}" type="button">Renomear</button>
+                  ${
+                    perfis.length > 1
+                      ? `
+                    <details class="item-menu">
+                      <summary aria-label="Mais opções">⋯</summary>
+                      <div class="item-menu__panel">
+                        <button data-excluir-perfil="${escapeHtml(p.id)}" data-nome="${escapeHtml(p.nome)}" class="danger" type="button">Excluir perfil</button>
+                      </div>
+                    </details>
+                  `
+                      : ''
+                  }
                 </div>
               </div>
             `,
@@ -256,6 +269,25 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       });
       btn.onclick = onSalvar;
     };
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('[data-excluir-perfil]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const perfilId = btn.dataset.excluirPerfil!;
+      const nome = btn.dataset.nome ?? '';
+      const contagem = await countProfileCascade(perfilId);
+      const ok = await confirmAction({
+        title: `Excluir o perfil "${nome}"?`,
+        message: `Isso vai apagar ${contagem.espacos} espaço(s), ${contagem.temas} tema(s) e ${contagem.notas} nota(s) — todo o conteúdo desse perfil.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
+      });
+      if (!ok) return;
+      await deleteProfileCascade(perfilId);
+      if (perfilId === ctx.perfil.id) {
+        ctx.onSwitchProfile();
+      } else {
+        renderSettings(container, ctx);
+      }
+    });
   });
 
   container.querySelector('#btn-baixar-lembrete')?.addEventListener('click', () => {

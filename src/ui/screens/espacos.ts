@@ -1,7 +1,8 @@
-import { countEspacoCascade, createEspaco, deleteEspacoCascade, listEspacos, setEspacoArquivado } from '../../db/espacos';
+import { countEspacoCascade, createEspaco, deleteEspacoCascade, listCategoriasEspacos, listEspacos, setEspacoArquivado } from '../../db/espacos';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
+import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 
@@ -15,6 +16,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const arquivados = todos.filter((e) => e.arquivado);
   const temaCounts = await countTemasPorEspaco(todos.map((e) => e.id));
   const grupos = agruparPorCategoria(ativos);
+  const categoriasConhecidas = await listCategoriasEspacos(ctx.perfilId);
 
   container.innerHTML = `
     <div class="section-header">
@@ -29,7 +31,10 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-espaco">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos Bíblicos" maxlength="80" />
+        <input class="input" id="input-categoria-espaco" type="text" list="lista-categorias-espaco" placeholder="Ex: Cursos, Livros, Estudos Bíblicos" maxlength="80" />
+        <datalist id="lista-categorias-espaco">
+          ${categoriasConhecidas.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
+        </datalist>
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-espaco" type="button">Criar</button>
@@ -49,12 +54,15 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         : grupos
             .map(
               (grupo) => `
-      <div class="category-group">
-        <div class="category-group__title">${escapeHtml(grupo.categoria || 'Sem categoria')}</div>
+      <details class="category-group" open>
+        <summary class="category-group__title">
+          ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
+          ${escapeHtml(grupo.categoria || 'Sem categoria')}
+        </summary>
         <div class="item-list">
           ${grupo.itens.map((e) => renderRow(e, temaCounts.get(e.id) ?? 0)).join('')}
         </div>
-      </div>
+      </details>
     `,
             )
             .join('')
@@ -138,7 +146,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
 
 function renderRow(e: { id: string; nome: string }, temaCount: number): string {
   return `
-    <div class="item-row" data-id="${escapeHtml(e.id)}">
+    <div class="item-row" data-id="${escapeHtml(e.id)}" style="--row-accent:${accentVar(e.id)}">
       <button class="item-row__main" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
         <span class="item-row__title">${escapeHtml(e.nome)}</span>
         <span class="item-row__meta">${temaCount} tema(s)</span>

@@ -12,6 +12,7 @@ import { renderEspacoPdf } from './screens/espaco-pdf';
 import { renderTemaDetail } from './screens/tema-detail';
 import { renderNotaForm } from './screens/nota-form';
 import { renderPainel } from './screens/painel';
+import { renderFavoritos } from './screens/favoritos';
 import { renderSettings } from './screens/settings';
 import type { Perfil } from '../types';
 
@@ -20,6 +21,7 @@ const BACKUP_REMINDER_DAYS = 14;
 const NAV_ITEMS: { route: TopLevelRoute; label: string; icon: string }[] = [
   { route: 'hoje', label: 'Hoje', icon: '🗓️' },
   { route: 'espacos', label: 'Espaços', icon: '📚' },
+  { route: 'favoritos', label: 'Favoritos', icon: '⭐' },
   { route: 'painel', label: 'Painel', icon: '📊' },
   { route: 'config', label: 'Configurações', icon: '⚙️' },
 ];
@@ -27,6 +29,7 @@ const NAV_ITEMS: { route: TopLevelRoute; label: string; icon: string }[] = [
 const TOP_LEVEL_TITLES: Record<TopLevelRoute, string> = {
   hoje: 'Hoje',
   espacos: 'Espaços',
+  favoritos: 'Favoritos',
   painel: 'Painel',
   config: 'Configurações',
 };
@@ -109,6 +112,9 @@ async function render(root: HTMLElement): Promise<void> {
       break;
     case 'painel':
       await renderPainel(screenContainer, { perfilId: perfil.id });
+      break;
+    case 'favoritos':
+      await renderFavoritos(screenContainer, { perfilId: perfil.id });
       break;
     case 'tema':
       await renderTemaDetail(screenContainer, route.id);

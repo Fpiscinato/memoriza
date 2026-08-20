@@ -37,9 +37,16 @@
 .app-main {
   flex: 1;
   width: 100%;
-  max-width: var(--max-content-width);
+  max-width: var(--max-content-width-wide);
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-8);
+}
+
+/* Telas de formulário/foco único (editar Nota, cartão de revisão) ficam mais legíveis numa
+   coluna estreita mesmo quando .app-main tem espaço de sobra pro resto da interface. */
+.content-narrow {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
 }
 
 /* Navegação inferior (mobile) / lateral (desktop) */
@@ -489,6 +496,16 @@
   gap: var(--space-3);
 }
 
+/* Desktop/tablet: aproveita a largura com múltiplas colunas em vez de uma lista única
+   esticada — a mesma marcação de sempre, só o container vira grid. */
+@media (min-width: 720px) {
+  .item-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    align-items: start;
+  }
+}
+
 .item-row {
   display: flex;
   align-items: center;
@@ -497,7 +514,20 @@
   padding: var(--space-4);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-left: 3px solid var(--row-accent, transparent);
   border-radius: var(--radius-md);
+  height: 100%;
+}
+
+/* Pequeno indicador de cor (Espaço/Categoria) — ver src/lib/color.ts */
+.color-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dot-color, var(--color-text-faint));
+  margin-right: var(--space-2);
+  flex-shrink: 0;
 }
 
 .item-row__main {
@@ -598,6 +628,13 @@
   color: var(--color-text-muted);
 }
 
+.review-card__titulo {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  margin-top: calc(-1 * var(--space-2));
+}
+
 .review-card__content {
   padding-top: var(--space-2);
   border-top: 1px solid var(--color-border);
@@ -668,8 +705,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -721,13 +758,16 @@
   margin-bottom: var(--space-6);
 }
 
+/* <summary> nativo: mantém o marcador ▸/▾ do navegador como affordance de recolher/expandir */
 .category-group__title {
+  cursor: pointer;
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: var(--space-3);
+  padding: var(--space-1) 0;
 }
 
 /* Modal de confirmação */
@@ -779,6 +819,12 @@
   }
 }
 
+@media (min-width: 900px) {
+  .stat-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
 .stat-tile {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -825,6 +871,11 @@
   margin-bottom: var(--space-5);
 }
 
+.pdf-page {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+}
+
 .pdf-page h1 {
   font-size: var(--font-size-xl);
   margin-bottom: var(--space-5);
@@ -857,6 +908,12 @@
   border-top: 1px solid var(--color-border);
 }
 
+.pdf-nota__titulo {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--space-1);
+}
+
 .pdf-nota__meta {
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
@@ -870,7 +927,8 @@
     display: none !important;
   }
 
-  .app-main {
+  .app-main,
+  .pdf-page {
     max-width: none;
     padding: 0;
     margin: 0;

@@ -1,8 +1,9 @@
-import { countEspacoCascade, deleteEspacoCascade, getEspaco, setEspacoArquivado, updateEspaco } from '../../db/espacos';
-import { createTema, listTemas } from '../../db/temas';
+import { countEspacoCascade, deleteEspacoCascade, getEspaco, listCategoriasEspacos, setEspacoArquivado, updateEspaco } from '../../db/espacos';
+import { createTema, listCategoriasTemas, listTemas } from '../../db/temas';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
+import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 
@@ -15,6 +16,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const temas = await listTemas(espacoId);
   const notaCounts = await countNotasPorTema(temas.map((t) => t.id));
   const grupos = agruparPorCategoria(temas);
+  const categoriasEspaco = await listCategoriasEspacos(espaco.perfil_id);
+  const categoriasTema = await listCategoriasTemas(espaco.perfil_id);
 
   container.innerHTML = `
     <div class="breadcrumb">
@@ -22,8 +25,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     </div>
 
     <div class="section-header">
-      <span class="section-header__title">${escapeHtml(espaco.nome)}</span>
-      <div style="display:flex; gap: var(--space-2);">
+      <span class="section-header__title">
+        <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>${escapeHtml(espaco.nome)}
+      </span>
+      <div style="display:flex; gap: var(--space-2); flex-wrap: wrap;">
         <button class="btn btn--secondary btn--sm" id="btn-editar" type="button">Editar</button>
         <button class="btn btn--secondary btn--sm" id="btn-arquivar" type="button">
           ${espaco.arquivado ? 'Reativar' : 'Arquivar'}
@@ -38,14 +43,17 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       </div>
     </div>
 
-    <div id="form-editar-espaco" style="display:none" class="card">
+    <div id="form-editar-espaco" style="display:none" class="card content-narrow">
       <div class="field">
         <label class="field__label" for="input-nome-espaco-editar">Nome</label>
         <input class="input" id="input-nome-espaco-editar" type="text" value="${escapeHtml(espaco.nome)}" maxlength="120" />
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-espaco-editar">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-espaco-editar" type="text" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
+        <input class="input" id="input-categoria-espaco-editar" type="text" list="lista-categorias-espaco-editar" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
+        <datalist id="lista-categorias-espaco-editar">
+          ${categoriasEspaco.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
+        </datalist>
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao" type="button">Salvar</button>
@@ -62,14 +70,17 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     ${
       !espaco.arquivado
         ? `
-    <div id="form-novo-tema" style="display:none" class="card">
+    <div id="form-novo-tema" style="display:none" class="card content-narrow">
       <div class="field">
         <label class="field__label" for="input-nome-tema">Nome do tema</label>
         <input class="input" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" />
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-tema">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-tema" type="text" placeholder="Ex: Fundamentos" maxlength="80" />
+        <input class="input" id="input-categoria-tema" type="text" list="lista-categorias-tema" placeholder="Ex: Fundamentos" maxlength="80" />
+        <datalist id="lista-categorias-tema">
+          ${categoriasTema.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
+        </datalist>
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar</button>
@@ -93,15 +104,18 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         : grupos
             .map(
               (grupo) => `
-      <div class="category-group">
-        <div class="category-group__title">${escapeHtml(grupo.categoria || 'Sem categoria')}</div>
+      <details class="category-group" open>
+        <summary class="category-group__title">
+          ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
+          ${escapeHtml(grupo.categoria || 'Sem categoria')}
+        </summary>
         <div class="item-list">
           ${grupo.itens
             .map(
               (t) => `
             <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left;">
               <span class="item-row__main">
-                <span class="item-row__title">${escapeHtml(t.nome)}</span>
+                <span class="item-row__title">${t.favorito ? '⭐ ' : ''}${escapeHtml(t.nome)}</span>
                 <span class="item-row__meta">${notaCounts.get(t.id) ?? 0} nota(s)</span>
               </span>
             </button>
@@ -109,7 +123,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
             )
             .join('')}
         </div>
-      </div>
+      </details>
     `,
             )
             .join('')

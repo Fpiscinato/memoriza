@@ -24,6 +24,7 @@ export interface Tema {
   espaco_id: string;
   nome: string;
   categoria: string;
+  favorito: boolean;
   criado_em: string;
   atualizado_em: string;
 }
@@ -31,11 +32,20 @@ export interface Tema {
 export interface Nota {
   id: string;
   tema_id: string;
+  /** Curto, tipo pergunta/frase-chave — é o que aparece no recall ativo, antes de revelar. */
+  titulo: string;
   conteudo: string;
+  /** Citação/referência (ex: "Aula 4", "página 132") — só aparece depois de revelar. */
   fonte: string;
   /** "Esse conteúdo pode ficar desatualizado?" — habilita o aviso de validade na revisão. */
   pode_desatualizar: boolean;
   validade_ate?: string;
+  favorito: boolean;
+  /**
+   * false só em notas migradas automaticamente da Fase 1d (título copiado da antiga
+   * Fonte) — sinaliza "revise este título" até o usuário passar pelo formulário de edição.
+   */
+  titulo_revisado: boolean;
   criado_em: string;
   atualizado_em: string;
 }

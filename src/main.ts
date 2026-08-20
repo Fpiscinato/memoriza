@@ -7,6 +7,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { applyTheme } from './lib/theme';
 import { requestPersistentStorageOnce } from './lib/storage-persist';
 import { ensureDefaultProfiles } from './db/profiles';
+import { migrateNotasSemTitulo } from './db/notas';
 import { mount } from './ui/app';
 
 applyTheme();
@@ -14,6 +15,7 @@ registerSW({ immediate: true });
 
 async function bootstrap() {
   await ensureDefaultProfiles();
+  await migrateNotasSemTitulo();
   await requestPersistentStorageOnce();
 
   const root = document.getElementById('app');

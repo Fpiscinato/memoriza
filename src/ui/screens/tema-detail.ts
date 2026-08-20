@@ -1,14 +1,9 @@
-import { countTemaCascade, deleteTemaCascade, getTema, updateTema } from '../../db/temas';
+import { countTemaCascade, deleteTemaCascade, getTema, listCategoriasTemas, toggleTemaFavorito, updateTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { listNotas } from '../../db/notas';
 import { escapeHtml } from '../../lib/dom';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
-
-function primeiraLinha(conteudo: string): string {
-  const linha = conteudo.split('\n').find((l) => l.trim().length > 0) ?? '';
-  return linha.length > 80 ? `${linha.slice(0, 80)}…` : linha;
-}
 
 export async function renderTemaDetail(container: HTMLElement, temaId: string): Promise<void> {
   const tema = await getTema(temaId);
@@ -18,6 +13,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   }
   const espaco = await getEspaco(tema.espaco_id);
   const notas = await listNotas(temaId);
+  const categoriasTema = espaco ? await listCategoriasTemas(espaco.perfil_id) : [];
 
   container.innerHTML = `
     <div class="breadcrumb">
@@ -25,8 +21,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     </div>
 
     <div class="section-header">
-      <span class="section-header__title">${escapeHtml(tema.nome)}</span>
+      <span class="section-header__title">${tema.favorito ? '⭐ ' : ''}${escapeHtml(tema.nome)}</span>
       <div style="display:flex; gap: var(--space-2);">
+        <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button">
+          ${tema.favorito ? '★ Favorito' : '☆ Favoritar'}
+        </button>
         <button class="btn btn--secondary btn--sm" id="btn-editar-tema" type="button">Editar</button>
         ${
           !espaco?.arquivado
@@ -49,7 +48,10 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-tema-editar">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-tema-editar" type="text" value="${escapeHtml(tema.categoria)}" maxlength="80" />
+        <input class="input" id="input-categoria-tema-editar" type="text" list="lista-categorias-tema-editar" value="${escapeHtml(tema.categoria)}" maxlength="80" />
+        <datalist id="lista-categorias-tema-editar">
+          ${categoriasTema.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
+        </datalist>
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao-tema" type="button">Salvar</button>
@@ -79,9 +81,10 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
             (n) => `
           <button class="item-row" data-open="${escapeHtml(n.id)}" type="button" style="cursor:pointer; text-align:left;">
             <span class="item-row__main">
-              <span class="item-row__title">${escapeHtml(primeiraLinha(n.conteudo) || '(sem conteúdo)')}</span>
+              <span class="item-row__title">${n.favorito ? '⭐ ' : ''}${escapeHtml(n.titulo || '(sem título)')}</span>
               <span class="item-row__meta">${escapeHtml(n.fonte || 'Sem fonte')}${n.pode_desatualizar ? ' · pode desatualizar' : ''}</span>
             </span>
+            ${!n.titulo_revisado ? '<span class="badge badge--muted">revisar título</span>' : ''}
           </button>
         `,
           )
@@ -95,6 +98,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   container.querySelector('#btn-nova-nota')?.addEventListener('click', () => navigate(`temas/${temaId}/nova-nota`));
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`notas/${btn.dataset.open}`));
+  });
+
+  container.querySelector('#btn-favoritar-tema')?.addEventListener('click', async () => {
+    await toggleTemaFavorito(tema.id);
+    renderTemaDetail(container, temaId);
   });
 
   const formEditar = container.querySelector<HTMLElement>('#form-editar-tema')!;
