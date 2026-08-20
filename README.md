@@ -104,42 +104,46 @@ Para testar o comportamento de PWA (instalação, funcionamento offline) é
 preciso usar `npm run build && npm run preview` — o service worker não é
 ativado no servidor de desenvolvimento.
 
-## Deploy (Cloudflare Pages)
+## Deploy (Cloudflare Workers, assets estáticos)
 
-O projeto é 100% estático (`dist/`), sem Workers, sem D1, sem função de
-backend — só usamos o `wrangler` como ferramenta de deploy do build estático.
+O projeto é 100% estático (`dist/`) — sem D1, sem função de backend, sem
+código de servidor nenhum. A hospedagem usa **Cloudflare Workers com Static
+Assets** (`wrangler.jsonc`, sem `main` script) em vez de Cloudflare Pages: o
+dashboard desta conta não oferece mais o botão de criar projeto Pages
+diretamente (só o fluxo de "Workers"), e a Cloudflare já trata Static Assets
+como o substituto oficial de Pages — para um site 100% estático como este,
+o resultado é o mesmo (nenhuma lógica de servidor roda, só arquivos
+servidos), só muda o domínio final: `https://memoriza.<sua-conta>.workers.dev`
+em vez de `memoriza.pages.dev`.
 
-O dashboard atual da Cloudflare esconde a criação direta de projeto Pages
-por trás do fluxo de "Workers"; por isso o deploy automático aqui é feito
-via **GitHub Actions** (`.github/workflows/deploy.yml`) chamando
-`wrangler pages deploy`, que cria o projeto Pages sozinho no primeiro push
-mesmo sem passar pelo botão do dashboard.
+O deploy automático é feito por **GitHub Actions**
+(`.github/workflows/deploy.yml`), chamando `wrangler deploy`, que lê
+`wrangler.jsonc` e publica `dist/` a cada push em `main`.
 
 1. Crie um **API Token** da Cloudflare dedicado a este projeto (não reaproveite
    o de outro projeto — um token por projeto facilita revogar sem afetar o
    resto): no dashboard, ícone de perfil → **My Profile** → **API Tokens** →
    **Create Token** → **Custom Token** → permissão
-   `Account > Cloudflare Pages > Edit` → escolha a conta → **Create Token** →
-   copie o valor (só é mostrado uma vez).
-2. Pegue o **Account ID**: aparece na barra lateral direita da página
-   **Workers & Pages** do dashboard (string hexadecimal de 32 caracteres).
-3. No repositório GitHub, vá em **Settings → Secrets and variables → Actions**
-   e crie dois *repository secrets*:
+   `Account > Workers Scripts > Edit` → escolha a conta → **Create Token** →
+   copie o valor imediatamente (só é mostrado uma vez; se perder, apague o
+   token e crie outro).
+2. Pegue o **Account ID**: aparece na barra lateral direita de qualquer página
+   de **Workers & Pages** do dashboard (string hexadecimal de 32 caracteres).
+3. No repositório GitHub, vá em **Settings → Secrets and variables → Actions**,
+   confirme que está na aba **Secrets** (não na aba **Variables** — são
+   contextos diferentes; o workflow só lê `secrets.*`) e crie dois
+   *repository secrets*:
    - `CLOUDFLARE_API_TOKEN`
    - `CLOUDFLARE_ACCOUNT_ID`
-4. Dê push (ou re-rode o workflow) na branch `main` — o Actions builda,
-   testa e publica em `https://memoriza.pages.dev` automaticamente.
-
-Se o dashboard da sua conta *tiver* a opção de criar um projeto Pages
-diretamente (Create → Pages → Connect to Git), ela também funciona como
-integração nativa alternativa — só não deixe os dois métodos publicando ao
-mesmo tempo no mesmo projeto.
+4. Dê push (ou rode manualmente pela aba **Actions → Deploy → Run workflow**)
+   na branch `main` — o Actions builda, testa e publica em
+   `https://memoriza.<sua-conta>.workers.dev` automaticamente.
 
 Deploy manual único, se precisar (não é o caminho automático):
 
 ```bash
 npm run build
-npx wrangler pages deploy dist --project-name=memoriza
+npx wrangler deploy
 ```
 
 ## Modelo de dados
@@ -209,7 +213,7 @@ IDs conflitantes dentro do mesmo lote.
       testado em 375×667 e 1280×800).
 - [x] Tema claro/escuro respeitando `prefers-color-scheme`, com alternância
       manual persistida.
-- [ ] Deploy em `memoriza.pages.dev` — depende de criar o repositório no
-      GitHub e o projeto no Cloudflare Pages (contas do usuário, fora do
-      alcance deste ambiente). Veja a seção "Deploy" acima para o passo a
-      passo.
+- [x] Deploy publicado via GitHub Actions em
+      `https://memoriza.<sua-conta>.workers.dev` (Cloudflare Workers com
+      Static Assets — ver seção "Deploy" acima sobre a troca de domínio em
+      relação ao `pages.dev` original).
