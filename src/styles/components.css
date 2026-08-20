@@ -948,3 +948,79 @@
     break-inside: avoid;
   }
 }
+
+/* Tela "Como Usar" */
+
+/* Sempre empilhado (nunca lado a lado): os exemplos têm linhas longas o
+   suficiente pra cortar texto num layout de 2 colunas dentro de .content-narrow. */
+.help-tree-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.help-tree {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.help-section-body p {
+  line-height: var(--line-height-base);
+  margin: 0 0 var(--space-3);
+}
+
+.help-section-body p:last-child {
+  margin-bottom: 0;
+}
+
+.help-section-body ul {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.help-section-body li {
+  margin-bottom: var(--space-2);
+}
+
+/* Botão "?" de ajuda no cabeçalho */
+
+.app-header__help {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+/* Legenda curta de contexto no topo das telas ("o que é isso") */
+
+.screen-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-4);
+}
+
+/* Legenda das avaliações Fácil/Médio/Difícil */
+
+.review-legend {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+  text-align: center;
+  margin-top: var(--space-1);
+}

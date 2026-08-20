@@ -54,6 +54,7 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
     <div class="section-header">
       <span class="section-header__title">Favoritos</span>
     </div>
+    <p class="screen-hint">Temas e Notas que você marcou pra achar rápido, sem navegar pelos Espaços.</p>
 
     ${
       temas.length > 0

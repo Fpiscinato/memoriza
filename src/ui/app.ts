@@ -13,6 +13,7 @@ import { renderTemaDetail } from './screens/tema-detail';
 import { renderNotaForm } from './screens/nota-form';
 import { renderPainel } from './screens/painel';
 import { renderFavoritos } from './screens/favoritos';
+import { renderAjuda } from './screens/ajuda';
 import { renderSettings } from './screens/settings';
 import type { Perfil } from '../types';
 
@@ -31,6 +32,7 @@ const TOP_LEVEL_TITLES: Record<TopLevelRoute, string> = {
   espacos: 'Espaços',
   favoritos: 'Favoritos',
   painel: 'Painel',
+  ajuda: 'Como Usar',
   config: 'Configurações',
 };
 
@@ -80,7 +82,10 @@ async function render(root: HTMLElement): Promise<void> {
       <div class="app-content">
         <header class="app-header">
           <span class="app-header__title">${TOP_LEVEL_TITLES[topLevel]}</span>
-          <span class="app-header__profile">${escapeHtml(perfil.nome)}</span>
+          <span style="display:flex; align-items:center; gap: var(--space-3);">
+            <button class="app-header__help" id="btn-ajuda" type="button" aria-label="Como usar">?</button>
+            <span class="app-header__profile">${escapeHtml(perfil.nome)}</span>
+          </span>
         </header>
         <main class="app-main" id="screen-content"></main>
       </div>
@@ -90,6 +95,7 @@ async function render(root: HTMLElement): Promise<void> {
   root.querySelectorAll<HTMLButtonElement>('.app-nav__item').forEach((btn) => {
     btn.addEventListener('click', () => navigateTop(btn.dataset.route as TopLevelRoute));
   });
+  root.querySelector('#btn-ajuda')?.addEventListener('click', () => navigate('ajuda'));
 
   const content = root.querySelector<HTMLElement>('#screen-content')!;
   await renderBackupBanner(content, perfil);
@@ -115,6 +121,9 @@ async function render(root: HTMLElement): Promise<void> {
       break;
     case 'favoritos':
       await renderFavoritos(screenContainer, { perfilId: perfil.id });
+      break;
+    case 'ajuda':
+      renderAjuda(screenContainer);
       break;
     case 'tema':
       await renderTemaDetail(screenContainer, route.id);

@@ -11,6 +11,7 @@ import {
 import { currentTheme, setTheme } from '../../lib/theme';
 import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import { confirmAction } from '../components/confirm-modal';
+import { navigate } from '../router';
 import type { Perfil } from '../../types';
 
 export interface SettingsContext {
@@ -40,6 +41,16 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
             <div class="settings-row__desc">Perfil atual neste aparelho</div>
           </div>
           <button class="btn btn--secondary btn--sm" id="btn-switch-profile" type="button">Trocar de perfil</button>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <div class="settings-row">
+          <div>
+            <div class="settings-row__label">Como Usar</div>
+            <div class="settings-row__desc">Exemplos reais de Espaço, Tema, Nota e o resto do app</div>
+          </div>
+          <button class="btn btn--secondary btn--sm" id="btn-como-usar" type="button">Abrir</button>
         </div>
       </section>
 
@@ -169,6 +180,8 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   container.querySelector('#btn-switch-profile')?.addEventListener('click', () => {
     ctx.onSwitchProfile();
   });
+
+  container.querySelector('#btn-como-usar')?.addEventListener('click', () => navigate('ajuda'));
 
   container.querySelectorAll<HTMLButtonElement>('.segmented__option').forEach((btn) => {
     btn.addEventListener('click', () => {

@@ -23,7 +23,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     <div class="section-header">
       <span class="section-header__title">${tema.favorito ? '⭐ ' : ''}${escapeHtml(tema.nome)}</span>
       <div style="display:flex; gap: var(--space-2);">
-        <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button">
+        <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
           ${tema.favorito ? '★ Favorito' : '☆ Favoritar'}
         </button>
         <button class="btn btn--secondary btn--sm" id="btn-editar-tema" type="button">Editar</button>

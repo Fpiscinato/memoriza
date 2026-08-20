@@ -30,7 +30,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       </span>
       <div style="display:flex; gap: var(--space-2); flex-wrap: wrap;">
         <button class="btn btn--secondary btn--sm" id="btn-editar" type="button">Editar</button>
-        <button class="btn btn--secondary btn--sm" id="btn-arquivar" type="button">
+        <button class="btn btn--secondary btn--sm" id="btn-arquivar" type="button" ${espaco.arquivado ? '' : 'title="As revisões já agendadas continuam normalmente — só some da lista principal"'}>
           ${espaco.arquivado ? 'Reativar' : 'Arquivar'}
         </button>
         <a class="btn btn--secondary btn--sm" href="#/espacos/${escapeHtml(espaco.id)}/pdf">PDF</a>
@@ -71,13 +71,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       !espaco.arquivado
         ? `
     <div id="form-novo-tema" style="display:none" class="card content-narrow">
+      <p class="screen-hint" style="margin-top:0;">Um Tema é um assunto ou aula dentro deste Espaço — não precisa de categoria se não fizer sentido agrupar.</p>
       <div class="field">
         <label class="field__label" for="input-nome-tema">Nome do tema</label>
         <input class="input" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" />
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-tema">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-tema" type="text" list="lista-categorias-tema" placeholder="Ex: Fundamentos" maxlength="80" />
+        <input class="input" id="input-categoria-tema" type="text" list="lista-categorias-tema" placeholder="Ex: nome do módulo" maxlength="80" />
         <datalist id="lista-categorias-tema">
           ${categoriasTema.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
         </datalist>

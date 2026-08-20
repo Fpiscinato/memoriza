@@ -23,6 +23,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       <span class="section-header__title">Espaços de estudo</span>
       <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Novo espaço</button>
     </div>
+    <p class="screen-hint">Cada Espaço é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
 
     <div id="form-novo-espaco" style="display:none" class="card">
       <div class="field">
@@ -31,7 +32,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-espaco">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-espaco" type="text" list="lista-categorias-espaco" placeholder="Ex: Cursos, Livros, Estudos Bíblicos" maxlength="80" />
+        <input class="input" id="input-categoria-espaco" type="text" list="lista-categorias-espaco" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
         <datalist id="lista-categorias-espaco">
           ${categoriasConhecidas.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
         </datalist>
@@ -152,7 +153,7 @@ function renderRow(e: { id: string; nome: string }, temaCount: number): string {
         <span class="item-row__meta">${temaCount} tema(s)</span>
       </button>
       <div class="item-row__actions">
-        <button class="btn btn--secondary btn--sm" data-archive="${escapeHtml(e.id)}" type="button">Arquivar</button>
+        <button class="btn btn--secondary btn--sm" data-archive="${escapeHtml(e.id)}" type="button" title="As revisões já agendadas continuam normalmente — só some da lista principal">Arquivar</button>
         <details class="item-menu">
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">

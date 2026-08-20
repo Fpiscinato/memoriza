@@ -12,6 +12,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
     <div class="section-header">
       <span class="section-header__title">Painel</span>
     </div>
+    <p class="screen-hint">Sua sequência de dias estudando e os Temas onde você mais marcou "Difícil" — os pontos fracos reais.</p>
 
     <div class="stat-grid">
       <div class="stat-tile">

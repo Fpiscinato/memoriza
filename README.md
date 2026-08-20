@@ -16,14 +16,21 @@ diário via `.ics`.
 cascata e confirmação explícita), agrupamento por categoria também nos
 Espaços, o Painel com estatísticas simples, e exportar um Espaço como PDF.
 
-**Fase 1d** (este estado do projeto) corrige uso real da Fase 1c e fecha o
-backlog: separa Título (gatilho de recall) de Fonte (citação, só pós-reveal)
-— a correção mais importante, porque muda o que a fila "Hoje" mostra antes
-de revelar —, adiciona autocomplete e agrupamento case-insensitive de
-categoria, grupos recolhíveis, cor fixa por Espaço/Categoria, layout
-responsivo em colunas na largura de desktop, excluir perfil, e Favoritos
-(Temas e Notas) com tela própria. Ainda não há nada relacionado à Fase 2
-(Google Drive, multiusuário público).
+**Fase 1d** corrigiu uso real da Fase 1c e fechou o backlog: separou Título
+(gatilho de recall) de Fonte (citação, só pós-reveal) — a correção mais
+importante, porque muda o que a fila "Hoje" mostra antes de revelar —,
+adicionou autocomplete e agrupamento case-insensitive de categoria, grupos
+recolhíveis, cor fixa por Espaço/Categoria, layout responsivo em colunas na
+largura de desktop, excluir perfil, e Favoritos (Temas e Notas) com tela
+própria.
+
+**Fase 1e** (este estado do projeto) é só clareza, sem mudar nenhuma
+funcionalidade: uma tela "Como Usar" com exemplos reais (não genéricos) pra
+cada conceito do app, acessível de qualquer lugar por um ícone "?" no
+cabeçalho, e rótulos/placeholders/textos de apoio melhores em toda a
+interface — reduz a confusão que apareceu nos testes reais da Fase 1d
+(ex: Título × Fonte). Ainda não há nada relacionado à Fase 2 (Google Drive,
+multiusuário público).
 
 ## Stack e decisões de arquitetura
 
@@ -189,6 +196,23 @@ responsivo em colunas na largura de desktop, excluir perfil, e Favoritos
   quebrado. Se acontecer de novo, o mais provável é cache do Service Worker
   mostrando uma versão antiga — vale conferir a versão do app antes de
   reportar de novo.
+- **"Como Usar" (`src/ui/screens/ajuda.ts`) é conteúdo estático fixo**, sem
+  consulta ao banco — os exemplos são texto literal do usuário (não
+  genéricos), então não fazia sentido gerar a partir de dados reais do
+  perfil. Acessível de dois jeitos: ícone "?" no cabeçalho (sempre visível,
+  qualquer tela) e uma linha em Configurações — o pedido dizia "ou", os dois
+  juntos custam pouco e cobrem tanto "preciso de ajuda agora, sem sair da
+  tela" quanto "onde é que acho a ajuda".
+- **Os dois exemplos em árvore ficam sempre empilhados, nunca lado a
+  lado.** O pedido permitia as duas formas ("lado a lado ou um embaixo do
+  outro"); tentei lado a lado primeiro, mas as linhas mais longas dos
+  exemplos cortavam dentro de `.content-narrow` (640px) dividido em duas
+  colunas — sem espaço sobrando pra um texto monoespaçado desse tamanho.
+  Empilhado mantém tudo legível em qualquer largura de tela.
+- **`.screen-hint` é uma classe nova, reaproveitada em todas as telas
+  principais** (Espaços, criar Tema, criar Nota, Hoje, Painel, Favoritos)
+  pra manter a mesma voz/estilo visual em vez de cada tela inventar o
+  próprio jeito de mostrar uma dica de uma linha.
 
 ## Estrutura do projeto
 
@@ -233,7 +257,7 @@ src/
     components/
       confirm-modal.ts    modal de confirmação genérico (usado antes de excluir)
     screens/                 profile-select, today, espacos, espaco-detail, espaco-pdf,
-                              tema-detail, nota-form, painel, favoritos, settings
+                              tema-detail, nota-form, painel, favoritos, ajuda, settings
   styles/
     tokens.css              variáveis de design (cores, tipografia, espaçamento, tema)
     base.css                  reset e estilos globais
@@ -543,3 +567,16 @@ depois de excluir, e o indicador de nota fraca aparecendo certo no PDF.
       separada de "Hoje".
 - [x] PDF de um Espaço com itens favoritados mostra a marcação ⭐ ao lado
       do título, sem seção separada de favoritos.
+- [x] Tela "Como Usar" existe, acessível pelo ícone "?" no cabeçalho (em
+      qualquer tela) e por Configurações; mostra os dois exemplos em árvore
+      (curso e livro) e as 12 seções, com os textos exatos pedidos.
+- [x] Placeholders/textos de apoio aparecem nos campos e botões
+      correspondentes: Título, Fonte, checkbox "pode desatualizar",
+      categoria (Espaço e Tema), tooltip de Arquivar, tooltip de Favoritar,
+      legenda Fácil/Médio/Difícil na revisão, caminho completo
+      (Espaço › Tema) ao criar/editar Nota, dica de uma linha no topo de
+      Espaços, criar Tema, criar Nota, Hoje, Painel e Favoritos.
+- [x] Nenhuma funcionalidade mudou de comportamento — só rótulos, textos
+      de apoio e a tela nova; confirmado rodando a mesma bateria de testes
+      ponta a ponta das fases anteriores (criar/editar/excluir, revisão,
+      favoritos, PDF) sem nenhuma regressão.

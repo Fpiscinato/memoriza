@@ -40,8 +40,11 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   container.innerHTML = `
     <div class="breadcrumb">
-      <button class="link" data-back type="button">← ${escapeHtml(tema.nome)}</button>
+      <button class="link" data-back type="button">← Voltar</button>
     </div>
+    <p class="text-muted" style="margin: calc(-1 * var(--space-3)) 0 var(--space-4); font-size: var(--font-size-sm);">
+      ${escapeHtml(espaco?.nome ?? '')} › ${escapeHtml(tema.nome)}
+    </p>
 
     <div class="section-header">
       <span class="section-header__title">${params.mode === 'nova' ? 'Nova nota' : 'Editar nota'}</span>
@@ -49,7 +52,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         params.mode === 'editar'
           ? `
         <div style="display:flex; gap: var(--space-2);">
-          <button class="btn btn--secondary btn--sm" id="btn-favoritar-nota" type="button">
+          <button class="btn btn--secondary btn--sm" id="btn-favoritar-nota" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
             ${nota?.favorito ? '★ Favorito' : '☆ Favoritar'}
           </button>
           <details class="item-menu">
@@ -64,6 +67,8 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       }
     </div>
 
+    <p class="screen-hint">Título = o que puxa sua memória · Conteúdo = a explicação completa · Fonte = de onde veio.</p>
+
     ${
       params.mode === 'editar' && nota && !nota.titulo_revisado
         ? `<div class="banner banner--warning"><span>Esta nota foi migrada automaticamente — revise o título abaixo (hoje ele é uma cópia da Fonte antiga).</span></div>`
@@ -74,13 +79,13 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     <div class="card stack">
       <div class="field">
         <label class="field__label" for="input-titulo">Título</label>
-        <input class="input" id="input-titulo" type="text" placeholder='Ex: "Duration e Convexity" ou "CDB vs LCI: qual a diferença?"' maxlength="200" value="${escapeHtml(nota?.titulo ?? '')}" />
+        <input class="input" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? '')}" />
         <p class="settings-row__desc" style="margin:0;">É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.</p>
       </div>
 
       <div class="field">
         <label class="field__label" for="input-fonte">Fonte (opcional)</label>
-        <input class="input" id="input-fonte" type="text" placeholder='Ex: "Aula 4" ou "página 132"' maxlength="200" value="${escapeHtml(nota?.fonte ?? '')}" />
+        <input class="input" id="input-fonte" type="text" placeholder="Ex: Aula 4, slide 12 ou página 87" maxlength="200" value="${escapeHtml(nota?.fonte ?? '')}" />
         <p class="settings-row__desc" style="margin:0;">Citação/referência — só aparece depois de revelar a resposta, junto do conteúdo.</p>
       </div>
 
@@ -95,9 +100,14 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         <div id="pane-preview" class="markdown-preview card" style="display:none;"></div>
       </div>
 
-      <div class="checkbox-row">
-        <input type="checkbox" id="input-pode-desatualizar" ${nota?.pode_desatualizar ? 'checked' : ''} />
-        <label for="input-pode-desatualizar">Esse conteúdo pode ficar desatualizado?</label>
+      <div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="input-pode-desatualizar" ${nota?.pode_desatualizar ? 'checked' : ''} />
+          <label for="input-pode-desatualizar">Esse conteúdo pode ficar desatualizado?</label>
+        </div>
+        <p class="settings-row__desc" style="margin: var(--space-1) 0 0 26px;">
+          Marque para taxas, leis ou números que mudam com o tempo (ex: Selic, limites de imposto).
+        </p>
       </div>
 
       <div class="field" id="wrapper-validade" style="display:${nota?.pode_desatualizar ? 'flex' : 'none'};">

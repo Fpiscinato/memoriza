@@ -36,7 +36,9 @@ function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry
     grupos.set(entry.tema.id, lista);
   }
 
-  container.innerHTML = Array.from(grupos.values())
+  const hint = `<p class="screen-hint">Tente lembrar pelo Título antes de revelar a resposta.</p>`;
+
+  container.innerHTML = hint + Array.from(grupos.values())
     .map((entries) => {
       const tema = entries[0].tema;
       const espaco = entries[0].espaco;
@@ -110,6 +112,7 @@ function renderRevisao(
           <button class="btn btn--secondary" data-avaliacao="medio" type="button">🙂<br>Médio</button>
           <button class="btn btn--secondary" data-avaliacao="facil" type="button">😄<br>Fácil</button>
         </div>
+        <p class="review-legend">Fácil = lembrei na hora · Médio = com esforço · Difícil = não lembrei</p>
       `
       }
     </div>
