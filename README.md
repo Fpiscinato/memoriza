@@ -107,21 +107,35 @@ ativado no servidor de desenvolvimento.
 ## Deploy (Cloudflare Pages)
 
 O projeto é 100% estático (`dist/`), sem Workers, sem D1, sem função de
-backend.
+backend — só usamos o `wrangler` como ferramenta de deploy do build estático.
 
-1. Crie o repositório `memoriza` no GitHub e faça push deste código na branch
-   `main`.
-2. No painel da Cloudflare, crie um projeto **Cloudflare Pages** chamado
-   `memoriza` conectado a esse repositório (Settings → Build):
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-   - Framework preset: nenhum (ou "Vite", se disponível)
-   - Sem variáveis de ambiente necessárias.
-3. Cada push na branch `main` publica automaticamente em
-   `https://memoriza.pages.dev` (integração nativa do Cloudflare Pages —
-   não precisa de GitHub Actions separado).
+O dashboard atual da Cloudflare esconde a criação direta de projeto Pages
+por trás do fluxo de "Workers"; por isso o deploy automático aqui é feito
+via **GitHub Actions** (`.github/workflows/deploy.yml`) chamando
+`wrangler pages deploy`, que cria o projeto Pages sozinho no primeiro push
+mesmo sem passar pelo botão do dashboard.
 
-Alternativa via CLI (`wrangler`), se preferir não usar a integração nativa:
+1. Crie um **API Token** da Cloudflare dedicado a este projeto (não reaproveite
+   o de outro projeto — um token por projeto facilita revogar sem afetar o
+   resto): no dashboard, ícone de perfil → **My Profile** → **API Tokens** →
+   **Create Token** → **Custom Token** → permissão
+   `Account > Cloudflare Pages > Edit` → escolha a conta → **Create Token** →
+   copie o valor (só é mostrado uma vez).
+2. Pegue o **Account ID**: aparece na barra lateral direita da página
+   **Workers & Pages** do dashboard (string hexadecimal de 32 caracteres).
+3. No repositório GitHub, vá em **Settings → Secrets and variables → Actions**
+   e crie dois *repository secrets*:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+4. Dê push (ou re-rode o workflow) na branch `main` — o Actions builda,
+   testa e publica em `https://memoriza.pages.dev` automaticamente.
+
+Se o dashboard da sua conta *tiver* a opção de criar um projeto Pages
+diretamente (Create → Pages → Connect to Git), ela também funciona como
+integração nativa alternativa — só não deixe os dois métodos publicando ao
+mesmo tempo no mesmo projeto.
+
+Deploy manual único, se precisar (não é o caminho automático):
 
 ```bash
 npm run build
