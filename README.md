@@ -116,30 +116,22 @@ o resultado é o mesmo (nenhuma lógica de servidor roda, só arquivos
 servidos), só muda o domínio final: `https://memoriza.<sua-conta>.workers.dev`
 em vez de `memoriza.pages.dev`.
 
-O deploy automático é feito por **GitHub Actions**
-(`.github/workflows/deploy.yml`), chamando `wrangler deploy`, que lê
-`wrangler.jsonc` e publica `dist/` a cada push em `main`.
+O deploy automático usa a **integração nativa de Git da Cloudflare**: o
+próprio Worker fica conectado ao repositório GitHub pelo GitHub App da
+Cloudflare (sem token nenhum guardado no lado do GitHub — a autenticação é
+toda do lado da Cloudflare).
 
-1. Crie um **API Token** da Cloudflare dedicado a este projeto (não reaproveite
-   o de outro projeto — um token por projeto facilita revogar sem afetar o
-   resto): no dashboard, ícone de perfil → **My Profile** → **API Tokens** →
-   **Create Token** → **Custom Token** → permissão
-   `Account > Workers Scripts > Edit` → escolha a conta → **Create Token** →
-   copie o valor imediatamente (só é mostrado uma vez; se perder, apague o
-   token e crie outro).
-2. Pegue o **Account ID**: aparece na barra lateral direita de qualquer página
-   de **Workers & Pages** do dashboard (string hexadecimal de 32 caracteres).
-3. No repositório GitHub, vá em **Settings → Secrets and variables → Actions**,
-   confirme que está na aba **Secrets** (não na aba **Variables** — são
-   contextos diferentes; o workflow só lê `secrets.*`) e crie dois
-   *repository secrets*:
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID`
-4. Dê push (ou rode manualmente pela aba **Actions → Deploy → Run workflow**)
-   na branch `main` — o Actions builda, testa e publica em
-   `https://memoriza.<sua-conta>.workers.dev` automaticamente.
+1. No dashboard, abra **Workers & Pages → memoriza → Settings** e procure a
+   seção de integração com Git (dependendo da conta aparece como **"Connect
+   to Git"** ou **"Build"**).
+2. Conecte ao repositório `Fpiscinato/memoriza`, branch `main`.
+3. Build command: `npm run build`. Deploy command: deixe o padrão (a
+   Cloudflare detecta o `wrangler.jsonc` do repo e roda `wrangler deploy`
+   sozinha).
+4. Cada push em `main` builda e publica automaticamente em
+   `https://memoriza.<sua-conta>.workers.dev`.
 
-Deploy manual único, se precisar (não é o caminho automático):
+Deploy manual único, se precisar (roda localmente, com `wrangler login`):
 
 ```bash
 npm run build
@@ -213,7 +205,7 @@ IDs conflitantes dentro do mesmo lote.
       testado em 375×667 e 1280×800).
 - [x] Tema claro/escuro respeitando `prefers-color-scheme`, com alternância
       manual persistida.
-- [x] Deploy publicado via GitHub Actions em
-      `https://memoriza.<sua-conta>.workers.dev` (Cloudflare Workers com
-      Static Assets — ver seção "Deploy" acima sobre a troca de domínio em
-      relação ao `pages.dev` original).
+- [ ] Deploy publicado em `https://memoriza.<sua-conta>.workers.dev`
+      (Cloudflare Workers com Static Assets, conectado ao Git nativamente —
+      ver seção "Deploy" acima e a troca de domínio em relação ao
+      `pages.dev` original). Falta confirmar a conexão Git no dashboard.
