@@ -54,10 +54,12 @@
   padding: var(--space-5) var(--space-4) var(--space-8);
 }
 
-/* Compensa o cabeçalho virando "fixed" (fora do fluxo normal) no mobile — ver .app-header. */
+/* Compensa cabeçalho e navegação virando "fixed" (fora do fluxo normal) no mobile — ver
+   .app-header e .app-nav. */
 @media (max-width: 859px) {
   .app-main {
     padding-top: calc(var(--header-height) + var(--space-5));
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-5));
   }
 }
 
@@ -79,6 +81,17 @@
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   padding: var(--space-2) var(--space-2) max(var(--space-2), env(safe-area-inset-bottom));
+}
+
+/* Mesmo problema do .app-header: sendo o primeiro elemento da página, "sticky; bottom: 0"
+   não vira uma barra fixa embaixo — fica preso na posição natural dele (o topo). "fixed"
+   resolve, igual foi feito lá — o conteúdo abaixo ganha o espaço equivalente reservado. */
+@media (max-width: 859px) {
+  .app-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+  }
 }
 
 .app-nav__item {
