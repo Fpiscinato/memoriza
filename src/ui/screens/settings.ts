@@ -9,6 +9,7 @@ import {
   type ThemePreference,
 } from '../../lib/settings';
 import { currentTheme, setTheme } from '../../lib/theme';
+import { formatDateTimeBR } from '../../lib/time';
 import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import { confirmAction } from '../components/confirm-modal';
 import { navigate } from '../router';
@@ -125,7 +126,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
             <div class="settings-row__label">Exportar backup</div>
             <p class="settings-row__desc">
               Gera um arquivo .json para guardar em outro lugar (Drive, e-mail, etc).
-              ${lastExport ? `Último export: ${escapeHtml(formatDate(lastExport))}.` : 'Nenhum export feito ainda.'}
+              ${lastExport ? `Último export: ${escapeHtml(formatDateTimeBR(lastExport))}.` : 'Nenhum export feito ainda.'}
             </p>
           </div>
           <div class="stack" style="flex-direction: row; flex-wrap: wrap; gap: var(--space-3);">
@@ -307,15 +308,5 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
     const hora = container.querySelector<HTMLInputElement>('#input-hora-lembrete')!.value || '19:00';
     setReminderHour(ctx.perfil.id, hora);
     downloadICS(generateDailyReminderICS(hora));
-  });
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   });
 }

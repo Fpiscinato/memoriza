@@ -4,7 +4,7 @@ import { getEspaco } from '../../db/espacos';
 import { devReviewNow, stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
-import { renderMarkdown } from '../../lib/markdown';
+import { renderMarkdown, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
@@ -93,10 +93,19 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       </div>
 
       <div>
-        <div class="tabs" role="tablist">
-          <button class="tabs__tab" id="tab-editar" role="tab" aria-selected="true" type="button">Editar</button>
-          <button class="tabs__tab" id="tab-preview" role="tab" aria-selected="false" type="button">Preview</button>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-2); flex-wrap: wrap;">
+          <div class="tabs" role="tablist">
+            <button class="tabs__tab" id="tab-editar" role="tab" aria-selected="true" type="button">Editar</button>
+            <button class="tabs__tab" id="tab-preview" role="tab" aria-selected="false" type="button">Preview</button>
+          </div>
+          <select class="input" id="input-cor-aplicar" style="max-width:150px;" title="Selecione um trecho do conteúdo antes de escolher uma cor">
+            <option value="">Cor do texto…</option>
+            ${TEXT_COLOR_NAMES.map((cor) => `<option value="${cor}">${escapeHtml(TEXT_COLOR_LABELS[cor])}</option>`).join('')}
+          </select>
         </div>
+        <p class="settings-row__desc" style="margin: var(--space-1) 0 var(--space-2);">
+          Pra colorir: selecione um trecho no conteúdo e escolha uma cor — dá pra usar várias cores diferentes na mesma nota.
+        </p>
         <div id="pane-editar">
           <textarea class="textarea" id="input-conteudo" placeholder="Conteúdo em markdown simples: # títulos, **negrito**, *itálico*, listas com -, [link](url)">${escapeHtml(nota?.conteudo ?? '')}</textarea>
         </div>
@@ -170,6 +179,23 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     paneEditar.style.display = 'none';
     panePreview.style.display = 'block';
     panePreview.innerHTML = renderMarkdown(conteudoInput.value) || '<p class="text-muted">(sem conteúdo)</p>';
+  });
+
+  const corSelect = container.querySelector<HTMLSelectElement>('#input-cor-aplicar')!;
+  corSelect.addEventListener('change', () => {
+    const cor = corSelect.value;
+    corSelect.value = '';
+    if (!cor) return;
+    const start = conteudoInput.selectionStart ?? conteudoInput.value.length;
+    const end = conteudoInput.selectionEnd ?? conteudoInput.value.length;
+    const selecionado = conteudoInput.value.slice(start, end) || 'texto';
+    const antes = conteudoInput.value.slice(0, start);
+    const depois = conteudoInput.value.slice(end);
+    const inserido = `[${selecionado}]{${cor}}`;
+    conteudoInput.value = antes + inserido + depois;
+    conteudoInput.focus();
+    const cursor = antes.length + inserido.length;
+    conteudoInput.setSelectionRange(cursor, cursor);
   });
 
   const checkboxDesatualizar = container.querySelector<HTMLInputElement>('#input-pode-desatualizar')!;

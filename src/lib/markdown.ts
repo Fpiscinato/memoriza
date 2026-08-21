@@ -4,11 +4,39 @@
 
 import { escapeHtml } from './dom';
 
+// Mesma paleta fixa de 8 cores usada pra Espaço/Categoria (ver src/lib/color.ts), reaproveitada
+// aqui pra colorir trechos do texto — já testada em claro/escuro, sem inventar cor nova.
+export const TEXT_COLOR_NAMES = [
+  'azul',
+  'verde',
+  'ambar',
+  'violeta',
+  'vermelho',
+  'ciano',
+  'rosa',
+  'indigo',
+] as const;
+export type TextColorName = (typeof TEXT_COLOR_NAMES)[number];
+
+export const TEXT_COLOR_LABELS: Record<TextColorName, string> = {
+  azul: 'Azul',
+  verde: 'Verde',
+  ambar: 'Âmbar',
+  violeta: 'Violeta',
+  vermelho: 'Vermelho',
+  ciano: 'Ciano',
+  rosa: 'Rosa',
+  indigo: 'Índigo',
+};
+
+const COLOR_SPAN_RE = new RegExp(`\\[([^\\]]+)\\]\\{(${TEXT_COLOR_NAMES.join('|')})\\}`, 'g');
+
 function renderInline(text: string): string {
   let html = escapeHtml(text);
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  html = html.replace(COLOR_SPAN_RE, '<span class="text-color text-color--$2">$1</span>');
   html = html.replace(
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
     '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',

@@ -17,6 +17,8 @@ export interface Espaco {
   criado_em: string;
   atualizado_em: string;
   arquivado: boolean;
+  /** Quando arquivado virou true da última vez — ausente em Espaços arquivados antes desse campo existir. */
+  arquivado_em?: string;
 }
 
 export interface Tema {

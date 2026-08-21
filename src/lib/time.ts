@@ -35,6 +35,22 @@ export function nowISO(): string {
   return new Date().toISOString();
 }
 
+/** Data no formato pt-BR (dd/mm/aaaa), pra exibição — sem hora. */
+export function formatDateBR(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+/** Data e hora no formato pt-BR, pra exibição. */
+export function formatDateTimeBR(iso: string): string {
+  return new Date(iso).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 /**
  * Soma `days` dias corridos a uma data-calendário YYYY-MM-DD. Trabalha em UTC de propósito:
  * `data_agendada`/`data_concluida`/`validade_ate` representam um dia do calendário de

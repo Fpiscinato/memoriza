@@ -3,6 +3,7 @@
 // (*negrito* com um asterisco só, _itálico_ com underscore).
 
 import type { CategoriaPdf, EspacoPdfData } from '../db/pdf-data';
+import { TEXT_COLOR_NAMES } from './markdown';
 
 function inlineToPlain(text: string): string {
   let t = text;
@@ -11,6 +12,8 @@ function inlineToPlain(text: string): string {
   t = t.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '_$1_');
   t = t.replace(/\*\*([^*]+)\*\*/g, '*$1*');
   t = t.replace(/`([^`]+)`/g, '$1');
+  // Cor de texto ([texto]{cor}, ver src/lib/markdown.ts) não existe em texto puro — mantém só o texto.
+  t = t.replace(new RegExp(`\\[([^\\]]+)\\]\\{(${TEXT_COLOR_NAMES.join('|')})\\}`, 'g'), '$1');
   t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1 ($2)');
   return t;
 }

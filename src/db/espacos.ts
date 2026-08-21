@@ -52,6 +52,7 @@ export async function setEspacoArquivado(id: string, arquivado: boolean): Promis
   const espaco = await db.get('espacos', id);
   if (!espaco) return;
   espaco.arquivado = arquivado;
+  espaco.arquivado_em = arquivado ? nowISO() : undefined;
   espaco.atualizado_em = nowISO();
   await db.put('espacos', espaco);
 }

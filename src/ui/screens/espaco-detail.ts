@@ -4,8 +4,10 @@ import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
 import { accentVar } from '../../lib/color';
+import { daysBetweenISODates, formatDateBR, toLondonISODate } from '../../lib/time';
 import { navigate, encodeCategoriaSegment } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { showInfo } from '../components/info-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
@@ -40,6 +42,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <details class="item-menu">
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
+            <button id="btn-detalhes" type="button">ℹ️ Detalhes</button>
             <button id="btn-excluir" class="danger" type="button">Excluir espaço</button>
           </div>
         </details>
@@ -166,6 +169,35 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     if (!nome) return;
     await updateEspaco(espaco.id, nome, categoria);
     renderEspacoDetail(container, espacoId);
+  });
+
+  container.querySelector('#btn-detalhes')?.addEventListener('click', () => {
+    const totalNotas = Array.from(notaCounts.values()).reduce((soma, n) => soma + n, 0);
+    const hoje = toLondonISODate();
+
+    let statusInfo: string;
+    if (espaco.arquivado && espaco.arquivado_em) {
+      const dias = daysBetweenISODates(toLondonISODate(new Date(espaco.criado_em)), toLondonISODate(new Date(espaco.arquivado_em)));
+      statusInfo = `Arquivado em ${formatDateBR(espaco.arquivado_em)} — levou ${dias} dia(s) desde a criação.`;
+    } else if (espaco.arquivado) {
+      statusInfo = 'Arquivado antes desse registro de data existir, então não dá pra calcular quanto tempo levou.';
+    } else {
+      const dias = daysBetweenISODates(toLondonISODate(new Date(espaco.criado_em)), hoje);
+      statusInfo = `Ativo há ${dias} dia(s).`;
+    }
+
+    showInfo({
+      title: `Detalhes — ${espaco.nome}`,
+      bodyHtml: `
+        <div class="stack">
+          <div class="settings-row"><span class="settings-row__label">Criado em</span><span>${formatDateBR(espaco.criado_em)}</span></div>
+          <div class="settings-row"><span class="settings-row__label">Temas</span><span>${temas.length}</span></div>
+          <div class="settings-row"><span class="settings-row__label">Notas</span><span>${totalNotas}</span></div>
+          <div class="settings-row"><span class="settings-row__label">Status</span><span>${espaco.arquivado ? 'Arquivado' : 'Ativo'}</span></div>
+        </div>
+        <p class="text-muted" style="margin: var(--space-3) 0 0;">${statusInfo}</p>
+      `,
+    });
   });
 
   container.querySelector('#btn-excluir')?.addEventListener('click', async () => {

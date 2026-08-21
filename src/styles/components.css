@@ -644,6 +644,44 @@ button.item-row:hover {
   box-shadow: var(--shadow-sm);
 }
 
+/* Trechos coloridos dentro do conteúdo da nota — sintaxe [texto]{cor}, ver src/lib/markdown.ts.
+   Mesma paleta fixa de Espaço/Categoria (src/lib/color.ts), já ajustada pro tema escuro. */
+.text-color {
+  font-weight: var(--font-weight-medium);
+}
+
+.text-color--azul {
+  color: var(--accent-0);
+}
+
+.text-color--verde {
+  color: var(--accent-1);
+}
+
+.text-color--ambar {
+  color: var(--accent-2);
+}
+
+.text-color--violeta {
+  color: var(--accent-3);
+}
+
+.text-color--vermelho {
+  color: var(--accent-4);
+}
+
+.text-color--ciano {
+  color: var(--accent-5);
+}
+
+.text-color--rosa {
+  color: var(--accent-6);
+}
+
+.text-color--indigo {
+  color: var(--accent-7);
+}
+
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3 {
