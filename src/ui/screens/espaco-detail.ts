@@ -109,7 +109,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
             .map(
               (grupo) => `
       <details class="category-group">
-        <summary class="category-group__title">
+        <summary class="category-group__title" ${grupo.categoria ? `style="--group-accent:${accentVar(grupo.categoria.toLowerCase())}"` : ''}>
           <span class="category-group__label">
             ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
             ${escapeHtml(grupo.categoria || 'Sem categoria')}

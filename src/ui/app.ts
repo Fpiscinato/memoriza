@@ -1,9 +1,16 @@
 import { getDB } from '../db/schema';
 import { getProfile } from '../db/profiles';
 import { escapeHtml } from '../lib/dom';
-import { getLastExportAt, getSelectedProfileId, setSelectedProfileId } from '../lib/settings';
-import { daysBetweenISODates, toLondonISODate } from '../lib/time';
+import {
+  getBackupBannerSnoozedUntil,
+  getLastExportAt,
+  getSelectedProfileId,
+  setSelectedProfileId,
+  snoozeBackupBannerUntil,
+} from '../lib/settings';
+import { addDaysToISODate, daysBetweenISODates, toLondonISODate } from '../lib/time';
 import { getCurrentRoute, navigate, navigateTop, onRouteChange, topLevelFor, type TopLevelRoute } from './router';
+import { NAV_ICONS } from './icons';
 import { renderProfileSelect } from './screens/profile-select';
 import { renderToday } from './screens/today';
 import { renderEspacos } from './screens/espacos';
@@ -18,13 +25,15 @@ import { renderSettings } from './screens/settings';
 import type { Perfil } from '../types';
 
 const BACKUP_REMINDER_DAYS = 14;
+const BACKUP_REMINDER_URGENT_DAYS = 30;
+const BACKUP_BANNER_SNOOZE_DAYS = 3;
 
-const NAV_ITEMS: { route: TopLevelRoute; label: string; icon: string }[] = [
-  { route: 'hoje', label: 'Hoje', icon: '🗓️' },
-  { route: 'espacos', label: 'Espaços', icon: '📚' },
-  { route: 'favoritos', label: 'Favoritos', icon: '⭐' },
-  { route: 'painel', label: 'Painel', icon: '📊' },
-  { route: 'config', label: 'Configurações', icon: '⚙️' },
+const NAV_ITEMS: { route: TopLevelRoute; label: string }[] = [
+  { route: 'hoje', label: 'Hoje' },
+  { route: 'espacos', label: 'Espaços' },
+  { route: 'favoritos', label: 'Favoritos' },
+  { route: 'painel', label: 'Painel' },
+  { route: 'config', label: 'Configurações' },
 ];
 
 const TOP_LEVEL_TITLES: Record<TopLevelRoute, string> = {
@@ -36,7 +45,6 @@ const TOP_LEVEL_TITLES: Record<TopLevelRoute, string> = {
   config: 'Configurações',
 };
 
-let bannerDismissedThisSession = false;
 
 export async function mount(root: HTMLElement): Promise<void> {
   onRouteChange(() => render(root));
@@ -73,7 +81,7 @@ async function render(root: HTMLElement): Promise<void> {
             ${item.route === topLevel ? 'aria-current="page"' : ''}
             type="button"
           >
-            <span class="app-nav__icon" aria-hidden="true">${item.icon}</span>
+            <span class="app-nav__icon">${NAV_ICONS[item.route]}</span>
             <span>${item.label}</span>
           </button>
         `,
@@ -150,29 +158,36 @@ async function render(root: HTMLElement): Promise<void> {
 }
 
 async function renderBackupBanner(content: HTMLElement, perfil: Perfil): Promise<void> {
-  if (bannerDismissedThisSession) return;
+  const today = toLondonISODate();
+
+  const snoozedUntil = getBackupBannerSnoozedUntil();
+  if (snoozedUntil && today < snoozedUntil) return;
+
   if (!(await hasAnyDataForProfile(perfil.id))) return;
 
   const lastExportAt = getLastExportAt();
-  const today = toLondonISODate();
   const daysSinceExport = lastExportAt
     ? daysBetweenISODates(toLondonISODate(new Date(lastExportAt)), today)
     : Infinity;
 
   if (daysSinceExport <= BACKUP_REMINDER_DAYS) return;
 
+  // Só vira um aviso "de verdade" (laranja) quando o backup está realmente muito velho —
+  // antes disso é só um lembrete discreto, sem competir visualmente com o resto da tela.
+  const urgente = lastExportAt !== null && daysSinceExport > BACKUP_REMINDER_URGENT_DAYS;
+
   const banner = document.createElement('div');
-  banner.className = 'banner banner--warning';
+  banner.className = `banner ${urgente ? 'banner--warning' : 'banner--muted'}`;
   banner.setAttribute('role', 'status');
   banner.innerHTML = `
     <span>
       ${lastExportAt ? `Faz mais de ${BACKUP_REMINDER_DAYS} dias desde o último backup.` : 'Você ainda não exportou um backup.'}
       Considere exportar em Configurações — os dados só existem neste aparelho.
     </span>
-    <button class="banner__dismiss" type="button" aria-label="Dispensar aviso">×</button>
+    <button class="banner__dismiss" type="button" aria-label="Adiar aviso por alguns dias">×</button>
   `;
   banner.querySelector('.banner__dismiss')?.addEventListener('click', () => {
-    bannerDismissedThisSession = true;
+    snoozeBackupBannerUntil(addDaysToISODate(today, BACKUP_BANNER_SNOOZE_DAYS));
     banner.remove();
   });
   content.appendChild(banner);

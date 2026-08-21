@@ -9,6 +9,7 @@ const KEYS = {
   theme: 'memoriza:theme',
   lastExportAt: 'memoriza:lastExportAt',
   storagePersistRequested: 'memoriza:storagePersistRequested',
+  backupBannerSnoozedUntil: 'memoriza:backupBannerSnoozedUntil',
 } as const;
 
 export function getSelectedProfileId(): string | null {
@@ -36,6 +37,16 @@ export function getLastExportAt(): string | null {
 
 export function setLastExportAt(iso: string): void {
   localStorage.setItem(KEYS.lastExportAt, iso);
+}
+
+/** ISO da data até quando o aviso de backup foi adiado (dispensado manualmente) — evita
+ * reaparecer a cada recarregamento, mas ainda volta depois de alguns dias. */
+export function getBackupBannerSnoozedUntil(): string | null {
+  return localStorage.getItem(KEYS.backupBannerSnoozedUntil);
+}
+
+export function snoozeBackupBannerUntil(iso: string): void {
+  localStorage.setItem(KEYS.backupBannerSnoozedUntil, iso);
 }
 
 export function wasStoragePersistRequested(): boolean {

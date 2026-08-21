@@ -2,6 +2,7 @@ import { completeReview, getTodayQueue, type QueueEntry } from '../../db/reviews
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { precisaAvisoDeValidade } from '../../domain/validade';
+import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import type { Avaliacao } from '../../types';
 
@@ -44,7 +45,8 @@ function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry
       const espaco = entries[0].espaco;
       return `
         <div class="queue-group">
-          <div class="queue-group__title">
+          <div class="queue-group__title" style="--group-accent:${accentVar(espaco.id)}">
+            <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>
             ${escapeHtml(tema.nome)}
             ${mostrarEspaco ? `<span class="queue-group__espaco"> · ${escapeHtml(espaco.nome)}</span>` : ''}
           </div>

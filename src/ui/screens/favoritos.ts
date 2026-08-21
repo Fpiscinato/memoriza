@@ -64,7 +64,7 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
         .map(
           (grupo) => `
         <div class="category-group">
-          <div class="queue-group__title" style="text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
+          <div class="queue-group__title" style="--group-accent:${accentVar(grupo.espacoId)}; text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
             <span class="color-dot" style="--dot-color:${accentVar(grupo.espacoId)}"></span>${escapeHtml(grupo.espacoNome)}
           </div>
           <div class="item-list">
@@ -96,7 +96,7 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
         .map(
           (grupo) => `
         <div class="category-group">
-          <div class="queue-group__title" style="text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
+          <div class="queue-group__title" style="--group-accent:${accentVar(grupo.espacoId)}; text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
             <span class="color-dot" style="--dot-color:${accentVar(grupo.espacoId)}"></span>${escapeHtml(grupo.temaNome)} <span class="queue-group__espaco"> · ${escapeHtml(grupo.espacoNome)}</span>
           </div>
           <div class="item-list">
