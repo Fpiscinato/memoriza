@@ -20,6 +20,18 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/* Abaixo de 860px (sem barra lateral, é só o cabeçalho no topo): "sticky" pode "sumir" durante
+   a rolagem em navegadores móveis, quando a barra de endereço recolhe e o viewport recalcula —
+   um bug conhecido, mais comum no Safari/PWA. "fixed" não depende do scroll, fica sempre
+   travado — só precisa que o conteúdo abaixo reserve o espaço equivalente. */
+@media (max-width: 859px) {
+  .app-header {
+    position: fixed;
+    left: 0;
+    right: 0;
+  }
+}
+
 .app-header__title {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
@@ -40,6 +52,13 @@
   max-width: var(--max-content-width-wide);
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) var(--space-8);
+}
+
+/* Compensa o cabeçalho virando "fixed" (fora do fluxo normal) no mobile — ver .app-header. */
+@media (max-width: 859px) {
+  .app-main {
+    padding-top: calc(var(--header-height) + var(--space-5));
+  }
 }
 
 /* Telas de formulário/foco único (editar Nota, cartão de revisão) ficam mais legíveis numa
