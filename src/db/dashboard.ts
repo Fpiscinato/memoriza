@@ -9,6 +9,7 @@ export interface TemaDificil {
 }
 
 export interface DashboardStats {
+  revisoesHoje: number;
   revisoesUltimos7Dias: number;
   streakDias: number;
   /** Um por dia dos últimos 7 (mais antigo primeiro) — true se teve alguma revisão feita naquele dia. */
@@ -18,6 +19,8 @@ export interface DashboardStats {
   totalTemas: number;
   totalNotas: number;
   itensEmConsulta: number;
+  /** Quantas notas pendentes estão hoje em cada estágio da escada (1/7/30/180 dias) — mostra o progresso, não só o que já foi feito. */
+  porEstagio: { estagio: '1' | '7' | '30' | '180'; count: number }[];
 }
 
 const TOP_RANKING = 5;
@@ -30,9 +33,16 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   const itens = await db.getAllFromIndex('itens_revisao', 'perfil_id', perfilId);
   const revisoesFeitas = itens.filter((i) => i.status === 'feita' && i.avaliacao);
 
+  const revisoesHoje = revisoesFeitas.filter((i) => i.data_concluida === hoje).length;
+
   const revisoesUltimos7Dias = revisoesFeitas.filter(
     (i) => i.data_concluida && i.data_concluida >= inicioJanela && i.data_concluida <= hoje,
   ).length;
+
+  const porEstagio = (['1', '7', '30', '180'] as const).map((estagio) => ({
+    estagio,
+    count: itens.filter((i) => i.status === 'pendente' && i.estagio === estagio).length,
+  }));
 
   const datasComAtividade = new Set(revisoesFeitas.map((i) => i.data_concluida!));
   const streakDias = computeStreak(datasComAtividade, hoje);
@@ -80,6 +90,7 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   }
 
   return {
+    revisoesHoje,
     revisoesUltimos7Dias,
     streakDias,
     diasAtivosUltimos7,
@@ -88,5 +99,6 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
     totalTemas,
     totalNotas,
     itensEmConsulta,
+    porEstagio,
   };
 }

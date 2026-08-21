@@ -20,13 +20,10 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const categoriasConhecidas = await listCategoriasEspacos(ctx.perfilId);
 
   container.innerHTML = `
-    <div class="section-header">
-      <span class="section-header__title">Espaços de estudo</span>
-      <div class="section-header__actions">
-        <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Novo espaço</button>
-      </div>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-4);">
+      <p class="screen-hint" style="margin:0;">Cada Espaço é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
+      <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Novo espaço</button>
     </div>
-    <p class="screen-hint">Cada Espaço é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
 
     <div id="form-novo-espaco" style="display:none" class="card">
       <div class="field">

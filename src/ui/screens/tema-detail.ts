@@ -2,6 +2,7 @@ import { countTemaCascade, deleteTemaCascade, getTema, listCategoriasTemas, togg
 import { getEspaco } from '../../db/espacos';
 import { listNotas } from '../../db/notas';
 import { escapeHtml } from '../../lib/dom';
+import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
@@ -16,6 +17,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const espaco = await getEspaco(tema.espaco_id);
   const notas = await listNotas(temaId);
   const categoriasTema = espaco ? await listCategoriasTemas(espaco.perfil_id) : [];
+  const temaAccentKey = tema.categoria
+    ? tema.categoria.toLowerCase()
+    : espaco?.categoria
+      ? espaco.categoria.toLowerCase()
+      : (espaco?.id ?? tema.id);
 
   container.innerHTML = `
     ${renderBreadcrumb([
@@ -27,7 +33,9 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     ])}
 
     <div class="section-header">
-      <span class="section-header__title">${tema.favorito ? '⭐ ' : ''}${escapeHtml(tema.nome)}</span>
+      <span class="section-header__title">
+        <span class="color-dot" style="--dot-color:${accentVar(temaAccentKey)}"></span>${tema.favorito ? '⭐ ' : ''}${escapeHtml(tema.nome)}
+      </span>
       <div class="section-header__actions">
         <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
           ${tema.favorito ? '★ Favorito' : '☆ Favoritar'}
@@ -83,7 +91,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         ${notas
           .map(
             (n) => `
-          <button class="item-row" data-open="${escapeHtml(n.id)}" type="button" style="cursor:pointer; text-align:left;">
+          <button class="item-row" data-open="${escapeHtml(n.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(temaAccentKey)}">
             <span class="item-row__main">
               <span class="item-row__title">${n.favorito ? '⭐ ' : ''}${escapeHtml(n.titulo || '(sem título)')}</span>
               <span class="item-row__meta">${escapeHtml(n.fonte || 'Sem fonte')}${n.pode_desatualizar ? ' · pode desatualizar' : ''}</span>

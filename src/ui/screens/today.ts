@@ -1,4 +1,4 @@
-import { completeReview, getTodayQueue, type QueueEntry } from '../../db/reviews';
+import { completeReview, countRevisoesHoje, getTodayQueue, type QueueEntry } from '../../db/reviews';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { precisaAvisoDeValidade } from '../../domain/validade';
@@ -12,12 +12,19 @@ export interface TodayContext {
 
 export async function renderToday(container: HTMLElement, ctx: TodayContext): Promise<void> {
   const fila = await getTodayQueue(ctx.perfilId);
-  renderLista(container, ctx, fila);
+  await renderLista(container, ctx, fila);
 }
 
-function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry[]): void {
+async function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry[]): Promise<void> {
+  const feitasHoje = await countRevisoesHoje(ctx.perfilId);
+  const contador =
+    feitasHoje > 0
+      ? `<span class="badge badge--muted">${feitasHoje} revisão(ões) feita(s) hoje</span>`
+      : '';
+
   if (fila.length === 0) {
     container.innerHTML = `
+      ${contador ? `<div style="margin-bottom: var(--space-4);">${contador}</div>` : ''}
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">🗓️</div>
         <div class="empty-state__title">Nenhuma revisão por enquanto</div>
@@ -37,7 +44,12 @@ function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry
     grupos.set(entry.tema.id, lista);
   }
 
-  const hint = `<p class="screen-hint">Tente lembrar pelo Título antes de revelar a resposta.</p>`;
+  const hint = `
+    <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap;">
+      <p class="screen-hint" style="margin:0;">Tente lembrar pelo Título antes de revelar a resposta.</p>
+      ${contador}
+    </div>
+  `;
 
   container.innerHTML = hint + Array.from(grupos.values())
     .map((entries) => {
@@ -121,7 +133,7 @@ function renderRevisao(
     </div>
   `;
 
-  container.querySelector('[data-voltar]')?.addEventListener('click', () => renderLista(container, ctx, filaCompleta));
+  container.querySelector('[data-voltar]')?.addEventListener('click', () => void renderLista(container, ctx, filaCompleta));
   container.querySelector('[data-editar]')?.addEventListener('click', () => navigate(`notas/${entry.nota.id}`));
   container.querySelector('#btn-revelar')?.addEventListener('click', () => {
     renderRevisao(container, ctx, entry, filaCompleta, true);
@@ -136,7 +148,7 @@ function renderRevisao(
       if (resultado.aposentado) {
         renderAposentado(container, ctx, novaFila);
       } else {
-        renderLista(container, ctx, novaFila);
+        await renderLista(container, ctx, novaFila);
       }
     });
   });
@@ -151,5 +163,5 @@ function renderAposentado(container: HTMLElement, ctx: TodayContext, novaFila: Q
       <button class="btn btn--primary" id="btn-continuar" type="button">Continuar</button>
     </div>
   `;
-  container.querySelector('#btn-continuar')?.addEventListener('click', () => renderLista(container, ctx, novaFila));
+  container.querySelector('#btn-continuar')?.addEventListener('click', () => void renderLista(container, ctx, novaFila));
 }

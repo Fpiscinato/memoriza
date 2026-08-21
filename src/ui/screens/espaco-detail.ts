@@ -129,7 +129,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           ${grupo.itens
             .map(
               (t) => `
-            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left;">
+            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.categoria ? grupo.categoria.toLowerCase() : espaco.id)}">
               <span class="item-row__main">
                 <span class="item-row__title">${t.favorito ? '⭐ ' : ''}${escapeHtml(t.nome)}</span>
                 <span class="item-row__meta">${notaCounts.get(t.id) ?? 0} nota(s)</span>

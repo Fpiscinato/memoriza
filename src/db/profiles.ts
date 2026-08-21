@@ -4,15 +4,13 @@ import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
 
 /**
- * Perfis padrão criados no primeiro uso (sem senha, sem conta). Os IDs são fixos (não
- * gerados por uuid()) de propósito: se o usuário reinstalar o app ou trocar de aparelho e
- * importar um backup antigo, o registro do perfil precisa ter o mesmo id de antes para a
- * mesclagem atualizar o perfil existente em vez de criar um duplicado (ver db/merge.ts).
+ * ID fixo (não gerado por uuid()) do primeiro perfil já criado neste aparelho — de propósito:
+ * se o usuário reinstalar o app e importar um backup antigo antes de criar qualquer perfil
+ * manualmente, o registro do perfil importado assume esse id sem duplicar (ver db/merge.ts).
+ * Não existe mais nome padrão nenhum ("Fernando", "Esposa" etc.) — cada pessoa que usa o app
+ * digita o próprio nome na primeira vez que abre, na tela "Quem é você?".
  */
-const DEFAULT_PROFILES: { id: string; nome: string }[] = [
-  { id: '00000000-0000-4000-8000-000000000001', nome: 'Fernando' },
-  { id: '00000000-0000-4000-8000-000000000002', nome: 'Esposa' },
-];
+const FIRST_PROFILE_ID = '00000000-0000-4000-8000-000000000001';
 
 export async function listProfiles(): Promise<Perfil[]> {
   const db = await getDB();
@@ -20,18 +18,8 @@ export async function listProfiles(): Promise<Perfil[]> {
   return all.sort((a, b) => a.criado_em.localeCompare(b.criado_em));
 }
 
+/** Sem perfis pré-criados — só devolve os que já existem (pode vir vazio num aparelho novo). */
 export async function ensureDefaultProfiles(): Promise<Perfil[]> {
-  const db = await getDB();
-  const existing = await db.getAll('perfis');
-  if (existing.length > 0) return listProfiles();
-
-  const tx = db.transaction('perfis', 'readwrite');
-  for (const { id, nome } of DEFAULT_PROFILES) {
-    const now = nowISO();
-    const perfil: Perfil = { id, nome, criado_em: now, atualizado_em: now };
-    await tx.store.put(perfil);
-  }
-  await tx.done;
   return listProfiles();
 }
 
@@ -42,8 +30,10 @@ export async function getProfile(id: string): Promise<Perfil | undefined> {
 
 export async function createProfile(nome: string): Promise<Perfil> {
   const db = await getDB();
+  const existing = await db.getAll('perfis');
   const now = nowISO();
-  const perfil: Perfil = { id: uuid(), nome, criado_em: now, atualizado_em: now };
+  const id = existing.length === 0 ? FIRST_PROFILE_ID : uuid();
+  const perfil: Perfil = { id, nome, criado_em: now, atualizado_em: now };
   await db.put('perfis', perfil);
   return perfil;
 }

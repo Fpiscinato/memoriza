@@ -2,6 +2,8 @@ import { buildEspacoPdfData } from '../../db/pdf-data';
 import { buildPlainText } from '../../lib/pdf-text';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
+import { accentVar } from '../../lib/color';
+import { formatDateBR } from '../../lib/time';
 import { navigate } from '../router';
 
 export async function renderEspacoPdf(container: HTMLElement, espacoId: string, categoria?: string): Promise<void> {
@@ -25,21 +27,29 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
     </div>
 
     <article class="pdf-page">
-      <h1>${escapeHtml(espaco.nome)}</h1>
-      ${categoria !== undefined ? `<p class="text-muted" style="margin-top: calc(-1 * var(--space-4));">Categoria: ${escapeHtml(categoria || 'Sem categoria')}</p>` : ''}
+      <h1>
+        <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>${escapeHtml(espaco.nome)}
+      </h1>
+      <p class="pdf-meta">
+        ${categoria !== undefined ? `Categoria: ${escapeHtml(categoria || 'Sem categoria')} · ` : ''}Gerado em ${formatDateBR(new Date().toISOString())}
+      </p>
 
       ${
         grupos.every((g) => g.temas.length === 0)
           ? `<p class="text-muted">${categoria !== undefined ? 'Esta categoria ainda não tem temas ou notas.' : 'Este espaço ainda não tem temas ou notas.'}</p>`
           : grupos
-              .map(
-                (grupo) => `
-        <section class="pdf-category">
-          <div class="pdf-category__title">${escapeHtml(grupo.categoria || 'Sem categoria')}</div>
+              .map((grupo) => {
+                const catKey = grupo.categoria ? grupo.categoria.toLowerCase() : espaco.id;
+                return `
+        <section class="pdf-category" style="--cat-accent:${accentVar(catKey)}">
+          <div class="pdf-category__title">
+            <span class="color-dot" style="--dot-color:${accentVar(catKey)}"></span>${escapeHtml(grupo.categoria || 'Sem categoria')}
+          </div>
           ${grupo.temas
-            .map(
-              (temaPdf) => `
-            <section class="pdf-tema">
+            .map((temaPdf) => {
+              const temaKey = temaPdf.tema.categoria ? temaPdf.tema.categoria.toLowerCase() : catKey;
+              return `
+            <section class="pdf-tema" style="--tema-accent:${accentVar(temaKey)}">
               <div class="pdf-tema__title">${temaPdf.tema.favorito ? '⭐ ' : ''}${escapeHtml(temaPdf.tema.nome)}</div>
               ${
                 temaPdf.notas.length === 0
@@ -59,12 +69,12 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
                       .join('')
               }
             </section>
-          `,
-            )
+          `;
+            })
             .join('')}
         </section>
-      `,
-              )
+      `;
+              })
               .join('')
       }
     </article>

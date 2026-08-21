@@ -94,6 +94,14 @@ export async function completeReview(
   return resultado;
 }
 
+/** Quantas revisões já foram concluídas hoje — pra mostrar um contador que sobe conforme o dia avança. */
+export async function countRevisoesHoje(perfilId: string): Promise<number> {
+  const db = await getDB();
+  const hoje = todayLondonISODate();
+  const itens = await db.getAllFromIndex('itens_revisao', 'perfil_id', perfilId);
+  return itens.filter((i) => i.status === 'feita' && i.avaliacao && i.data_concluida === hoje).length;
+}
+
 /** Move manualmente o(s) item(ns) pendente(s) de uma nota para 'consulta' (fora da fila). */
 export async function stopReviewing(notaId: string): Promise<void> {
   const db = await getDB();

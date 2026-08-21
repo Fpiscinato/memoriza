@@ -35,36 +35,35 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   container.innerHTML = `
     <div class="stack content-narrow">
       <section class="settings-section">
-        <div class="settings-section__title">Perfil</div>
-        <div class="settings-row">
-          <div>
-            <div class="settings-row__label">${escapeHtml(ctx.perfil.nome)}</div>
-            <div class="settings-row__desc">Perfil atual neste aparelho</div>
+        <div class="settings-section__title">👤 Perfil</div>
+        <div class="card">
+          <div class="settings-list-row">
+            <div>
+              <div class="settings-row__label">${escapeHtml(ctx.perfil.nome)}</div>
+              <div class="settings-row__desc">Perfil atual neste aparelho</div>
+            </div>
+            <button class="btn btn--secondary btn--sm" id="btn-switch-profile" type="button">Trocar de perfil</button>
           </div>
-          <button class="btn btn--secondary btn--sm" id="btn-switch-profile" type="button">Trocar de perfil</button>
+          <div class="settings-list-row">
+            <div>
+              <div class="settings-row__label">Como Usar</div>
+              <div class="settings-row__desc">Exemplos reais de Espaço, Tema, Nota e o resto do app</div>
+            </div>
+            <button class="btn btn--secondary btn--sm" id="btn-como-usar" type="button">Abrir</button>
+          </div>
         </div>
       </section>
 
       <section class="settings-section">
-        <div class="settings-row">
-          <div>
-            <div class="settings-row__label">Como Usar</div>
-            <div class="settings-row__desc">Exemplos reais de Espaço, Tema, Nota e o resto do app</div>
-          </div>
-          <button class="btn btn--secondary btn--sm" id="btn-como-usar" type="button">Abrir</button>
-        </div>
-      </section>
-
-      <section class="settings-section">
-        <div class="settings-section__title">Gerenciar perfis</div>
+        <div class="settings-section__title">👥 Gerenciar perfis</div>
         <div class="card stack">
-          <div class="item-list">
+          <div>
             ${perfis
               .map(
                 (p) => `
-              <div class="item-row" data-perfil-id="${escapeHtml(p.id)}">
-                <span class="item-row__main" data-view-nome>
-                  <span class="item-row__title">${escapeHtml(p.nome)}</span>
+              <div class="settings-list-row" data-perfil-id="${escapeHtml(p.id)}">
+                <span data-view-nome>
+                  <span class="settings-row__label">${escapeHtml(p.nome)}</span>
                 </span>
                 <div class="item-row__actions">
                   <button class="btn btn--secondary btn--sm" data-renomear="${escapeHtml(p.id)}" type="button">Renomear</button>
@@ -101,33 +100,37 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       </section>
 
       <section class="settings-section">
-        <div class="settings-section__title">Aparência</div>
-        <div class="settings-row">
-          <div class="settings-row__label">Tema</div>
-          <div class="segmented" role="group" aria-label="Tema">
-            ${THEME_OPTIONS.map(
-              (opt) => `
-              <button
-                class="segmented__option"
-                type="button"
-                data-theme="${opt.value}"
-                aria-pressed="${opt.value === theme}"
-              >${opt.label}</button>
-            `,
-            ).join('')}
+        <div class="settings-section__title">🎨 Aparência</div>
+        <div class="card">
+          <div class="settings-list-row">
+            <div class="settings-row__label">Tema</div>
+            <div class="segmented" role="group" aria-label="Tema">
+              ${THEME_OPTIONS.map(
+                (opt) => `
+                <button
+                  class="segmented__option"
+                  type="button"
+                  data-theme="${opt.value}"
+                  aria-pressed="${opt.value === theme}"
+                >${opt.label}</button>
+              `,
+              ).join('')}
+            </div>
           </div>
         </div>
       </section>
 
       <section class="settings-section">
-        <div class="settings-section__title">Dados</div>
+        <div class="settings-section__title">💾 Dados</div>
         <div class="card stack">
-          <div>
-            <div class="settings-row__label">Exportar backup</div>
-            <p class="settings-row__desc">
-              Gera um arquivo .json para guardar em outro lugar (Drive, e-mail, etc).
-              ${lastExport ? `Último export: ${escapeHtml(formatDateTimeBR(lastExport))}.` : 'Nenhum export feito ainda.'}
-            </p>
+          <div class="settings-list-row">
+            <div>
+              <div class="settings-row__label">Exportar backup</div>
+              <p class="settings-row__desc">
+                Gera um arquivo .json para guardar em outro lugar (Drive, e-mail, etc).
+                ${lastExport ? `Último export: ${escapeHtml(formatDateTimeBR(lastExport))}.` : 'Nenhum export feito ainda.'}
+              </p>
+            </div>
           </div>
           <div class="stack" style="flex-direction: row; flex-wrap: wrap; gap: var(--space-3);">
             <button class="btn btn--primary btn--sm" id="btn-export-profile" type="button">
@@ -138,12 +141,14 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
             </button>
           </div>
 
-          <div>
-            <div class="settings-row__label">Importar backup</div>
-            <p class="settings-row__desc">
-              Mescla um arquivo .json exportado antes. Dados locais mais recentes nunca são
-              substituídos, e nada local é apagado.
-            </p>
+          <div class="settings-list-row">
+            <div>
+              <div class="settings-row__label">Importar backup</div>
+              <p class="settings-row__desc">
+                Mescla um arquivo .json exportado antes. Dados locais mais recentes nunca são
+                substituídos, e nada local é apagado.
+              </p>
+            </div>
           </div>
           <div>
             <button class="btn btn--secondary btn--sm" id="btn-import" type="button">Escolher arquivo…</button>
@@ -154,9 +159,9 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       </section>
 
       <section class="settings-section">
-        <div class="settings-section__title">Lembretes</div>
+        <div class="settings-section__title">⏰ Lembretes</div>
         <div class="card stack">
-          <p class="text-muted">
+          <p class="text-muted" style="margin:0;">
             O Memoriza não envia notificações. Escolha um horário e baixe um lembrete diário
             para o app de Calendário/Lembretes do seu celular.
           </p>
@@ -167,7 +172,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
           <button class="btn btn--primary btn--sm" id="btn-baixar-lembrete" type="button" style="align-self:flex-start;">
             Baixar lembrete para o celular
           </button>
-          <p class="settings-row__desc">
+          <p class="settings-row__desc" style="margin:0;">
             Depois de adicionado, esse lembrete passa a ser gerenciado direto no app de
             Calendário/Lembretes do celular — editar horário ou cancelar se faz por lá, sem
             conexão contínua com o Memoriza. Se trocar o horário aqui depois, baixe um novo

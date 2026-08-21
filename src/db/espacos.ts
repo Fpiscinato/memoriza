@@ -10,10 +10,13 @@ export async function listEspacos(perfilId: string): Promise<Espaco[]> {
   return all.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 }
 
-/** Categorias já usadas em Espaços deste perfil — pra sugerir no autocomplete. */
+/** Sugestões sempre disponíveis, mesmo num perfil novo sem nenhum Espaço ainda criado. */
+const CATEGORIAS_ESPACO_SUGERIDAS = ['Cursos', 'Livros', 'Bíblia'];
+
+/** Categorias já usadas em Espaços deste perfil, mais as sugestões padrão — pra sugerir como chips. */
 export async function listCategoriasEspacos(perfilId: string): Promise<string[]> {
   const espacos = await listEspacos(perfilId);
-  return distinctCategorias(espacos.map((e) => e.categoria));
+  return distinctCategorias([...CATEGORIAS_ESPACO_SUGERIDAS, ...espacos.map((e) => e.categoria)]);
 }
 
 export async function getEspaco(id: string): Promise<Espaco | undefined> {

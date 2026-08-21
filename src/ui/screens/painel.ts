@@ -5,17 +5,21 @@ export interface PainelContext {
   perfilId: string;
 }
 
+const ESTAGIO_LABEL: Record<'1' | '7' | '30' | '180', string> = {
+  '1': '1 dia',
+  '7': '7 dias',
+  '30': '30 dias',
+  '180': '180 dias',
+};
+
 export async function renderPainel(container: HTMLElement, ctx: PainelContext): Promise<void> {
   const stats = await getDashboardStats(ctx.perfilId);
 
-  const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   const hojeIndiceSemana = new Date().getDay();
 
   container.innerHTML = `
-    <div class="section-header">
-      <span class="section-header__title">Painel</span>
-    </div>
-    <p class="screen-hint">Sua sequência de dias estudando e os Temas onde você mais marcou "Difícil" — os pontos fracos reais.</p>
+    <p class="screen-hint" style="margin-top:0;">Sua sequência de dias estudando e os Temas onde você mais marcou "Difícil" — os pontos fracos reais.</p>
 
     <div class="streak-hero">
       <div class="streak-hero__flame" aria-hidden="true">🔥</div>
@@ -25,7 +29,12 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
         ${stats.diasAtivosUltimos7
           .map((ativo, i) => {
             const diaSemanaIndice = (hojeIndiceSemana - (6 - i) + 7) % 7;
-            return `<span class="streak-hero__day ${ativo ? 'streak-hero__day--ativo' : ''}" title="${DIAS_SEMANA[diaSemanaIndice]}"></span>`;
+            return `
+              <span class="streak-hero__day-col">
+                <span class="streak-hero__day ${ativo ? 'streak-hero__day--ativo' : ''}"></span>
+                <span class="streak-hero__day-label">${DIAS_SEMANA[diaSemanaIndice]}</span>
+              </span>
+            `;
           })
           .join('')}
       </div>
@@ -33,8 +42,12 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
 
     <div class="stat-grid">
       <div class="stat-tile">
+        <div class="stat-tile__value">${stats.revisoesHoje}</div>
+        <div class="stat-tile__label">Revisões hoje</div>
+      </div>
+      <div class="stat-tile">
         <div class="stat-tile__value">${stats.revisoesUltimos7Dias}</div>
-        <div class="stat-tile__label">Revisões (7 dias)</div>
+        <div class="stat-tile__label">Revisões (últimos 7 dias)</div>
       </div>
       <div class="stat-tile">
         <div class="stat-tile__value">${stats.streakDias}</div>
@@ -56,6 +69,23 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
         <div class="stat-tile__value">${stats.itensEmConsulta}</div>
         <div class="stat-tile__label">Aposentadas</div>
       </div>
+    </div>
+
+    <div class="section-header">
+      <span class="section-header__title" style="font-size: var(--font-size-base);">Onde suas notas estão na escada</span>
+    </div>
+    <p class="screen-hint" style="margin-top:0;">Quantas notas pendentes estão hoje em cada estágio — quanto mais em 30/180 dias, melhor sua retenção.</p>
+    <div class="stage-grid">
+      ${stats.porEstagio
+        .map(
+          (s) => `
+        <div class="stage-tile">
+          <div class="stage-tile__value">${s.count}</div>
+          <div class="stage-tile__label">${ESTAGIO_LABEL[s.estagio]}</div>
+        </div>
+      `,
+        )
+        .join('')}
     </div>
 
     <div class="section-header">

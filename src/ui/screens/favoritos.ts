@@ -12,9 +12,6 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
 
   if (temas.length === 0 && notas.length === 0) {
     container.innerHTML = `
-      <div class="section-header">
-        <span class="section-header__title">Favoritos</span>
-      </div>
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">⭐</div>
         <div class="empty-state__title">Nenhum favorito ainda</div>
@@ -51,10 +48,7 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
   }
 
   container.innerHTML = `
-    <div class="section-header">
-      <span class="section-header__title">Favoritos</span>
-    </div>
-    <p class="screen-hint">Temas e Notas que você marcou pra achar rápido, sem navegar pelos Espaços.</p>
+    <p class="screen-hint" style="margin-top:0;">Temas e Notas que você marcou pra achar rápido, sem navegar pelos Espaços.</p>
 
     ${
       temas.length > 0

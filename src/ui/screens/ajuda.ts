@@ -22,6 +22,19 @@ const EXEMPLO_LIVRO = `Espaço: Livro: Quem Pensa Enriquece (categoria: Livros)
            Conteúdo: explicação completa
            Fonte: "Capítulo 8"`;
 
+const EXEMPLO_MODULOS = `Espaço: MGD9 (categoria: Cursos)
+  Tema: Módulo 1 — Fundamentos (categoria: Fundamentos)
+    Nota → Título: "O que a aula 1 explica sobre X?"
+           Conteúdo: resumo da aula 1
+           Fonte: "Aula 1"
+    Nota → Título: "O que a aula 2 explica sobre Y?"
+           Conteúdo: resumo da aula 2
+           Fonte: "Aula 2"
+  Tema: Módulo 2 — Avançado (categoria: Avançado)
+    Nota → Título: "O que a aula 1 do módulo 2 explica?"
+           Conteúdo: resumo da aula
+           Fonte: "Aula 1"`;
+
 interface Secao {
   titulo: string;
   corpoHtml: string;
@@ -136,10 +149,6 @@ const SECOES: Secao[] = [
 export function renderAjuda(container: HTMLElement): void {
   container.innerHTML = `
     <div class="content-narrow">
-      <div class="section-header">
-        <span class="section-header__title">Como Usar</span>
-      </div>
-
       <div class="card" style="margin-bottom: var(--space-6);">
         <p class="settings-row__desc" style="margin-top:0;">
           Dois exemplos completos, de ponta a ponta, pra deixar a estrutura
@@ -154,12 +163,18 @@ export function renderAjuda(container: HTMLElement): void {
             <div class="settings-row__label" style="margin-bottom: var(--space-2);">Exemplo 2 — um livro</div>
             <pre class="help-tree">${EXEMPLO_LIVRO}</pre>
           </div>
+          <div>
+            <div class="settings-row__label" style="margin-bottom: var(--space-2);">Exemplo 3 — curso com módulos e aulas</div>
+            <pre class="help-tree">${EXEMPLO_MODULOS}</pre>
+          </div>
         </div>
         <p class="settings-row__desc" style="margin-bottom:0;">
-          Repare: <strong>um Tema não precisa ter categoria</strong>. No curso, a categoria
-          representa o módulo (vários Temas compartilham a mesma); num livro, muitas vezes
-          cada Tema (capítulo) já é específico o suficiente e pode ficar sem categoria.
-          Categoria é uma ferramenta de organização, não uma obrigação.
+          Repare: <strong>um Tema não precisa ter categoria</strong>, e você escolhe o quão
+          "fino" cada nível fica. No Exemplo 1, um Tema é uma aula, e a categoria agrupa as
+          aulas do mesmo módulo. No Exemplo 3, um Tema já <strong>é</strong> o módulo inteiro,
+          categoria vira um jeito extra de agrupar módulos (ex: por dificuldade), e cada Nota
+          é uma aula daquele módulo. Nenhum dos dois está certo ou errado — use o que fizer
+          mais sentido pra como você quer revisar depois.
         </p>
       </div>
 
