@@ -4,8 +4,9 @@ import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
 import { accentVar } from '../../lib/color';
-import { navigate } from '../router';
+import { navigate, encodeCategoriaSegment } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
   const espaco = await getEspaco(espacoId);
@@ -20,15 +21,17 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const categoriasTema = await listCategoriasTemas(espaco.perfil_id);
 
   container.innerHTML = `
-    <div class="breadcrumb">
-      <button class="link" data-back type="button">← Espaços</button>
-    </div>
+    ${renderBreadcrumb([
+      { label: 'Espaços', route: 'espacos' },
+      ...(espaco.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
+      { label: espaco.nome, colorKey: espaco.id },
+    ])}
 
     <div class="section-header">
       <span class="section-header__title">
         <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>${escapeHtml(espaco.nome)}
       </span>
-      <div style="display:flex; gap: var(--space-2); flex-wrap: wrap;">
+      <div class="section-header__actions">
         <button class="btn btn--secondary btn--sm" id="btn-editar" type="button">Editar</button>
         <button class="btn btn--secondary btn--sm" id="btn-arquivar" type="button" ${espaco.arquivado ? '' : 'title="As revisões já agendadas continuam normalmente — só some da lista principal"'}>
           ${espaco.arquivado ? 'Reativar' : 'Arquivar'}
@@ -105,10 +108,13 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         : grupos
             .map(
               (grupo) => `
-      <details class="category-group" open>
+      <details class="category-group">
         <summary class="category-group__title">
-          ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
-          ${escapeHtml(grupo.categoria || 'Sem categoria')}
+          <span class="category-group__label">
+            ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
+            ${escapeHtml(grupo.categoria || 'Sem categoria')}
+          </span>
+          <button class="category-group__pdf" type="button" data-pdf-categoria="${escapeHtml(encodeCategoriaSegment(grupo.categoria))}" title="Gerar PDF só desta categoria">PDF</button>
         </summary>
         <div class="item-list">
           ${grupo.itens
@@ -131,7 +137,15 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     }
   `;
 
-  container.querySelector('[data-back]')?.addEventListener('click', () => navigate('espacos'));
+  bindBreadcrumb(container);
+
+  container.querySelectorAll<HTMLButtonElement>('[data-pdf-categoria]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      navigate(`espacos/${espacoId}/pdf/${btn.dataset.pdfCategoria}`);
+    });
+  });
 
   container.querySelector('#btn-arquivar')?.addEventListener('click', async () => {
     await setEspacoArquivado(espaco.id, !espaco.arquivado);

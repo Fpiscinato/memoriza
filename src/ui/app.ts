@@ -114,7 +114,7 @@ async function render(root: HTMLElement): Promise<void> {
       await renderEspacoDetail(screenContainer, route.id);
       break;
     case 'espaco-pdf':
-      await renderEspacoPdf(screenContainer, route.id);
+      await renderEspacoPdf(screenContainer, route.id, route.categoria);
       break;
     case 'painel':
       await renderPainel(screenContainer, { perfilId: perfil.id });

@@ -3,7 +3,7 @@ export type Route =
   | { name: 'hoje' }
   | { name: 'espacos' }
   | { name: 'espaco'; id: string }
-  | { name: 'espaco-pdf'; id: string }
+  | { name: 'espaco-pdf'; id: string; categoria?: string }
   | { name: 'tema'; id: string }
   | { name: 'nota-nova'; temaId: string }
   | { name: 'nota'; id: string }
@@ -13,6 +13,17 @@ export type Route =
   | { name: 'config' };
 
 export type TopLevelRoute = 'hoje' | 'espacos' | 'favoritos' | 'painel' | 'ajuda' | 'config';
+
+/** Placeholder pra categoria vazia ("Sem categoria") — um segmento de rota vazio some no split. */
+const CATEGORIA_VAZIA = '_sem-categoria_';
+
+export function encodeCategoriaSegment(categoria: string): string {
+  return categoria.trim() === '' ? CATEGORIA_VAZIA : encodeURIComponent(categoria);
+}
+
+function decodeCategoriaSegment(segmento: string): string {
+  return segmento === CATEGORIA_VAZIA ? '' : decodeURIComponent(segmento);
+}
 
 function segments(): string[] {
   return window.location.hash
@@ -34,6 +45,9 @@ export function getCurrentRoute(): Route {
     if (parts.length === 1) return { name: 'espacos' };
     if (parts.length === 2) return { name: 'espaco', id: parts[1] };
     if (parts.length === 3 && parts[2] === 'pdf') return { name: 'espaco-pdf', id: parts[1] };
+    if (parts.length === 4 && parts[2] === 'pdf') {
+      return { name: 'espaco-pdf', id: parts[1], categoria: decodeCategoriaSegment(parts[3]) };
+    }
   }
   if (parts[0] === 'temas' && parts.length === 2) return { name: 'tema', id: parts[1] };
   if (parts[0] === 'temas' && parts.length === 3 && parts[2] === 'nova-nota') {

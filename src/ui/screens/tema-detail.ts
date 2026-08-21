@@ -4,6 +4,7 @@ import { listNotas } from '../../db/notas';
 import { escapeHtml } from '../../lib/dom';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 
 export async function renderTemaDetail(container: HTMLElement, temaId: string): Promise<void> {
   const tema = await getTema(temaId);
@@ -16,13 +17,17 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const categoriasTema = espaco ? await listCategoriasTemas(espaco.perfil_id) : [];
 
   container.innerHTML = `
-    <div class="breadcrumb">
-      <button class="link" data-back type="button">← ${escapeHtml(espaco?.nome ?? 'Espaço')}</button>
-    </div>
+    ${renderBreadcrumb([
+      { label: 'Espaços', route: 'espacos' },
+      ...(espaco?.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
+      ...(espaco ? [{ label: espaco.nome, route: `espacos/${espaco.id}`, colorKey: espaco.id }] : []),
+      ...(tema.categoria ? [{ label: tema.categoria, colorKey: tema.categoria.toLowerCase() }] : []),
+      { label: tema.nome },
+    ])}
 
     <div class="section-header">
       <span class="section-header__title">${tema.favorito ? '⭐ ' : ''}${escapeHtml(tema.nome)}</span>
-      <div style="display:flex; gap: var(--space-2);">
+      <div class="section-header__actions">
         <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
           ${tema.favorito ? '★ Favorito' : '☆ Favoritar'}
         </button>
@@ -94,7 +99,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     }
   `;
 
-  container.querySelector('[data-back]')?.addEventListener('click', () => navigate(`espacos/${tema.espaco_id}`));
+  bindBreadcrumb(container);
   container.querySelector('#btn-nova-nota')?.addEventListener('click', () => navigate(`temas/${temaId}/nova-nota`));
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`notas/${btn.dataset.open}`));

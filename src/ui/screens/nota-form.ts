@@ -7,6 +7,7 @@ import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 
 export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
 
@@ -39,19 +40,21 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const temItemPendente = nota ? await hasPendingItem(nota.id) : false;
 
   container.innerHTML = `
-    <div class="breadcrumb">
-      <button class="link" data-back type="button">← Voltar</button>
-    </div>
-    <p class="text-muted" style="margin: calc(-1 * var(--space-3)) 0 var(--space-4); font-size: var(--font-size-sm);">
-      ${escapeHtml(espaco?.nome ?? '')} › ${escapeHtml(tema.nome)}
-    </p>
+    ${renderBreadcrumb([
+      { label: 'Espaços', route: 'espacos' },
+      ...(espaco?.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
+      ...(espaco ? [{ label: espaco.nome, route: `espacos/${espaco.id}`, colorKey: espaco.id }] : []),
+      ...(tema.categoria ? [{ label: tema.categoria, colorKey: tema.categoria.toLowerCase() }] : []),
+      { label: tema.nome, route: `temas/${tema.id}` },
+      { label: params.mode === 'nova' ? 'Nova nota' : nota?.titulo || 'Editar nota' },
+    ])}
 
     <div class="section-header">
       <span class="section-header__title">${params.mode === 'nova' ? 'Nova nota' : 'Editar nota'}</span>
       ${
         params.mode === 'editar'
           ? `
-        <div style="display:flex; gap: var(--space-2);">
+        <div class="section-header__actions">
           <button class="btn btn--secondary btn--sm" id="btn-favoritar-nota" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
             ${nota?.favorito ? '★ Favorito' : '☆ Favoritar'}
           </button>
@@ -145,7 +148,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   `;
 
   const backRoute = `temas/${temaId}`;
-  container.querySelector('[data-back]')?.addEventListener('click', () => navigate(backRoute));
+  bindBreadcrumb(container);
   container.querySelector('#btn-cancelar')?.addEventListener('click', () => navigate(backRoute));
 
   const tabEditar = container.querySelector<HTMLButtonElement>('#tab-editar')!;

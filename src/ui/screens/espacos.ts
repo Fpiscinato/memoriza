@@ -21,7 +21,9 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   container.innerHTML = `
     <div class="section-header">
       <span class="section-header__title">Espaços de estudo</span>
-      <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Novo espaço</button>
+      <div class="section-header__actions">
+        <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Novo espaço</button>
+      </div>
     </div>
     <p class="screen-hint">Cada Espaço é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
 
@@ -55,10 +57,12 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         : grupos
             .map(
               (grupo) => `
-      <details class="category-group" open>
+      <details class="category-group">
         <summary class="category-group__title">
-          ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
-          ${escapeHtml(grupo.categoria || 'Sem categoria')}
+          <span class="category-group__label">
+            ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
+            ${escapeHtml(grupo.categoria || 'Sem categoria')}
+          </span>
         </summary>
         <div class="item-list">
           ${grupo.itens.map((e) => renderRow(e, temaCounts.get(e.id) ?? 0)).join('')}
