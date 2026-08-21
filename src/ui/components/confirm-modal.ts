@@ -6,6 +6,8 @@ export interface ConfirmOptions {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** 'danger' (padrão) pra ações irreversíveis (excluir); 'primary' pra ações reversíveis que só merecem uma checagem (ex: arquivar). */
+  confirmVariant?: 'danger' | 'primary';
 }
 
 /** Modal de confirmação genérico, usado antes de qualquer exclusão. Resolve `true`/`false`. */
@@ -18,7 +20,7 @@ export function confirmAction(opts: ConfirmOptions): Promise<boolean> {
         <div class="modal__title" id="modal-title">${escapeHtml(opts.title)}</div>
         <p class="modal__message">${escapeHtml(opts.message).replace(/\n/g, '<br>')}</p>
         <div class="form-actions">
-          <button class="btn btn--danger" id="modal-confirm" type="button">${escapeHtml(opts.confirmLabel ?? 'Excluir')}</button>
+          <button class="btn btn--${opts.confirmVariant ?? 'danger'}" id="modal-confirm" type="button">${escapeHtml(opts.confirmLabel ?? 'Excluir')}</button>
           <button class="btn btn--secondary" id="modal-cancel" type="button">${escapeHtml(opts.cancelLabel ?? 'Cancelar')}</button>
         </div>
       </div>

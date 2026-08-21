@@ -51,6 +51,16 @@ export function formatDateTimeBR(iso: string): string {
   });
 }
 
+/** Duração em segundos, formatada de forma curta ("45 min", "1h 20min") pra exibição. */
+export function formatDuracao(totalSegundos: number): string {
+  if (totalSegundos <= 0) return 'ainda sem registro';
+  const horas = Math.floor(totalSegundos / 3600);
+  const minutos = Math.round((totalSegundos % 3600) / 60);
+  if (horas > 0) return `${horas}h ${minutos}min`;
+  if (minutos > 0) return `${minutos} min`;
+  return '< 1 min';
+}
+
 /**
  * Soma `days` dias corridos a uma data-calendário YYYY-MM-DD. Trabalha em UTC de propósito:
  * `data_agendada`/`data_concluida`/`validade_ate` representam um dia do calendário de

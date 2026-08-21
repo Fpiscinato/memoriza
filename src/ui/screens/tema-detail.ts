@@ -1,8 +1,9 @@
-import { countTemaCascade, deleteTemaCascade, getTema, listCategoriasTemas, toggleTemaFavorito, updateTema } from '../../db/temas';
+import { countTemaCascade, deleteTemaCascade, getTema, listTemas, toggleTemaFavorito, updateTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { listNotas } from '../../db/notas';
 import { escapeHtml } from '../../lib/dom';
 import { accentVar } from '../../lib/color';
+import { distinctCategorias } from '../../lib/group';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
@@ -16,7 +17,10 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   }
   const espaco = await getEspaco(tema.espaco_id);
   const notas = await listNotas(temaId);
-  const categoriasTema = espaco ? await listCategoriasTemas(espaco.perfil_id) : [];
+  // Escopo é só o Espaço deste Tema, não o perfil inteiro — sugestão precisa ser relevante
+  // pro "curso" atual.
+  const temasDoEspaco = espaco ? await listTemas(espaco.id) : [];
+  const categoriasTema = distinctCategorias(temasDoEspaco.map((t) => t.categoria));
   const temaAccentKey = tema.categoria
     ? tema.categoria.toLowerCase()
     : espaco?.categoria

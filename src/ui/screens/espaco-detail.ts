@@ -1,10 +1,11 @@
 import { countEspacoCascade, deleteEspacoCascade, getEspaco, listCategoriasEspacos, setEspacoArquivado, updateEspaco } from '../../db/espacos';
-import { createTema, listCategoriasTemas, listTemas } from '../../db/temas';
+import { createTema, listTemas } from '../../db/temas';
 import { getDB } from '../../db/schema';
+import { getTempoTotalEspaco } from '../../db/dashboard';
 import { escapeHtml } from '../../lib/dom';
-import { agruparPorCategoria } from '../../lib/group';
+import { agruparPorCategoria, distinctCategorias } from '../../lib/group';
 import { accentVar } from '../../lib/color';
-import { daysBetweenISODates, formatDateBR, toLondonISODate } from '../../lib/time';
+import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate, encodeCategoriaSegment } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
@@ -22,7 +23,9 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const notaCounts = await countNotasPorTema(temas.map((t) => t.id));
   const grupos = agruparPorCategoria(temas);
   const categoriasEspaco = await listCategoriasEspacos(espaco.perfil_id);
-  const categoriasTema = await listCategoriasTemas(espaco.perfil_id);
+  // Escopo é só este Espaço (não o perfil inteiro) — sugestão de categoria de Tema precisa
+  // ser relevante pro "curso" atual, não misturar módulos de outros Espaços.
+  const categoriasTema = distinctCategorias(temas.map((t) => t.categoria));
 
   container.innerHTML = `
     ${renderBreadcrumb([
@@ -158,6 +161,16 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   });
 
   container.querySelector('#btn-arquivar')?.addEventListener('click', async () => {
+    if (!espaco.arquivado) {
+      const ok = await confirmAction({
+        title: `Arquivar "${espaco.nome}"?`,
+        message:
+          'Some da lista principal e não deixa criar temas ou notas novas nele — mas as revisões já agendadas continuam normalmente, e dá pra reativar quando quiser.',
+        confirmLabel: 'Arquivar',
+        confirmVariant: 'primary',
+      });
+      if (!ok) return;
+    }
     await setEspacoArquivado(espaco.id, !espaco.arquivado);
     renderEspacoDetail(container, espacoId);
   });
@@ -178,31 +191,52 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     renderEspacoDetail(container, espacoId);
   });
 
-  container.querySelector('#btn-detalhes')?.addEventListener('click', () => {
+  container.querySelector('#btn-detalhes')?.addEventListener('click', async () => {
     const totalNotas = Array.from(notaCounts.values()).reduce((soma, n) => soma + n, 0);
     const hoje = toLondonISODate();
+    const tempoTotalSegundos = await getTempoTotalEspaco(espaco.id);
 
-    let statusInfo: string;
+    let diasValue: string;
+    let diasLabel: string;
+    let statusCaption: string;
     if (espaco.arquivado && espaco.arquivado_em) {
       const dias = daysBetweenISODates(toLondonISODate(new Date(espaco.criado_em)), toLondonISODate(new Date(espaco.arquivado_em)));
-      statusInfo = `Arquivado em ${formatDateBR(espaco.arquivado_em)} — levou ${dias} dia(s) desde a criação.`;
+      diasValue = String(dias);
+      diasLabel = 'Dias até arquivar';
+      statusCaption = `Criado em ${formatDateBR(espaco.criado_em)} · arquivado em ${formatDateBR(espaco.arquivado_em)}`;
     } else if (espaco.arquivado) {
-      statusInfo = 'Arquivado antes desse registro de data existir, então não dá pra calcular quanto tempo levou.';
+      diasValue = '—';
+      diasLabel = 'Duração';
+      statusCaption = `Criado em ${formatDateBR(espaco.criado_em)} · arquivado antes desse registro de data existir`;
     } else {
       const dias = daysBetweenISODates(toLondonISODate(new Date(espaco.criado_em)), hoje);
-      statusInfo = `Ativo há ${dias} dia(s).`;
+      diasValue = String(dias);
+      diasLabel = dias === 1 ? 'Dia ativo' : 'Dias ativo';
+      statusCaption = `Criado em ${formatDateBR(espaco.criado_em)}`;
     }
 
     showInfo({
-      title: `Detalhes — ${espaco.nome}`,
+      title: espaco.nome,
       bodyHtml: `
-        <div class="stack">
-          <div class="settings-row"><span class="settings-row__label">Criado em</span><span>${formatDateBR(espaco.criado_em)}</span></div>
-          <div class="settings-row"><span class="settings-row__label">Temas</span><span>${temas.length}</span></div>
-          <div class="settings-row"><span class="settings-row__label">Notas</span><span>${totalNotas}</span></div>
-          <div class="settings-row"><span class="settings-row__label">Status</span><span>${espaco.arquivado ? 'Arquivado' : 'Ativo'}</span></div>
+        <div class="stat-grid" style="margin-bottom: var(--space-3); grid-template-columns: repeat(2, 1fr);">
+          <div class="stat-tile">
+            <div class="stat-tile__value">${temas.length}</div>
+            <div class="stat-tile__label">Temas</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value">${totalNotas}</div>
+            <div class="stat-tile__label">Notas</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value" style="font-size: var(--font-size-md);">${formatDuracao(tempoTotalSegundos)}</div>
+            <div class="stat-tile__label">Tempo revisando</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value">${diasValue}</div>
+            <div class="stat-tile__label">${diasLabel}</div>
+          </div>
         </div>
-        <p class="text-muted" style="margin: var(--space-3) 0 0;">${statusInfo}</p>
+        <p class="text-muted" style="margin:0;">${statusCaption} · ${espaco.arquivado ? 'Arquivado' : 'Ativo'}</p>
       `,
     });
   });

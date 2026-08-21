@@ -10,12 +10,51 @@ export interface TodayContext {
   perfilId: string;
 }
 
+// Cronômetro da revisão em andamento — conta só o tempo com a aba em foco (pausa se o
+// usuário trocar de app/aba), e tem um teto pra não inflar o número se a tela ficar aberta
+// esquecida. Estado de módulo de propósito: sobrevive entre a chamada "título" e "revelado"
+// de renderRevisao pro mesmo item, que são dois innerHTML/render diferentes.
+const DURACAO_MAX_SEGUNDOS = 5 * 60;
+let timer: { itemId: string; acumuladoMs: number; retomadoEm: number | null } | null = null;
+
+function onVisibilityChange(): void {
+  if (!timer) return;
+  if (document.hidden) {
+    if (timer.retomadoEm != null) {
+      timer.acumuladoMs += Date.now() - timer.retomadoEm;
+      timer.retomadoEm = null;
+    }
+  } else if (timer.retomadoEm == null) {
+    timer.retomadoEm = Date.now();
+  }
+}
+
+function iniciarTimerSeNecessario(itemId: string): void {
+  if (timer && timer.itemId === itemId) return;
+  pararTimer();
+  timer = { itemId, acumuladoMs: 0, retomadoEm: document.hidden ? null : Date.now() };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+}
+
+function segundosDecorridos(): number | undefined {
+  if (!timer) return undefined;
+  let ms = timer.acumuladoMs;
+  if (timer.retomadoEm != null) ms += Date.now() - timer.retomadoEm;
+  return Math.min(DURACAO_MAX_SEGUNDOS, Math.round(ms / 1000));
+}
+
+function pararTimer(): void {
+  if (timer) document.removeEventListener('visibilitychange', onVisibilityChange);
+  timer = null;
+}
+
 export async function renderToday(container: HTMLElement, ctx: TodayContext): Promise<void> {
   const fila = await getTodayQueue(ctx.perfilId);
   await renderLista(container, ctx, fila);
 }
 
 async function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry[]): Promise<void> {
+  pararTimer();
   const feitasHoje = await countRevisoesHoje(ctx.perfilId);
   const contador =
     feitasHoje > 0
@@ -96,6 +135,7 @@ function renderRevisao(
   filaCompleta: QueueEntry[],
   revelado = false,
 ): void {
+  iniciarTimerSeNecessario(entry.item.id);
   const aviso = precisaAvisoDeValidade(entry.nota);
 
   container.innerHTML = `
@@ -134,7 +174,10 @@ function renderRevisao(
   `;
 
   container.querySelector('[data-voltar]')?.addEventListener('click', () => void renderLista(container, ctx, filaCompleta));
-  container.querySelector('[data-editar]')?.addEventListener('click', () => navigate(`notas/${entry.nota.id}`));
+  container.querySelector('[data-editar]')?.addEventListener('click', () => {
+    pararTimer();
+    navigate(`notas/${entry.nota.id}`);
+  });
   container.querySelector('#btn-revelar')?.addEventListener('click', () => {
     renderRevisao(container, ctx, entry, filaCompleta, true);
   });
@@ -142,7 +185,9 @@ function renderRevisao(
   container.querySelectorAll<HTMLButtonElement>('[data-avaliacao]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const avaliacao = btn.dataset.avaliacao as Avaliacao;
-      const resultado = await completeReview(entry.item.id, avaliacao);
+      const duracaoSegundos = segundosDecorridos();
+      pararTimer();
+      const resultado = await completeReview(entry.item.id, avaliacao, duracaoSegundos);
       const novaFila = await getTodayQueue(ctx.perfilId);
 
       if (resultado.aposentado) {

@@ -59,8 +59,10 @@ const SECOES: Secao[] = [
       </ul>
       <p>Use a <strong>categoria</strong> do Espaço para agrupar por tipo — ex: categoria
       "Cursos" para o curso de investimentos, categoria "Livros" para os livros, categoria
-      "Estudos" para a Bíblia. Assim que você tiver mais de um curso ou mais livros, a tela
-      de Espaços continua organizada em vez de virar uma lista solta.</p>`,
+      "Bíblia" pra estudos bíblicos. Essas três já aparecem sugeridas na hora de criar um
+      Espaço novo, mesmo antes de você ter usado alguma — mas é só sugestão, digite o que
+      quiser. Assim que você tiver mais de um curso ou mais livros, a tela de Espaços continua
+      organizada em vez de virar uma lista solta.</p>`,
   },
   {
     titulo: 'Temas — os assuntos/aulas dentro de um Espaço',
@@ -69,7 +71,10 @@ const SECOES: Secao[] = [
       aulas de um mesmo módulo. Use a <strong>categoria</strong> do Tema pra marcar o
       módulo — ex: categoria "Faixa Branca" nos dois, porque são do mesmo módulo do curso.
       No dia seguinte, quando a aula for sobre outro assunto do mesmo módulo, crie um Tema
-      novo com a mesma categoria.</p>`,
+      novo com a mesma categoria. As categorias sugeridas aqui são só as já usadas <strong>
+      neste mesmo Espaço</strong> — o "Faixa Branca" de um curso não aparece sugerido dentro
+      de outro curso diferente, pra não misturar vocabulário de assuntos que não têm nada a
+      ver.</p>`,
   },
   {
     titulo: 'Notas — o que você anota',
@@ -102,7 +107,10 @@ const SECOES: Secao[] = [
       Depois de revelar o conteúdo, avalie: <strong>Fácil</strong> (lembrou na hora — vai
       demorar mais pra essa nota voltar), <strong>Médio</strong> (lembrou com esforço —
       segue o ritmo normal), <strong>Difícil</strong> (não lembrou ou lembrou errado — essa
-      nota volta mais cedo pra reforçar).</p>`,
+      nota volta mais cedo pra reforçar).</p>
+      <p>Enquanto você revisa, o app mede quanto tempo a tela ficou em foco em cada nota (pausa
+      se você trocar de aba/app no meio) — isso alimenta o "Tempo hoje" no Painel e o "Tempo
+      revisando" nos Detalhes de cada Espaço. Não precisa fazer nada pra isso funcionar.</p>`,
   },
   {
     titulo: 'Favoritos',
@@ -115,15 +123,21 @@ const SECOES: Secao[] = [
     titulo: 'Arquivar × Excluir um Espaço',
     corpoHtml: `<p><strong>Arquivar</strong> é para quando você termina um curso ou um livro,
       mas ainda quer ser cobrado a revisar o que aprendeu no longo prazo (D+180 continua
-      funcionando) — só some da lista principal e não permite criar nota nova ali.
+      funcionando) — só some da lista principal e não permite criar nota nova ali. Pede
+      confirmação antes, pra evitar clique sem querer, mas dá pra reativar quando quiser.
       <strong>Excluir</strong> é definitivo, apaga tudo (Temas, Notas, histórico de
-      revisão) — use só se criou algo por engano.</p>`,
+      revisão) — use só se criou algo por engano.</p>
+      <p>O botão <strong>ℹ️ Detalhes</strong> (no menu "⋯" do Espaço) mostra um resumo:
+      quantos Temas e Notas, quanto tempo total você já passou revisando notas daquele
+      Espaço, e há quantos dias ele está ativo (ou quanto tempo levou até ser arquivado).</p>`,
   },
   {
     titulo: 'Painel',
-    corpoHtml: `<p>Mostra sua sequência de dias estudando (streak) e o ranking dos Temas onde
-      você mais marcou "Difícil" — geralmente esses são os pontos fracos reais, que a
-      sensação de "acho que já sei" não mostra sozinha.</p>`,
+    corpoHtml: `<p>Mostra sua sequência de dias estudando (streak), quanto tempo você estudou
+      hoje, quantas notas estão em cada estágio da escada de revisão (1/7/30/180 dias — quanto
+      mais em 30/180, melhor sua retenção), e o ranking dos Temas onde você mais marcou
+      "Difícil" — geralmente esses são os pontos fracos reais, que a sensação de "acho que já
+      sei" não mostra sozinha.</p>`,
   },
   {
     titulo: 'Exportar em PDF',

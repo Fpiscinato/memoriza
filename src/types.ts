@@ -66,6 +66,8 @@ export interface ItemRevisao {
   status: StatusRevisao;
   avaliacao?: Avaliacao;
   streak_facil: number;
+  /** Só definido quando concluída (status 'feita') — tempo com a tela em foco, entre ver o título e avaliar. */
+  duracao_segundos?: number;
   criado_em: string;
   atualizado_em: string;
 }

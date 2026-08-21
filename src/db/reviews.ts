@@ -57,6 +57,7 @@ export async function getTodayQueue(perfilId: string): Promise<QueueEntry[]> {
 export async function completeReview(
   itemId: string,
   avaliacao: Avaliacao,
+  duracaoSegundos?: number,
 ): Promise<NextReviewResult> {
   const db = await getDB();
   const item = await db.get('itens_revisao', itemId);
@@ -71,6 +72,7 @@ export async function completeReview(
     status: 'feita',
     avaliacao,
     data_concluida: hoje,
+    duracao_segundos: duracaoSegundos,
     atualizado_em: now,
   };
 

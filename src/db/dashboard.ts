@@ -21,6 +21,8 @@ export interface DashboardStats {
   itensEmConsulta: number;
   /** Quantas notas pendentes estão hoje em cada estágio da escada (1/7/30/180 dias) — mostra o progresso, não só o que já foi feito. */
   porEstagio: { estagio: '1' | '7' | '30' | '180'; count: number }[];
+  /** Soma de duracao_segundos das revisões concluídas hoje (só conta a partir de quando isso passou a ser medido). */
+  tempoHojeSegundos: number;
 }
 
 const TOP_RANKING = 5;
@@ -33,7 +35,9 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   const itens = await db.getAllFromIndex('itens_revisao', 'perfil_id', perfilId);
   const revisoesFeitas = itens.filter((i) => i.status === 'feita' && i.avaliacao);
 
-  const revisoesHoje = revisoesFeitas.filter((i) => i.data_concluida === hoje).length;
+  const revisoesDeHoje = revisoesFeitas.filter((i) => i.data_concluida === hoje);
+  const revisoesHoje = revisoesDeHoje.length;
+  const tempoHojeSegundos = revisoesDeHoje.reduce((soma, i) => soma + (i.duracao_segundos ?? 0), 0);
 
   const revisoesUltimos7Dias = revisoesFeitas.filter(
     (i) => i.data_concluida && i.data_concluida >= inicioJanela && i.data_concluida <= hoje,
@@ -100,5 +104,23 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
     totalNotas,
     itensEmConsulta,
     porEstagio,
+    tempoHojeSegundos,
   };
+}
+
+/** Soma de duracao_segundos de todas as revisões concluídas de notas deste Espaço — pro modal de Detalhes. */
+export async function getTempoTotalEspaco(espacoId: string): Promise<number> {
+  const db = await getDB();
+  const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
+  let total = 0;
+  for (const tema of temas) {
+    const notas = await db.getAllFromIndex('notas', 'tema_id', tema.id);
+    for (const nota of notas) {
+      const itens = await db.getAllFromIndex('itens_revisao', 'nota_id', nota.id);
+      for (const item of itens) {
+        total += item.duracao_segundos ?? 0;
+      }
+    }
+  }
+  return total;
 }

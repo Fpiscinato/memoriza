@@ -1,5 +1,6 @@
 import { getDashboardStats } from '../../db/dashboard';
 import { escapeHtml } from '../../lib/dom';
+import { formatDuracao } from '../../lib/time';
 
 export interface PainelContext {
   perfilId: string;
@@ -44,6 +45,10 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       <div class="stat-tile">
         <div class="stat-tile__value">${stats.revisoesHoje}</div>
         <div class="stat-tile__label">Revisões hoje</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__value" style="font-size: var(--font-size-md);">${formatDuracao(stats.tempoHojeSegundos)}</div>
+        <div class="stat-tile__label">Tempo hoje</div>
       </div>
       <div class="stat-tile">
         <div class="stat-tile__value">${stats.revisoesUltimos7Dias}</div>
