@@ -8,8 +8,17 @@ import { renderMarkdown, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/m
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
+import { renderFieldHint } from '../components/field-hint';
 
 export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
+
+// Mapeia cada cor de texto pra sua variável de acento — azul/vermelho/verde (índices 0/4/1
+// da paleta fixa), ver as classes .text-color--* em src/styles/components.css.
+const TEXT_COLOR_SWATCH: Record<(typeof TEXT_COLOR_NAMES)[number], string> = {
+  azul: 'var(--accent-0)',
+  vermelho: 'var(--accent-4)',
+  verde: 'var(--accent-1)',
+};
 
 export async function renderNotaForm(container: HTMLElement, params: NotaFormParams): Promise<void> {
   const temaId = params.mode === 'nova' ? params.temaId : (await getNota(params.notaId))?.tema_id;
@@ -81,31 +90,31 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     <div class="content-narrow">
     <div class="card stack">
       <div class="field">
-        <label class="field__label" for="input-titulo">Título</label>
+        <label class="field__label" for="input-titulo">Título${renderFieldHint('É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.')}</label>
         <input class="input" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? '')}" />
-        <p class="settings-row__desc" style="margin:0;">É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.</p>
       </div>
 
       <div class="field">
-        <label class="field__label" for="input-fonte">Fonte (opcional)</label>
+        <label class="field__label" for="input-fonte">Fonte (opcional)${renderFieldHint('Citação/referência — só aparece depois de revelar a resposta, junto do conteúdo.')}</label>
         <input class="input" id="input-fonte" type="text" placeholder="Ex: Aula 4, slide 12 ou página 87" maxlength="200" value="${escapeHtml(nota?.fonte ?? '')}" />
-        <p class="settings-row__desc" style="margin:0;">Citação/referência — só aparece depois de revelar a resposta, junto do conteúdo.</p>
       </div>
 
       <div>
         <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-2); flex-wrap: wrap;">
           <div class="tabs" role="tablist">
-            <button class="tabs__tab" id="tab-editar" role="tab" aria-selected="true" type="button">Editar</button>
-            <button class="tabs__tab" id="tab-preview" role="tab" aria-selected="false" type="button">Preview</button>
+            <button class="tabs__tab" id="tab-editar" role="tab" aria-selected="true" type="button">Escrever</button>
+            <button class="tabs__tab" id="tab-preview" role="tab" aria-selected="false" type="button">Ver como fica</button>
           </div>
-          <select class="input" id="input-cor-aplicar" style="max-width:150px;" title="Selecione um trecho do conteúdo antes de escolher uma cor">
-            <option value="">Cor do texto…</option>
-            ${TEXT_COLOR_NAMES.map((cor) => `<option value="${cor}">${escapeHtml(TEXT_COLOR_LABELS[cor])}</option>`).join('')}
-          </select>
+          <span style="display:flex; align-items:center;">
+            <div class="color-picker" role="group" aria-label="Cor do texto">
+              ${TEXT_COLOR_NAMES.map(
+                (cor) =>
+                  `<button type="button" class="color-picker__swatch" data-cor="${cor}" style="--dot-color:${TEXT_COLOR_SWATCH[cor]}" title="${escapeHtml(TEXT_COLOR_LABELS[cor])}" aria-label="${escapeHtml(TEXT_COLOR_LABELS[cor])}"></button>`,
+              ).join('')}
+            </div>
+            ${renderFieldHint('Selecione um trecho do conteúdo abaixo e clique numa bolinha pra colorir só aquele trecho — dá pra usar as três cores na mesma nota.')}
+          </span>
         </div>
-        <p class="settings-row__desc" style="margin: var(--space-1) 0 var(--space-2);">
-          Pra colorir: selecione um trecho no conteúdo e escolha uma cor — dá pra usar várias cores diferentes na mesma nota.
-        </p>
         <div id="pane-editar">
           <textarea class="textarea" id="input-conteudo" placeholder="Conteúdo em markdown simples: # títulos, **negrito**, *itálico*, listas com -, [link](url)">${escapeHtml(nota?.conteudo ?? '')}</textarea>
         </div>
@@ -115,11 +124,8 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       <div>
         <div class="checkbox-row">
           <input type="checkbox" id="input-pode-desatualizar" ${nota?.pode_desatualizar ? 'checked' : ''} />
-          <label for="input-pode-desatualizar">Esse conteúdo pode ficar desatualizado?</label>
+          <label for="input-pode-desatualizar">Esse conteúdo pode ficar desatualizado?${renderFieldHint('Marque para taxas, leis ou números que mudam com o tempo (ex: Selic, limites de imposto).')}</label>
         </div>
-        <p class="settings-row__desc" style="margin: var(--space-1) 0 0 26px;">
-          Marque para taxas, leis ou números que mudam com o tempo (ex: Selic, limites de imposto).
-        </p>
       </div>
 
       <div class="field" id="wrapper-validade" style="display:${nota?.pode_desatualizar ? 'flex' : 'none'};">
@@ -181,21 +187,20 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     panePreview.innerHTML = renderMarkdown(conteudoInput.value) || '<p class="text-muted">(sem conteúdo)</p>';
   });
 
-  const corSelect = container.querySelector<HTMLSelectElement>('#input-cor-aplicar')!;
-  corSelect.addEventListener('change', () => {
-    const cor = corSelect.value;
-    corSelect.value = '';
-    if (!cor) return;
-    const start = conteudoInput.selectionStart ?? conteudoInput.value.length;
-    const end = conteudoInput.selectionEnd ?? conteudoInput.value.length;
-    const selecionado = conteudoInput.value.slice(start, end) || 'texto';
-    const antes = conteudoInput.value.slice(0, start);
-    const depois = conteudoInput.value.slice(end);
-    const inserido = `[${selecionado}]{${cor}}`;
-    conteudoInput.value = antes + inserido + depois;
-    conteudoInput.focus();
-    const cursor = antes.length + inserido.length;
-    conteudoInput.setSelectionRange(cursor, cursor);
+  container.querySelectorAll<HTMLButtonElement>('.color-picker__swatch').forEach((swatch) => {
+    swatch.addEventListener('click', () => {
+      const cor = swatch.dataset.cor!;
+      const start = conteudoInput.selectionStart ?? conteudoInput.value.length;
+      const end = conteudoInput.selectionEnd ?? conteudoInput.value.length;
+      const selecionado = conteudoInput.value.slice(start, end) || 'texto';
+      const antes = conteudoInput.value.slice(0, start);
+      const depois = conteudoInput.value.slice(end);
+      const inserido = `[${selecionado}]{${cor}}`;
+      conteudoInput.value = antes + inserido + depois;
+      conteudoInput.focus();
+      const cursor = antes.length + inserido.length;
+      conteudoInput.setSelectionRange(cursor, cursor);
+    });
   });
 
   const checkboxDesatualizar = container.querySelector<HTMLInputElement>('#input-pode-desatualizar')!;

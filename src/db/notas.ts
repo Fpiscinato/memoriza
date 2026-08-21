@@ -1,5 +1,5 @@
 import { getDB } from './schema';
-import type { ItemRevisao, Nota } from '../types';
+import type { ItemRevisao, Nota, Tema } from '../types';
 import { uuid } from '../lib/uuid';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
 
@@ -12,6 +12,25 @@ export async function listNotas(temaId: string): Promise<Nota[]> {
 export async function getNota(id: string): Promise<Nota | undefined> {
   const db = await getDB();
   return db.get('notas', id);
+}
+
+export interface NotaComTema {
+  nota: Nota;
+  tema: Tema;
+}
+
+/** Todas as notas de um Espaço (de todos os Temas), pra avaliação aleatória — ver
+ * src/ui/components/avaliacao-aleatoria.ts. */
+export async function listNotasPorEspaco(espacoId: string): Promise<NotaComTema[]> {
+  const db = await getDB();
+  const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
+  const porTema = await Promise.all(
+    temas.map(async (tema) => {
+      const notas = await db.getAllFromIndex('notas', 'tema_id', tema.id);
+      return notas.map((nota) => ({ nota, tema }));
+    }),
+  );
+  return porTema.flat();
 }
 
 export interface NotaInput {

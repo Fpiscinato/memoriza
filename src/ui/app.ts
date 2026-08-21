@@ -49,6 +49,17 @@ const TOP_LEVEL_TITLES: Record<TopLevelRoute, string> = {
 export async function mount(root: HTMLElement): Promise<void> {
   onRouteChange(() => render(root));
   await render(root);
+  bindGlobalPopoverClose();
+}
+
+/** Fecha qualquer menu "⋯" ou balão de ajuda (ⓘ) aberto ao clicar fora dele — <details>
+ * nativo não faz isso sozinho. Um único listener no documento, montado uma vez só. */
+function bindGlobalPopoverClose(): void {
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll<HTMLDetailsElement>('.item-menu[open], .field-hint[open]').forEach((el) => {
+      if (!el.contains(e.target as Node)) el.open = false;
+    });
+  });
 }
 
 async function render(root: HTMLElement): Promise<void> {

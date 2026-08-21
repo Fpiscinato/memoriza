@@ -11,6 +11,8 @@ export interface TemaDificil {
 export interface DashboardStats {
   revisoesUltimos7Dias: number;
   streakDias: number;
+  /** Um por dia dos últimos 7 (mais antigo primeiro) — true se teve alguma revisão feita naquele dia. */
+  diasAtivosUltimos7: boolean[];
   rankingDificeis: TemaDificil[];
   espacosAtivos: number;
   totalTemas: number;
@@ -34,6 +36,11 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
 
   const datasComAtividade = new Set(revisoesFeitas.map((i) => i.data_concluida!));
   const streakDias = computeStreak(datasComAtividade, hoje);
+
+  const diasAtivosUltimos7: boolean[] = [];
+  for (let i = 6; i >= 0; i--) {
+    diasAtivosUltimos7.push(datasComAtividade.has(addDaysToISODate(hoje, -i)));
+  }
 
   const itensEmConsulta = itens.filter((i) => i.estagio === 'consulta').length;
 
@@ -75,6 +82,7 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   return {
     revisoesUltimos7Dias,
     streakDias,
+    diasAtivosUltimos7,
     rankingDificeis,
     espacosAtivos,
     totalTemas,

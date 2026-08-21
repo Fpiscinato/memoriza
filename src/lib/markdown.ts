@@ -4,29 +4,16 @@
 
 import { escapeHtml } from './dom';
 
-// Mesma paleta fixa de 8 cores usada pra Espaço/Categoria (ver src/lib/color.ts), reaproveitada
-// aqui pra colorir trechos do texto — já testada em claro/escuro, sem inventar cor nova.
-export const TEXT_COLOR_NAMES = [
-  'azul',
-  'verde',
-  'ambar',
-  'violeta',
-  'vermelho',
-  'ciano',
-  'rosa',
-  'indigo',
-] as const;
+// 3 cores fixas pra destacar trechos do texto — de propósito só 3 (não a paleta de 8 de
+// Espaço/Categoria): são cores universais (azul/vermelho/verde), fáceis de reconhecer numa
+// bolinha pequena sem precisar de legenda.
+export const TEXT_COLOR_NAMES = ['azul', 'vermelho', 'verde'] as const;
 export type TextColorName = (typeof TEXT_COLOR_NAMES)[number];
 
 export const TEXT_COLOR_LABELS: Record<TextColorName, string> = {
   azul: 'Azul',
-  verde: 'Verde',
-  ambar: 'Âmbar',
-  violeta: 'Violeta',
   vermelho: 'Vermelho',
-  ciano: 'Ciano',
-  rosa: 'Rosa',
-  indigo: 'Índigo',
+  verde: 'Verde',
 };
 
 const COLOR_SPAN_RE = new RegExp(`\\[([^\\]]+)\\]\\{(${TEXT_COLOR_NAMES.join('|')})\\}`, 'g');

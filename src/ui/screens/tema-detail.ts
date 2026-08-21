@@ -5,6 +5,7 @@ import { escapeHtml } from '../../lib/dom';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
+import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 
 export async function renderTemaDetail(container: HTMLElement, temaId: string): Promise<void> {
   const tema = await getTema(temaId);
@@ -53,10 +54,8 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-tema-editar">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-tema-editar" type="text" list="lista-categorias-tema-editar" value="${escapeHtml(tema.categoria)}" maxlength="80" />
-        <datalist id="lista-categorias-tema-editar">
-          ${categoriasTema.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
-        </datalist>
+        <input class="input" id="input-categoria-tema-editar" type="text" value="${escapeHtml(tema.categoria)}" maxlength="80" />
+        ${renderCategoriaChips(categoriasTema, 'input-categoria-tema-editar')}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao-tema" type="button">Salvar</button>
@@ -100,6 +99,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   `;
 
   bindBreadcrumb(container);
+  bindCategoriaChips(container);
   container.querySelector('#btn-nova-nota')?.addEventListener('click', () => navigate(`temas/${temaId}/nova-nota`));
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`notas/${btn.dataset.open}`));

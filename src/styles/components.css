@@ -526,7 +526,7 @@
 .item-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 /* Desktop/tablet: aproveita a largura com múltiplas colunas em vez de uma lista única
@@ -535,6 +535,7 @@
   .item-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--space-4);
     align-items: start;
   }
 }
@@ -645,7 +646,8 @@ button.item-row:hover {
 }
 
 /* Trechos coloridos dentro do conteúdo da nota — sintaxe [texto]{cor}, ver src/lib/markdown.ts.
-   Mesma paleta fixa de Espaço/Categoria (src/lib/color.ts), já ajustada pro tema escuro. */
+   Só 3 cores fixas de propósito (não a paleta de 8 de Espaço/Categoria) — universais e fáceis
+   de reconhecer numa bolinha pequena, já ajustadas pro tema escuro (accent-0/1/4). */
 .text-color {
   font-weight: var(--font-weight-medium);
 }
@@ -654,32 +656,35 @@ button.item-row:hover {
   color: var(--accent-0);
 }
 
-.text-color--verde {
-  color: var(--accent-1);
-}
-
-.text-color--ambar {
-  color: var(--accent-2);
-}
-
-.text-color--violeta {
-  color: var(--accent-3);
-}
-
 .text-color--vermelho {
   color: var(--accent-4);
 }
 
-.text-color--ciano {
-  color: var(--accent-5);
+.text-color--verde {
+  color: var(--accent-1);
 }
 
-.text-color--rosa {
-  color: var(--accent-6);
+/* Bolinhas de cor clicáveis no editor da nota, no lugar de um <select> nativo (cujo menu
+   suspenso o navegador não deixa estilizar — ficava sem cor nenhuma). */
+.color-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
-.text-color--indigo {
-  color: var(--accent-7);
+.color-picker__swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-border);
+  background: var(--dot-color);
+  padding: 0;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+
+.color-picker__swatch:hover {
+  transform: scale(1.15);
 }
 
 .markdown-preview h1,
@@ -720,15 +725,28 @@ button.item-row:hover {
 }
 
 .review-card__titulo {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.01em;
   line-height: var(--line-height-tight);
   margin-top: calc(-1 * var(--space-2));
+}
+
+@keyframes review-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .review-card__content {
   padding-top: var(--space-2);
   border-top: 1px solid var(--color-border);
+  animation: review-reveal 220ms ease;
 }
 
 .review-actions {
@@ -878,7 +896,14 @@ button.item-row:hover {
 
 /* Botão "PDF" desta categoria, dentro do <summary> — precisa cancelar o toggle nativo do
    <details> no clique (ver preventDefault/stopPropagation no listener). */
-.category-group__pdf {
+.category-group__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.category-group__action {
   background: none;
   border: none;
   padding: 0;
@@ -926,6 +951,56 @@ button.item-row:hover {
 }
 
 /* Painel (dashboard) */
+
+/* Card de streak do Painel — único lugar do app com essa energia mais viva, de propósito
+   (ver --color-streak-a/b em tokens.css). */
+.streak-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-streak-a), var(--color-streak-b));
+  color: #fff;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--space-5);
+}
+
+.streak-hero__flame {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.streak-hero__count {
+  font-size: 3rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.streak-hero__label {
+  font-size: var(--font-size-sm);
+  opacity: 0.92;
+}
+
+.streak-hero__week {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.streak-hero__day {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.streak-hero__day--ativo {
+  background: #fff;
+}
 
 .stat-grid {
   display: grid;
@@ -1129,6 +1204,75 @@ button.item-row:hover {
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-sm);
   flex-shrink: 0;
+}
+
+/* Ícone "ⓘ" ao lado do rótulo de um campo — balão com a explicação, no lugar de um parágrafo
+   fixo. Fecha ao clicar fora (ver bindGlobalPopoverClose em src/ui/app.ts). */
+.field-hint {
+  display: inline-block;
+  position: relative;
+  margin-left: var(--space-1);
+  vertical-align: middle;
+}
+
+.field-hint > summary {
+  list-style: none;
+  cursor: pointer;
+  color: var(--color-text-faint);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+.field-hint > summary::-webkit-details-marker,
+.field-hint > summary::marker {
+  display: none;
+  content: '';
+}
+
+.field-hint__panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 5;
+  width: 240px;
+  max-width: 70vw;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Chips de categorias já existentes, embaixo do campo de texto livre — evita depender da seta
+   confusa de <input list>/<datalist> nativo pra saber o que já existe. */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.chip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.chip:hover {
+  border-color: var(--color-brand);
+  color: var(--color-text);
 }
 
 /* Legenda curta de contexto no topo das telas ("o que é isso") */

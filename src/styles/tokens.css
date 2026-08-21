@@ -30,6 +30,11 @@
 
   --color-focus-ring: #93b4fb;
 
+  /* Gradiente do "streak" no Painel — de propósito uma cor viva e quente, fora da paleta
+     neutra do resto do app (só o Painel tem essa energia extra, o resto fica sóbrio). */
+  --color-streak-a: #f97316;
+  --color-streak-b: #f59e0b;
+
   /* Paleta de destaque (8 cores fixas, acessíveis) — usada por Espaço e por Categoria pra
      diferenciar visualmente sem depender de texto. Nunca gerada aleatoriamente, ver
      src/lib/color.ts (hash determinístico -> índice fixo). */

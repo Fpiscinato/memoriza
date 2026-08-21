@@ -5,6 +5,7 @@ import { agruparPorCategoria } from '../../lib/group';
 import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 
 export interface EspacosContext {
   perfilId: string;
@@ -34,10 +35,8 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-espaco">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-espaco" type="text" list="lista-categorias-espaco" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
-        <datalist id="lista-categorias-espaco">
-          ${categoriasConhecidas.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
-        </datalist>
+        <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
+        ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-espaco" type="button">Criar</button>
@@ -100,6 +99,8 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         : ''
     }
   `;
+
+  bindCategoriaChips(container);
 
   const form = container.querySelector<HTMLElement>('#form-novo-espaco')!;
   container.querySelector('#btn-novo-espaco')?.addEventListener('click', () => {

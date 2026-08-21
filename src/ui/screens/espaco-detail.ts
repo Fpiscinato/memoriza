@@ -8,7 +8,9 @@ import { daysBetweenISODates, formatDateBR, toLondonISODate } from '../../lib/ti
 import { navigate, encodeCategoriaSegment } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
+import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
+import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
   const espaco = await getEspaco(espacoId);
@@ -43,6 +45,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
             <button id="btn-detalhes" type="button">ℹ️ Detalhes</button>
+            <button id="btn-avaliar" type="button">🎲 Avaliação aleatória</button>
             <button id="btn-excluir" class="danger" type="button">Excluir espaço</button>
           </div>
         </details>
@@ -56,10 +59,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-espaco-editar">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-espaco-editar" type="text" list="lista-categorias-espaco-editar" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
-        <datalist id="lista-categorias-espaco-editar">
-          ${categoriasEspaco.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
-        </datalist>
+        <input class="input" id="input-categoria-espaco-editar" type="text" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
+        ${renderCategoriaChips(categoriasEspaco, 'input-categoria-espaco-editar')}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao" type="button">Salvar</button>
@@ -84,10 +85,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-tema">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-tema" type="text" list="lista-categorias-tema" placeholder="Ex: nome do módulo" maxlength="80" />
-        <datalist id="lista-categorias-tema">
-          ${categoriasTema.map((c) => `<option value="${escapeHtml(c)}"></option>`).join('')}
-        </datalist>
+        <input class="input" id="input-categoria-tema" type="text" placeholder="Ex: nome do módulo" maxlength="80" />
+        ${renderCategoriaChips(categoriasTema, 'input-categoria-tema')}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar</button>
@@ -117,7 +116,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
             ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
             ${escapeHtml(grupo.categoria || 'Sem categoria')}
           </span>
-          <button class="category-group__pdf" type="button" data-pdf-categoria="${escapeHtml(encodeCategoriaSegment(grupo.categoria))}" title="Gerar PDF só desta categoria">PDF</button>
+          <span class="category-group__actions">
+            ${
+              !espaco.arquivado
+                ? `<button class="category-group__action" type="button" data-novo-tema-categoria="${escapeHtml(grupo.categoria)}" title="Criar tema já nesta categoria">+ Tema</button>`
+                : ''
+            }
+            <button class="category-group__action" type="button" data-pdf-categoria="${escapeHtml(encodeCategoriaSegment(grupo.categoria))}" title="Gerar PDF só desta categoria">PDF</button>
+          </span>
         </summary>
         <div class="item-list">
           ${grupo.itens
@@ -141,6 +147,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   `;
 
   bindBreadcrumb(container);
+  bindCategoriaChips(container);
 
   container.querySelectorAll<HTMLButtonElement>('[data-pdf-categoria]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -200,6 +207,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     });
   });
 
+  container.querySelector('#btn-avaliar')?.addEventListener('click', () => {
+    iniciarAvaliacaoAleatoria(container, espaco.id, espaco.nome, () => renderEspacoDetail(container, espacoId));
+  });
+
   container.querySelector('#btn-excluir')?.addEventListener('click', async () => {
     const contagem = await countEspacoCascade(espaco.id);
     const ok = await confirmAction({
@@ -218,6 +229,17 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   });
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
     if (formTema) formTema.style.display = 'none';
+  });
+  container.querySelectorAll<HTMLButtonElement>('[data-novo-tema-categoria]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (formTema) formTema.style.display = 'block';
+      const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema');
+      if (categoriaInput) categoriaInput.value = btn.dataset.novoTemaCategoria!;
+      container.querySelector<HTMLInputElement>('#input-nome-tema')?.focus();
+      formTema?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   });
   container.querySelector('#btn-salvar-tema')?.addEventListener('click', async () => {
     const nomeInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;
