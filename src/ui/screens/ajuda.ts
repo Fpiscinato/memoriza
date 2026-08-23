@@ -74,8 +74,8 @@ const SECOES: Secao[] = [
       novo com a mesma categoria. As categorias sugeridas aqui são só as já usadas <strong>
       neste mesmo Espaço</strong> — o "Faixa Branca" de um curso não aparece sugerido dentro
       de outro curso diferente, pra não misturar vocabulário de assuntos que não têm nada a
-      ver. Pra ajudar a lembrar como foi feito da última vez, o campo Categoria já vem
-      preenchido com a categoria do último Tema criado neste Espaço — aparece em <strong>laranja
+      ver. Pra ajudar a lembrar como foi feito da última vez, os campos Nome e Categoria já
+      vêm preenchidos com os do último Tema criado neste Espaço — aparecem em <strong>laranja
       </strong> pra deixar claro que é só uma sugestão a conferir, não um valor já
       confirmado.</p>`,
   },

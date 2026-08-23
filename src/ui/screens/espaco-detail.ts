@@ -30,6 +30,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   // sem precisar rolar a tela pra conferir os outros Temas já criados.
   const ultimoTemaCriado = [...temas].sort((a, b) => b.criado_em.localeCompare(a.criado_em))[0];
   const categoriaTemaSugerida = ultimoTemaCriado?.categoria?.trim() || undefined;
+  const nomeTemaSugerido = ultimoTemaCriado?.nome?.trim() || undefined;
 
   container.innerHTML = `
     ${renderBreadcrumb([
@@ -88,7 +89,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       <p class="screen-hint" style="margin-top:0;">Um Tema é um assunto ou aula dentro deste Espaço — não precisa de categoria se não fizer sentido agrupar.</p>
       <div class="field">
         <label class="field__label" for="input-nome-tema">Nome do tema</label>
-        <input class="input" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" />
+        <input class="input${nomeTemaSugerido ? ' input--sugerido' : ''}" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" value="${escapeHtml(nomeTemaSugerido ?? '')}" />
+        ${nomeTemaSugerido ? `<p class="field__sugestao-hint">↻ Nome do último tema criado aqui — edite antes de salvar</p>` : ''}
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-tema">Categoria (opcional)</label>
@@ -269,6 +271,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
     if (formTema) formTema.style.display = 'none';
   });
+  const nomeTemaInput = container.querySelector<HTMLInputElement>('#input-nome-tema');
+  if (nomeTemaSugerido && nomeTemaInput) {
+    nomeTemaInput.addEventListener('input', () => clearInputSugestao(nomeTemaInput), { once: true });
+  }
   const categoriaTemaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema');
   if (categoriaTemaSugerida && categoriaTemaInput) {
     categoriaTemaInput.addEventListener('input', () => clearInputSugestao(categoriaTemaInput), { once: true });
