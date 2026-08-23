@@ -46,7 +46,11 @@ export function renderMarkdown(source: string): string {
   let paragraphBuffer: string[] = [];
   function flushParagraph() {
     if (paragraphBuffer.length > 0) {
-      blocks.push(`<p>${paragraphBuffer.map(renderInline).join('<br>')}</p>`);
+      // Renderiza o parágrafo inteiro de uma vez (não linha a linha) — senão um trecho
+      // colorido/negrito/itálico selecionado atravessando uma quebra de linha (comum,
+      // já que Enter simples não separa parágrafos) fica com a marcação partida ao meio,
+      // ex: "[" numa linha e "]{cor}" na seguinte, e nenhuma das duas casa com a regex.
+      blocks.push(`<p>${renderInline(paragraphBuffer.join('\n')).replace(/\n/g, '<br>')}</p>`);
       paragraphBuffer = [];
     }
   }

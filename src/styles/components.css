@@ -559,6 +559,19 @@
   border-color: var(--color-brand);
 }
 
+/* Campo pré-preenchido com o último valor usado (Tema/Nota) — cor diferente de propósito,
+ * pra ficar claro que é uma sugestão a conferir/editar, não um valor já confirmado. */
+.input--sugerido {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.field__sugestao-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+}
+
 .textarea {
   resize: vertical;
   min-height: 160px;

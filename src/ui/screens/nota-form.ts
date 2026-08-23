@@ -1,9 +1,9 @@
-import { createNota, deleteNota, getNota, toggleNotaFavorito, updateNota } from '../../db/notas';
+import { createNota, deleteNota, getNota, listNotas, toggleNotaFavorito, updateNota } from '../../db/notas';
 import { getTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { devReviewNow, stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
-import { escapeHtml } from '../../lib/dom';
+import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { renderMarkdown, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
@@ -48,6 +48,12 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const nota = params.mode === 'editar' ? await getNota(params.notaId) : undefined;
   const temItemPendente = nota ? await hasPendingItem(nota.id) : false;
 
+  // Sugere Título/Fonte com base na última Nota criada neste mesmo Tema — comum ter um
+  // padrão repetido (ex: "Aula 1", "Aula 2"), e o usuário só precisa ajustar o número.
+  const ultimaNota = params.mode === 'nova' ? (await listNotas(temaId)).at(-1) : undefined;
+  const tituloSugerido = ultimaNota?.titulo;
+  const fonteSugerido = ultimaNota?.fonte;
+
   container.innerHTML = `
     ${renderBreadcrumb([
       { label: 'Espaços', route: 'espacos' },
@@ -91,12 +97,14 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     <div class="card stack">
       <div class="field">
         <label class="field__label" for="input-titulo">Título${renderFieldHint('É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.')}</label>
-        <input class="input" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? '')}" />
+        <input class="input${tituloSugerido ? ' input--sugerido' : ''}" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? tituloSugerido ?? '')}" />
+        ${tituloSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
       </div>
 
       <div class="field">
         <label class="field__label" for="input-fonte">Fonte (opcional)${renderFieldHint('Citação/referência — só aparece depois de revelar a resposta, junto do conteúdo.')}</label>
-        <input class="input" id="input-fonte" type="text" placeholder="Ex: Aula 4, slide 12 ou página 87" maxlength="200" value="${escapeHtml(nota?.fonte ?? '')}" />
+        <input class="input${fonteSugerido ? ' input--sugerido' : ''}" id="input-fonte" type="text" placeholder="Ex: Aula 4, slide 12 ou página 87" maxlength="200" value="${escapeHtml(nota?.fonte ?? fonteSugerido ?? '')}" />
+        ${fonteSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
       </div>
 
       <div>
@@ -172,6 +180,10 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const panePreview = container.querySelector<HTMLElement>('#pane-preview')!;
   const conteudoInput = container.querySelector<HTMLTextAreaElement>('#input-conteudo')!;
   const tituloInput = container.querySelector<HTMLInputElement>('#input-titulo')!;
+  const fonteInput = container.querySelector<HTMLInputElement>('#input-fonte')!;
+
+  if (tituloSugerido) tituloInput.addEventListener('input', () => clearInputSugestao(tituloInput), { once: true });
+  if (fonteSugerido) fonteInput.addEventListener('input', () => clearInputSugestao(fonteInput), { once: true });
 
   tabEditar.addEventListener('click', () => {
     tabEditar.setAttribute('aria-selected', 'true');

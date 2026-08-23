@@ -2,7 +2,7 @@ import { countEspacoCascade, deleteEspacoCascade, getEspaco, listCategoriasEspac
 import { createTema, listTemas } from '../../db/temas';
 import { getDB } from '../../db/schema';
 import { getTempoTotalEspaco } from '../../db/dashboard';
-import { escapeHtml } from '../../lib/dom';
+import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria, distinctCategorias } from '../../lib/group';
 import { accentVar } from '../../lib/color';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
@@ -26,6 +26,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   // Escopo é só este Espaço (não o perfil inteiro) — sugestão de categoria de Tema precisa
   // ser relevante pro "curso" atual, não misturar módulos de outros Espaços.
   const categoriasTema = distinctCategorias(temas.map((t) => t.categoria));
+  // Sugere a categoria do último Tema criado neste Espaço — ajuda a lembrar o "módulo" atual
+  // sem precisar rolar a tela pra conferir os outros Temas já criados.
+  const ultimoTemaCriado = [...temas].sort((a, b) => b.criado_em.localeCompare(a.criado_em))[0];
+  const categoriaTemaSugerida = ultimoTemaCriado?.categoria?.trim() || undefined;
 
   container.innerHTML = `
     ${renderBreadcrumb([
@@ -88,7 +92,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       </div>
       <div class="field" style="margin-top: var(--space-3);">
         <label class="field__label" for="input-categoria-tema">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-tema" type="text" placeholder="Ex: nome do módulo" maxlength="80" />
+        <input class="input${categoriaTemaSugerida ? ' input--sugerido' : ''}" id="input-categoria-tema" type="text" placeholder="Ex: nome do módulo" maxlength="80" value="${escapeHtml(categoriaTemaSugerida ?? '')}" />
+        ${categoriaTemaSugerida ? `<p class="field__sugestao-hint">↻ Categoria do último tema criado aqui — edite se for outro módulo</p>` : ''}
         ${renderCategoriaChips(categoriasTema, 'input-categoria-tema')}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
@@ -264,13 +269,19 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
     if (formTema) formTema.style.display = 'none';
   });
+  const categoriaTemaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema');
+  if (categoriaTemaSugerida && categoriaTemaInput) {
+    categoriaTemaInput.addEventListener('input', () => clearInputSugestao(categoriaTemaInput), { once: true });
+  }
   container.querySelectorAll<HTMLButtonElement>('[data-novo-tema-categoria]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (formTema) formTema.style.display = 'block';
-      const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema');
-      if (categoriaInput) categoriaInput.value = btn.dataset.novoTemaCategoria!;
+      if (categoriaTemaInput) {
+        categoriaTemaInput.value = btn.dataset.novoTemaCategoria!;
+        clearInputSugestao(categoriaTemaInput);
+      }
       container.querySelector<HTMLInputElement>('#input-nome-tema')?.focus();
       formTema?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });

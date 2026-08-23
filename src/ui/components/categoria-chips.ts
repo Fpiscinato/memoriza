@@ -1,4 +1,4 @@
-import { escapeHtml } from '../../lib/dom';
+import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 
 /** Chips clicáveis com as categorias já existentes, pra preencher `inputId` num clique — no
  * lugar de depender do <input list>/<datalist> nativo, confuso de usar no celular. */
@@ -19,6 +19,7 @@ export function bindCategoriaChips(container: HTMLElement): void {
     row.querySelectorAll<HTMLButtonElement>('[data-chip-value]').forEach((chip) => {
       chip.addEventListener('click', () => {
         input.value = chip.dataset.chipValue!;
+        clearInputSugestao(input);
         input.focus();
       });
     });

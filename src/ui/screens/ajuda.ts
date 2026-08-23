@@ -74,7 +74,10 @@ const SECOES: Secao[] = [
       novo com a mesma categoria. As categorias sugeridas aqui são só as já usadas <strong>
       neste mesmo Espaço</strong> — o "Faixa Branca" de um curso não aparece sugerido dentro
       de outro curso diferente, pra não misturar vocabulário de assuntos que não têm nada a
-      ver.</p>`,
+      ver. Pra ajudar a lembrar como foi feito da última vez, o campo Categoria já vem
+      preenchido com a categoria do último Tema criado neste Espaço — aparece em <strong>laranja
+      </strong> pra deixar claro que é só uma sugestão a conferir, não um valor já
+      confirmado.</p>`,
   },
   {
     titulo: 'Notas — o que você anota',
@@ -90,7 +93,13 @@ const SECOES: Secao[] = [
         tenta lembrar).</li>
         <li><strong>Fonte</strong>: de onde veio, pra referência. Exemplo: "Aula 4, slide 12"
         ou "Livro, página 87". Aparece junto com o conteúdo, não antes.</li>
-      </ul>`,
+      </ul>
+      <p>Ao criar uma Nota nova, Título e Fonte já vêm preenchidos (em <strong>laranja</strong>)
+      com o que foi usado na última Nota deste mesmo Tema — útil quando o padrão se repete,
+      tipo "Aula 1", "Aula 2"... Edite antes de salvar; assim que você digitar algo, a cor
+      laranja some.</p>
+      <p>Pra colorir um trecho do <strong>Conteúdo</strong>: selecione o texto no campo e
+      clique numa das bolinhas (azul/vermelho/verde) acima do editor.</p>`,
   },
   {
     titulo: '"Esse conteúdo pode ficar desatualizado?"',
