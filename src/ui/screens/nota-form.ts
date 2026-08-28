@@ -5,6 +5,7 @@ import { devReviewNow, stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
+import { buildNotaPlainText } from '../../lib/pdf-text';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
@@ -72,6 +73,9 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         <div class="section-header__actions">
           <button class="btn btn--secondary btn--sm" id="btn-favoritar-nota" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
             ${nota?.favorito ? '★ Favorito' : '☆ Favoritar'}
+          </button>
+          <button class="btn btn--secondary btn--sm" id="btn-compartilhar-nota" type="button" title="Compartilhar o texto desta nota">
+            Compartilhar
           </button>
           <details class="item-menu">
             <summary aria-label="Mais opções">⋯</summary>
@@ -287,6 +291,30 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     container.querySelector('#btn-parar-revisar')?.addEventListener('click', async () => {
       await stopReviewing(nota.id);
       renderNotaForm(container, params);
+    });
+    const btnCompartilhar = container.querySelector<HTMLButtonElement>('#btn-compartilhar-nota');
+    btnCompartilhar?.addEventListener('click', async () => {
+      const texto = buildNotaPlainText(nota);
+      // No celular usa o share sheet nativo (mesmo menu de "compartilhar" de foto/PDF);
+      // sem suporte (a maioria dos navegadores desktop) cai pra copiar no clipboard.
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: nota.titulo || 'Nota', text: texto });
+        } catch {
+          // Usuário cancelou o compartilhamento — nada a fazer.
+        }
+        return;
+      }
+      const original = btnCompartilhar.textContent;
+      try {
+        await navigator.clipboard.writeText(texto);
+        btnCompartilhar.textContent = 'Copiado!';
+      } catch {
+        btnCompartilhar.textContent = 'Não foi possível copiar';
+      }
+      setTimeout(() => {
+        btnCompartilhar.textContent = original;
+      }, 1800);
     });
     container.querySelector('#btn-revisar-agora')?.addEventListener('click', async () => {
       await devReviewNow(nota.id);

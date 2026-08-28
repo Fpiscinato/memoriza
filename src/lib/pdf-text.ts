@@ -34,6 +34,14 @@ function blockToPlain(source: string): string {
     .join('\n');
 }
 
+/** Monta o texto puro de uma Nota avulsa (título, fonte, conteúdo), pra compartilhar/copiar. */
+export function buildNotaPlainText(nota: { titulo: string; fonte: string; conteudo: string }): string {
+  const lines: string[] = [`*${nota.titulo || '(sem título)'}*`];
+  if (nota.fonte) lines.push(`(${nota.fonte})`);
+  lines.push('', blockToPlain(nota.conteudo));
+  return lines.join('\n').trim();
+}
+
 /** Monta o texto puro de um ou mais grupos (categorias) de um Espaço, pra copiar pro clipboard. */
 export function buildPlainText(espaco: EspacoPdfData['espaco'], grupos: CategoriaPdf[]): string {
   const lines: string[] = [`📚 ${espaco.nome}`];
