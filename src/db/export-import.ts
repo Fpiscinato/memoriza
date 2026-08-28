@@ -2,7 +2,7 @@ import { getDB } from './schema';
 import { combineSummaries, mergeRecords, type MergeSummary } from './merge';
 import { migrateNotasSemTitulo } from './notas';
 import { STORE_NAMES, type ExportFile, type MemorizaData, type StoreName } from '../types';
-import { nowISO } from '../lib/time';
+import { nowISO, formatFilenameDateTime } from '../lib/time';
 
 const EXPORT_FORMAT = 'memoriza-export' as const;
 const EXPORT_VERSION = 1 as const;
@@ -68,9 +68,15 @@ export async function exportAll(): Promise<ExportFile> {
   };
 }
 
+/** Nome de arquivo simples: "Memoriza - <perfil ou 'todos os perfis'> - <data hora>.json". */
+function buildExportFilename(file: ExportFile): string {
+  const quem = file.escopo === 'perfil' ? file.dados.perfis[0]?.nome : undefined;
+  const parte = (quem || (file.escopo === 'perfil' ? 'perfil' : 'todos os perfis')).replace(/[\\/:*?"<>|]/g, '-');
+  return `Memoriza - ${parte} - ${formatFilenameDateTime(file.exportado_em)}.json`;
+}
+
 export function downloadExportFile(file: ExportFile): void {
-  const suffix = file.escopo === 'perfil' ? `perfil-${file.perfil_id}` : 'todos';
-  const filename = `memoriza-export-${suffix}-${file.exportado_em.slice(0, 10)}.json`;
+  const filename = buildExportFilename(file);
   const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

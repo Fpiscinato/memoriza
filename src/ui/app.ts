@@ -22,6 +22,7 @@ import { renderPainel } from './screens/painel';
 import { renderFavoritos } from './screens/favoritos';
 import { renderAjuda } from './screens/ajuda';
 import { renderSettings } from './screens/settings';
+import { initWakeLock } from '../lib/wakelock';
 import type { Perfil } from '../types';
 
 const BACKUP_REMINDER_DAYS = 14;
@@ -50,6 +51,7 @@ export async function mount(root: HTMLElement): Promise<void> {
   onRouteChange(() => render(root));
   await render(root);
   bindGlobalPopoverClose();
+  initWakeLock();
 }
 
 /** Fecha qualquer menu "⋯" ou balão de ajuda (ⓘ) aberto ao clicar fora dele — <details>

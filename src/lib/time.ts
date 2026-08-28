@@ -51,6 +51,19 @@ export function formatDateTimeBR(iso: string): string {
   });
 }
 
+/** Data e hora compactas (AAAA-MM-DD HHhMM), seguras pra usar em nome de arquivo. */
+export function formatFilenameDateTime(iso: string): string {
+  const d = new Date(iso);
+  const data = toLondonISODate(d);
+  const hora = d.toLocaleTimeString('pt-BR', {
+    timeZone: REFERENCE_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${data} ${hora.replace(':', 'h')}`;
+}
+
 /** Duração em segundos, formatada de forma curta ("45 min", "1h 20min") pra exibição. */
 export function formatDuracao(totalSegundos: number): string {
   if (totalSegundos <= 0) return 'ainda sem registro';

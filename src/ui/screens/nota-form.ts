@@ -4,7 +4,7 @@ import { getEspaco } from '../../db/espacos';
 import { devReviewNow, stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
-import { renderMarkdown, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
+import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
@@ -107,26 +107,28 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         ${fonteSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
       </div>
 
-      <div>
-        <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-2); flex-wrap: wrap;">
-          <div class="tabs" role="tablist">
-            <button class="tabs__tab" id="tab-editar" role="tab" aria-selected="true" type="button">Escrever</button>
-            <button class="tabs__tab" id="tab-preview" role="tab" aria-selected="false" type="button">Ver como fica</button>
+      <div class="field">
+        <label class="field__label" for="input-conteudo">Conteúdo${renderFieldHint('Selecione um trecho de texto pra deixar em negrito, itálico ou colorido — igual num editor de texto comum.')}</label>
+        <div class="editor-toolbar" role="toolbar" aria-label="Formatação do conteúdo">
+          <button type="button" class="editor-toolbar__btn" data-cmd="bold" title="Negrito" aria-label="Negrito"><strong>N</strong></button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico" aria-label="Itálico"><em>I</em></button>
+          <span class="editor-toolbar__sep" aria-hidden="true"></span>
+          <div class="color-picker" role="group" aria-label="Cor do texto">
+            ${TEXT_COLOR_NAMES.map(
+              (cor) =>
+                `<button type="button" class="color-picker__swatch" data-cor="${cor}" style="--dot-color:${TEXT_COLOR_SWATCH[cor]}" title="${escapeHtml(TEXT_COLOR_LABELS[cor])}" aria-label="${escapeHtml(TEXT_COLOR_LABELS[cor])}"></button>`,
+            ).join('')}
+            <button type="button" class="editor-toolbar__btn" data-cor-limpar title="Remover cor" aria-label="Remover cor">✕</button>
           </div>
-          <span style="display:flex; align-items:center;">
-            <div class="color-picker" role="group" aria-label="Cor do texto">
-              ${TEXT_COLOR_NAMES.map(
-                (cor) =>
-                  `<button type="button" class="color-picker__swatch" data-cor="${cor}" style="--dot-color:${TEXT_COLOR_SWATCH[cor]}" title="${escapeHtml(TEXT_COLOR_LABELS[cor])}" aria-label="${escapeHtml(TEXT_COLOR_LABELS[cor])}"></button>`,
-              ).join('')}
-            </div>
-            ${renderFieldHint('Selecione um trecho do conteúdo abaixo e clique numa bolinha pra colorir só aquele trecho — dá pra usar as três cores na mesma nota.')}
-          </span>
         </div>
-        <div id="pane-editar">
-          <textarea class="textarea" id="input-conteudo" placeholder="Conteúdo em markdown simples: # títulos, **negrito**, *itálico*, listas com -, [link](url)">${escapeHtml(nota?.conteudo ?? '')}</textarea>
-        </div>
-        <div id="pane-preview" class="markdown-preview card" style="display:none;"></div>
+        <div
+          class="markdown-preview editor-conteudo"
+          id="input-conteudo"
+          contenteditable="true"
+          spellcheck="true"
+          lang="pt-BR"
+          data-placeholder="Escreva aqui a explicação completa..."
+        >${renderMarkdown(nota?.conteudo ?? '')}</div>
       </div>
 
       <div>
@@ -174,45 +176,74 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   bindBreadcrumb(container);
   container.querySelector('#btn-cancelar')?.addEventListener('click', () => navigate(backRoute));
 
-  const tabEditar = container.querySelector<HTMLButtonElement>('#tab-editar')!;
-  const tabPreview = container.querySelector<HTMLButtonElement>('#tab-preview')!;
-  const paneEditar = container.querySelector<HTMLElement>('#pane-editar')!;
-  const panePreview = container.querySelector<HTMLElement>('#pane-preview')!;
-  const conteudoInput = container.querySelector<HTMLTextAreaElement>('#input-conteudo')!;
+  const conteudoInput = container.querySelector<HTMLElement>('#input-conteudo')!;
   const tituloInput = container.querySelector<HTMLInputElement>('#input-titulo')!;
   const fonteInput = container.querySelector<HTMLInputElement>('#input-fonte')!;
 
   if (tituloSugerido) tituloInput.addEventListener('input', () => clearInputSugestao(tituloInput), { once: true });
   if (fonteSugerido) fonteInput.addEventListener('input', () => clearInputSugestao(fonteInput), { once: true });
 
-  tabEditar.addEventListener('click', () => {
-    tabEditar.setAttribute('aria-selected', 'true');
-    tabPreview.setAttribute('aria-selected', 'false');
-    paneEditar.style.display = 'block';
-    panePreview.style.display = 'none';
+  // Enter cria um novo parágrafo (<p>) em vez do <div> que alguns navegadores usam por
+  // padrão — mantém a estrutura previsível que htmlToStoredText (src/lib/markdown.ts) sabe
+  // converter de volta pro texto salvo.
+  conteudoInput.addEventListener('focus', () => {
+    try {
+      document.execCommand('defaultParagraphSeparator', false, 'p');
+    } catch {
+      // Sem suporte — degrada pro comportamento padrão do navegador.
+    }
   });
-  tabPreview.addEventListener('click', () => {
-    tabEditar.setAttribute('aria-selected', 'false');
-    tabPreview.setAttribute('aria-selected', 'true');
-    paneEditar.style.display = 'none';
-    panePreview.style.display = 'block';
-    panePreview.innerHTML = renderMarkdown(conteudoInput.value) || '<p class="text-muted">(sem conteúdo)</p>';
+
+  // Ao apagar tudo o navegador costuma deixar um <p><br></p> pra trás — sem isso o
+  // placeholder (CSS :empty) não reaparece.
+  conteudoInput.addEventListener('input', () => {
+    if (!conteudoInput.textContent?.trim()) conteudoInput.innerHTML = '';
+  });
+
+  // Botões de formatação perdem o foco/seleção do editor ao serem clicados — preventDefault
+  // no mousedown evita isso, então o comando age sobre o texto selecionado, não sobre o botão.
+  container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]').forEach((btn) => {
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', () => {
+      document.execCommand(btn.dataset.cmd!);
+      conteudoInput.focus();
+    });
   });
 
   container.querySelectorAll<HTMLButtonElement>('.color-picker__swatch').forEach((swatch) => {
+    swatch.addEventListener('mousedown', (e) => e.preventDefault());
     swatch.addEventListener('click', () => {
       const cor = swatch.dataset.cor!;
-      const start = conteudoInput.selectionStart ?? conteudoInput.value.length;
-      const end = conteudoInput.selectionEnd ?? conteudoInput.value.length;
-      const selecionado = conteudoInput.value.slice(start, end) || 'texto';
-      const antes = conteudoInput.value.slice(0, start);
-      const depois = conteudoInput.value.slice(end);
-      const inserido = `[${selecionado}]{${cor}}`;
-      conteudoInput.value = antes + inserido + depois;
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+      const range = sel.getRangeAt(0);
+      if (!conteudoInput.contains(range.commonAncestorContainer)) return;
+      const span = document.createElement('span');
+      span.className = `text-color text-color--${cor}`;
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const novaSelecao = document.createRange();
+      novaSelecao.selectNodeContents(span);
+      sel.addRange(novaSelecao);
       conteudoInput.focus();
-      const cursor = antes.length + inserido.length;
-      conteudoInput.setSelectionRange(cursor, cursor);
     });
+  });
+
+  const btnLimparCor = container.querySelector<HTMLButtonElement>('[data-cor-limpar]')!;
+  btnLimparCor.addEventListener('mousedown', (e) => e.preventDefault());
+  btnLimparCor.addEventListener('click', () => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    let node: Node | null = sel.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== conteudoInput) {
+      if (node instanceof HTMLElement && node.classList.contains('text-color')) {
+        node.replaceWith(...Array.from(node.childNodes));
+        break;
+      }
+      node = node.parentNode;
+    }
+    conteudoInput.focus();
   });
 
   const checkboxDesatualizar = container.querySelector<HTMLInputElement>('#input-pode-desatualizar')!;
@@ -227,7 +258,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       tituloInput.focus();
       return;
     }
-    const conteudo = conteudoInput.value.trim();
+    const conteudo = htmlToStoredText(conteudoInput).trim();
     if (!conteudo) {
       conteudoInput.focus();
       return;

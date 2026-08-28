@@ -799,6 +799,56 @@ button.item-row:hover {
   transform: scale(1.15);
 }
 
+/* Barra de ferramentas do editor de Conteúdo da Nota — negrito/itálico/cor aplicados
+   direto na seleção (contenteditable), no lugar de marcação manual tipo **texto**. */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.editor-toolbar__btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.editor-toolbar__btn:hover {
+  border-color: var(--color-brand);
+}
+
+.editor-toolbar__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+}
+
+.editor-conteudo {
+  min-height: 200px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-bg);
+  outline: none;
+}
+
+.editor-conteudo:focus {
+  border-color: var(--color-brand);
+}
+
+.editor-conteudo:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-faint);
+}
+
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3 {

@@ -88,3 +88,70 @@ export function renderMarkdown(source: string): string {
 
   return blocks.join('\n');
 }
+
+// Caminho inverso de renderMarkdown: serializa o HTML produzido pelo editor rich-text
+// (contenteditable, ver src/ui/screens/nota-form.ts) de volta pro texto com marcação simples
+// que a gente guarda no banco. Mantém as duas funções em par — qualquer tag que renderMarkdown
+// sabe produzir, esta função precisa saber ler de volta.
+function inlineNodeToText(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+  const el = node as HTMLElement;
+  const inner = Array.from(el.childNodes).map(inlineNodeToText).join('');
+  switch (el.tagName) {
+    case 'BR':
+      return '\n';
+    case 'B':
+    case 'STRONG':
+      return inner.trim() ? `**${inner}**` : inner;
+    case 'I':
+    case 'EM':
+      return inner.trim() ? `*${inner}*` : inner;
+    case 'CODE':
+      return inner.trim() ? `\`${inner}\`` : inner;
+    case 'A': {
+      const href = el.getAttribute('href');
+      return href ? `[${inner}](${href})` : inner;
+    }
+    case 'SPAN': {
+      const cor = TEXT_COLOR_NAMES.find((c) => el.classList.contains(`text-color--${c}`));
+      return cor && inner.trim() ? `[${inner}]{${cor}}` : inner;
+    }
+    default:
+      return inner;
+  }
+}
+
+function blockElementToLines(el: HTMLElement): string[] {
+  if (el.tagName === 'UL') {
+    return Array.from(el.children)
+      .filter((child): child is HTMLElement => child.tagName === 'LI')
+      .map((li) => `- ${inlineNodeToText(li).trim()}`)
+      .filter((line) => line !== '-');
+  }
+  const headingMatch = /^H([1-3])$/.exec(el.tagName);
+  const text = inlineNodeToText(el).trim();
+  if (!text) return [];
+  return headingMatch ? [`${'#'.repeat(Number(headingMatch[1]))} ${text}`] : [text];
+}
+
+/** Converte o conteúdo HTML do editor de volta pro texto armazenado (markdown simples). */
+export function htmlToStoredText(root: HTMLElement): string {
+  const blocks: string[] = [];
+  for (const child of Array.from(root.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      const text = (child.textContent ?? '').trim();
+      if (text) blocks.push(text);
+      continue;
+    }
+    if (child.nodeType !== Node.ELEMENT_NODE) continue;
+    const el = child as HTMLElement;
+    if (el.tagName === 'UL') {
+      const lines = blockElementToLines(el);
+      if (lines.length > 0) blocks.push(lines.join('\n'));
+    } else {
+      blocks.push(...blockElementToLines(el));
+    }
+  }
+  return blocks.filter(Boolean).join('\n\n');
+}

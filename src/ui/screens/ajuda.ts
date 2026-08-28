@@ -98,8 +98,10 @@ const SECOES: Secao[] = [
       com o que foi usado na última Nota deste mesmo Tema — útil quando o padrão se repete,
       tipo "Aula 1", "Aula 2"... Edite antes de salvar; assim que você digitar algo, a cor
       laranja some.</p>
-      <p>Pra colorir um trecho do <strong>Conteúdo</strong>: selecione o texto no campo e
-      clique numa das bolinhas (azul/vermelho/verde) acima do editor.</p>`,
+      <p>O campo <strong>Conteúdo</strong> é um editor de texto simples: selecione um trecho
+      e use os botões acima dele — <strong>N</strong> para negrito, <em>I</em> para itálico,
+      ou uma das bolinhas (azul/vermelho/verde) pra colorir. O ✕ remove a cor de um trecho já
+      colorido. O corretor ortográfico do navegador/celular funciona normalmente aí.</p>`,
   },
   {
     titulo: '"Esse conteúdo pode ficar desatualizado?"',

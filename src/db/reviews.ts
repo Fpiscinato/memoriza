@@ -40,10 +40,11 @@ export async function getTodayQueue(perfilId: string): Promise<QueueEntry[]> {
     entries.push({ item, nota, tema, espaco });
   }
 
+  // Ordem de criação (mais antigo primeiro) — do grupo (Tema) e, dentro dele, da Nota.
+  // Não usa nome (alfabético) nem data de edição: o usuário quer revisar na mesma ordem em
+  // que estudou, não numa ordem que muda conforme ele edita uma nota antiga.
   entries.sort(
-    (a, b) =>
-      a.tema.nome.localeCompare(b.tema.nome, 'pt-BR') ||
-      a.item.data_agendada.localeCompare(b.item.data_agendada),
+    (a, b) => a.tema.criado_em.localeCompare(b.tema.criado_em) || a.nota.criado_em.localeCompare(b.nota.criado_em),
   );
   return entries;
 }
