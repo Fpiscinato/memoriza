@@ -731,6 +731,11 @@ button.item-row:hover {
   flex-wrap: wrap;
 }
 
+.section-header__meta {
+  font-size: var(--font-size-xs);
+  margin-top: 2px;
+}
+
 .tabs {
   display: inline-flex;
   gap: var(--space-1);
@@ -831,8 +836,13 @@ button.item-row:hover {
   background: var(--color-border);
 }
 
+/* Altura travada (com scroll próprio) em vez de crescer com o conteúdo — sem isso, cada Enter
+   fazia o navegador rolar a PÁGINA inteira pra manter o cursor visível, e o usuário precisava
+   ficar ajustando o scroll manualmente pra ver o que tinha acabado de escrever. */
 .editor-conteudo {
   min-height: 200px;
+  max-height: 45vh;
+  overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-3);

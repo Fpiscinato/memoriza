@@ -6,6 +6,7 @@ import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { buildNotaPlainText } from '../../lib/pdf-text';
+import { formatDateBR } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
@@ -66,7 +67,14 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     ])}
 
     <div class="section-header">
-      <span class="section-header__title">${params.mode === 'nova' ? 'Nova nota' : 'Editar nota'}</span>
+      <div>
+        <span class="section-header__title">${params.mode === 'nova' ? 'Nova nota' : 'Editar nota'}</span>
+        ${
+          params.mode === 'editar' && nota
+            ? `<div class="section-header__meta text-muted">Criada em ${formatDateBR(nota.criado_em)}${nota.atualizado_em !== nota.criado_em ? ` · Editada em ${formatDateBR(nota.atualizado_em)}` : ''}</div>`
+            : ''
+        }
+      </div>
       ${
         params.mode === 'editar'
           ? `

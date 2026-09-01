@@ -5,6 +5,7 @@ import { precisaAvisoDeValidade } from '../../domain/validade';
 import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import type { Avaliacao } from '../../types';
+import { daysBetweenISODates, todayLondonISODate } from '../../lib/time';
 
 export interface TodayContext {
   perfilId: string;
@@ -46,6 +47,15 @@ function segundosDecorridos(): number | undefined {
 function pararTimer(): void {
   if (timer) document.removeEventListener('visibilitychange', onVisibilityChange);
   timer = null;
+}
+
+/** Selo pra item cuja data_agendada já passou — a fila mistura atrasadas com as de hoje
+    (mesma ordem de criação, ver getTodayQueue), esse selo só ajuda a enxergar quais são. */
+function badgeAtraso(item: { data_agendada: string }): string {
+  const hoje = todayLondonISODate();
+  if (item.data_agendada >= hoje) return '';
+  const dias = daysBetweenISODates(item.data_agendada, hoje);
+  return `<span class="badge badge--danger" title="Devia ter sido revisada há ${dias} dia(s)">🔴 atrasada</span>`;
 }
 
 export async function renderToday(container: HTMLElement, ctx: TodayContext): Promise<void> {
@@ -109,6 +119,7 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
                 <span class="item-row__main">
                   <span class="item-row__title">${entry.nota.favorito ? '⭐ ' : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}</span>
                 </span>
+                ${badgeAtraso(entry.item)}
                 ${precisaAvisoDeValidade(entry.nota) ? '<span class="badge badge--muted">⚠️ desatualizada?</span>' : ''}
               </button>
             `,
@@ -149,7 +160,10 @@ function renderRevisao(
       <div class="review-card__meta">
         ${escapeHtml(entry.tema.nome)}${revelado && entry.nota.fonte ? ` · ${escapeHtml(entry.nota.fonte)}` : ''}
       </div>
-      <div class="review-card__titulo">${entry.nota.favorito ? '⭐ ' : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}</div>
+      <div class="review-card__titulo">
+        ${entry.nota.favorito ? '⭐ ' : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}
+        ${badgeAtraso(entry.item)}
+      </div>
 
       ${aviso ? `<div class="banner banner--warning" style="margin-bottom:0;"><span>Isso pode estar desatualizado — confirme antes de confiar.</span></div>` : ''}
 
