@@ -46,6 +46,21 @@
   color: var(--color-text-muted);
 }
 
+/* Data de hoje, sempre visível no cabeçalho fixo — pra não depender de lembrar a data na
+   hora de escrever título/fonte de uma nota. Some primeiro que o nome do perfil se faltar
+   espaço (é a info mais nova aqui; nome do perfil já era visível antes). */
+.app-header__date {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 420px) {
+  .app-header__profile {
+    display: none;
+  }
+}
+
 .app-main {
   flex: 1;
   width: 100%;

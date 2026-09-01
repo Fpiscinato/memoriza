@@ -40,6 +40,17 @@ export function formatDateBR(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+/** Data curta com dia da semana (ex: "ter., 01/09"), pra exibir no cabeçalho fixo do app —
+ * `iso` deve ser uma data-calendário (YYYY-MM-DD, ver toLondonISODate), não um instante. */
+export function formatDateWeekdayShortBR(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('pt-BR', {
+    timeZone: REFERENCE_TIME_ZONE,
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+  });
+}
+
 /** Data e hora no formato pt-BR, pra exibição. */
 export function formatDateTimeBR(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', {

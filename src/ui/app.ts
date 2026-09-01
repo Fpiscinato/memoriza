@@ -8,7 +8,7 @@ import {
   setSelectedProfileId,
   snoozeBackupBannerUntil,
 } from '../lib/settings';
-import { addDaysToISODate, daysBetweenISODates, toLondonISODate } from '../lib/time';
+import { addDaysToISODate, daysBetweenISODates, formatDateWeekdayShortBR, toLondonISODate } from '../lib/time';
 import { getCurrentRoute, navigate, navigateTop, onRouteChange, topLevelFor, type TopLevelRoute } from './router';
 import { NAV_ICONS } from './icons';
 import { renderProfileSelect } from './screens/profile-select';
@@ -104,6 +104,7 @@ async function render(root: HTMLElement): Promise<void> {
         <header class="app-header">
           <span class="app-header__title">${TOP_LEVEL_TITLES[topLevel]}</span>
           <span style="display:flex; align-items:center; gap: var(--space-3);">
+            <span class="app-header__date" title="Data de hoje">${escapeHtml(formatDateWeekdayShortBR(toLondonISODate()))}</span>
             <button class="app-header__help" id="btn-ajuda" type="button" aria-label="Como usar">?</button>
             <span class="app-header__profile">${escapeHtml(perfil.nome)}</span>
           </span>
