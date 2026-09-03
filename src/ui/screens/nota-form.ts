@@ -22,6 +22,14 @@ const TEXT_COLOR_SWATCH: Record<(typeof TEXT_COLOR_NAMES)[number], string> = {
   verde: 'var(--accent-1)',
 };
 
+// Tira qualquer .text-color de dentro de um fragmento antes de envolvê-lo num novo — ver uso
+// nos handlers de cor abaixo. Sem isso, aplicar cor sobre texto já colorido aninha spans, e
+// o par renderMarkdown/htmlToStoredText (src/lib/markdown.ts) não sabe serializar aninhamento
+// de forma reversível.
+function unwrapColorSpans(root: DocumentFragment | HTMLElement): void {
+  root.querySelectorAll('.text-color').forEach((el) => el.replaceWith(...Array.from(el.childNodes)));
+}
+
 export async function renderNotaForm(container: HTMLElement, params: NotaFormParams): Promise<void> {
   const temaId = params.mode === 'nova' ? params.temaId : (await getNota(params.notaId))?.tema_id;
   if (!temaId) {
@@ -109,13 +117,13 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     <div class="card stack">
       <div class="field">
         <label class="field__label" for="input-titulo">Título${renderFieldHint('É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.')}</label>
-        <input class="input${tituloSugerido ? ' input--sugerido' : ''}" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? tituloSugerido ?? '')}" />
+        <input class="input${tituloSugerido ? ' input--sugerido' : ''}" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? tituloSugerido ?? '')}" lang="pt-BR" spellcheck="true" autocorrect="on" autocapitalize="sentences" />
         ${tituloSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
       </div>
 
       <div class="field">
         <label class="field__label" for="input-fonte">Fonte (opcional)${renderFieldHint('Citação/referência — só aparece depois de revelar a resposta, junto do conteúdo.')}</label>
-        <input class="input${fonteSugerido ? ' input--sugerido' : ''}" id="input-fonte" type="text" placeholder="Ex: Aula 4, slide 12 ou página 87" maxlength="200" value="${escapeHtml(nota?.fonte ?? fonteSugerido ?? '')}" />
+        <input class="input${fonteSugerido ? ' input--sugerido' : ''}" id="input-fonte" type="text" placeholder="Ex: Aula 4, slide 12 ou página 87" maxlength="200" value="${escapeHtml(nota?.fonte ?? fonteSugerido ?? '')}" lang="pt-BR" spellcheck="true" autocorrect="on" autocapitalize="sentences" />
         ${fonteSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
       </div>
 
@@ -138,6 +146,8 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           id="input-conteudo"
           contenteditable="true"
           spellcheck="true"
+          autocorrect="on"
+          autocapitalize="sentences"
           lang="pt-BR"
           data-placeholder="Escreva aqui a explicação completa..."
         >${renderMarkdown(nota?.conteudo ?? '')}</div>
@@ -230,9 +240,15 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
       const range = sel.getRangeAt(0);
       if (!conteudoInput.contains(range.commonAncestorContainer)) return;
+      const fragment = range.extractContents();
+      // Se a seleção já contém (ou está dentro de) um trecho colorido, remove essa cor antes
+      // de aplicar a nova — sem isso o span novo fica ANINHADO no antigo, e a serialização
+      // pra texto puro (htmlToStoredText) gera "[[texto]{azul} resto]{vermelho}", que na
+      // hora de exibir de novo (ex: na revisão) sobra colchete/chave solto sem cor nenhuma.
+      unwrapColorSpans(fragment);
       const span = document.createElement('span');
       span.className = `text-color text-color--${cor}`;
-      span.appendChild(range.extractContents());
+      span.appendChild(fragment);
       range.insertNode(span);
       sel.removeAllRanges();
       const novaSelecao = document.createRange();
@@ -247,13 +263,22 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   btnLimparCor.addEventListener('click', () => {
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
-    let node: Node | null = sel.getRangeAt(0).commonAncestorContainer;
-    while (node && node !== conteudoInput) {
-      if (node instanceof HTMLElement && node.classList.contains('text-color')) {
-        node.replaceWith(...Array.from(node.childNodes));
-        break;
+    const range = sel.getRangeAt(0);
+    if (!conteudoInput.contains(range.commonAncestorContainer)) return;
+    if (range.collapsed) {
+      // Sem texto selecionado (só o cursor) — remove a cor do span onde o cursor está, se houver.
+      let node: Node | null = range.commonAncestorContainer;
+      while (node && node !== conteudoInput) {
+        if (node instanceof HTMLElement && node.classList.contains('text-color')) {
+          node.replaceWith(...Array.from(node.childNodes));
+          break;
+        }
+        node = node.parentNode;
       }
-      node = node.parentNode;
+    } else {
+      const fragment = range.extractContents();
+      unwrapColorSpans(fragment);
+      range.insertNode(fragment);
     }
     conteudoInput.focus();
   });

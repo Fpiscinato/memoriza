@@ -65,6 +65,9 @@ export async function renderToday(container: HTMLElement, ctx: TodayContext): Pr
 
 async function renderLista(container: HTMLElement, ctx: TodayContext, fila: QueueEntry[]): Promise<void> {
   pararTimer();
+  // Depois de avaliar uma revisão a página costuma estar rolada até o fim do conteúdo — sem
+  // isso, o usuário precisa rolar manualmente até o topo pra ver/clicar no próximo item da fila.
+  window.scrollTo({ top: 0 });
   const feitasHoje = await countRevisoesHoje(ctx.perfilId);
   const contador =
     feitasHoje > 0
@@ -147,6 +150,7 @@ function renderRevisao(
   revelado = false,
 ): void {
   iniciarTimerSeNecessario(entry.item.id);
+  if (!revelado) window.scrollTo({ top: 0 });
   const aviso = precisaAvisoDeValidade(entry.nota);
 
   container.innerHTML = `
