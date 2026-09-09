@@ -32,8 +32,11 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   const hoje = todayLondonISODate();
   const inicioJanela = addDaysToISODate(hoje, -6);
 
-  const itens = await db.getAllFromIndex('itens_revisao', 'perfil_id', perfilId);
-  const revisoesFeitas = itens.filter((i) => i.status === 'feita' && i.avaliacao);
+  const [feitas, pendentes] = await Promise.all([
+    db.getAllFromIndex('itens_revisao', 'perfil_status', IDBKeyRange.only([perfilId, 'feita'])),
+    db.getAllFromIndex('itens_revisao', 'perfil_status', IDBKeyRange.only([perfilId, 'pendente'])),
+  ]);
+  const revisoesFeitas = feitas.filter((i) => i.avaliacao);
 
   const revisoesDeHoje = revisoesFeitas.filter((i) => i.data_concluida === hoje);
   const revisoesHoje = revisoesDeHoje.length;
@@ -45,7 +48,7 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
 
   const porEstagio = (['1', '7', '30', '180'] as const).map((estagio) => ({
     estagio,
-    count: itens.filter((i) => i.status === 'pendente' && i.estagio === estagio).length,
+    count: pendentes.filter((i) => i.estagio === estagio).length,
   }));
 
   const datasComAtividade = new Set(revisoesFeitas.map((i) => i.data_concluida!));
@@ -56,9 +59,9 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
     diasAtivosUltimos7.push(datasComAtividade.has(addDaysToISODate(hoje, -i)));
   }
 
-  const itensEmConsulta = itens.filter((i) => i.estagio === 'consulta').length;
+  const itensEmConsulta = revisoesFeitas.filter((i) => i.estagio === 'consulta').length;
 
-  const dificeis = itens.filter((i) => i.avaliacao === 'dificil');
+  const dificeis = revisoesFeitas.filter((i) => i.avaliacao === 'dificil');
   const notaIds = Array.from(new Set(dificeis.map((i) => i.nota_id)));
   const notas = await Promise.all(notaIds.map((id) => db.get('notas', id)));
   const temaIdPorNota = new Map(
@@ -83,15 +86,16 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
   const espacosAtivos = espacos.filter((e) => !e.arquivado).length;
 
-  let totalTemas = 0;
-  let totalNotas = 0;
-  for (const espaco of espacos) {
-    const temasDoEspaco = await db.getAllFromIndex('temas', 'espaco_id', espaco.id);
-    totalTemas += temasDoEspaco.length;
-    for (const tema of temasDoEspaco) {
-      totalNotas += (await db.getAllFromIndex('notas', 'tema_id', tema.id)).length;
-    }
-  }
+  const temasPorEspaco = await Promise.all(
+    espacos.map((e) => db.getAllFromIndex('temas', 'espaco_id', e.id)),
+  );
+  const todosTemas = temasPorEspaco.flat();
+  const totalTemas = todosTemas.length;
+
+  const notasPorTema = await Promise.all(
+    todosTemas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),
+  );
+  const totalNotas = notasPorTema.reduce((soma, notas) => soma + notas.length, 0);
 
   return {
     revisoesHoje,
@@ -112,23 +116,30 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
 export async function getTempoTotalEspaco(espacoId: string): Promise<number> {
   const db = await getDB();
   const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
-  let total = 0;
-  for (const tema of temas) {
-    total += await getTempoTotalTema(tema.id);
-  }
-  return total;
+
+  const notasPorTema = await Promise.all(
+    temas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),
+  );
+  const todasNotas = notasPorTema.flat();
+  const itensPorNota = await Promise.all(
+    todasNotas.map((nota) => db.getAllFromIndex('itens_revisao', 'nota_id', nota.id)),
+  );
+
+  return itensPorNota
+    .flat()
+    .reduce((soma, item) => soma + (item.duracao_segundos ?? 0), 0);
 }
 
 /** Mesma soma de getTempoTotalEspaco, mas só das notas de UM tema — pro modal de Detalhes do Tema. */
 export async function getTempoTotalTema(temaId: string): Promise<number> {
   const db = await getDB();
   const notas = await db.getAllFromIndex('notas', 'tema_id', temaId);
-  let total = 0;
-  for (const nota of notas) {
-    const itens = await db.getAllFromIndex('itens_revisao', 'nota_id', nota.id);
-    for (const item of itens) {
-      total += item.duracao_segundos ?? 0;
-    }
-  }
-  return total;
+
+  const itensPorNota = await Promise.all(
+    notas.map((nota) => db.getAllFromIndex('itens_revisao', 'nota_id', nota.id)),
+  );
+
+  return itensPorNota
+    .flat()
+    .reduce((soma, item) => soma + (item.duracao_segundos ?? 0), 0);
 }

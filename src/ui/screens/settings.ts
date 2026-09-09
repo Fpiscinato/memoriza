@@ -13,6 +13,7 @@ import { formatDateTimeBR } from '../../lib/time';
 import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import { confirmAction } from '../components/confirm-modal';
 import { navigate } from '../router';
+import { APP_VERSION_LABEL } from '../../version';
 import type { Perfil } from '../../types';
 
 export interface SettingsContext {
@@ -181,6 +182,10 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         </div>
       </section>
     </div>
+
+    <footer class="app-footer">
+      <span>${escapeHtml(APP_VERSION_LABEL)}</span>
+    </footer>
   `;
 
   container.querySelector('#btn-switch-profile')?.addEventListener('click', () => {

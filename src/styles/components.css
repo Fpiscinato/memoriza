@@ -61,6 +61,14 @@
   }
 }
 
+/* Em telas muito estreitas (< 360px), o ícone de backup compete com o espaço restante
+   — some junto, já que a rota Configurações continua acessível pela nav de baixo. */
+@media (max-width: 359px) {
+  .app-header__backup-alert {
+    display: none;
+  }
+}
+
 /* Alerta de backup atrasado — era um banner grande no topo do conteúdo (competia com a
    tela); virou um ícone pequeno e clicável aqui, perto da data (leva pra Configurações). */
 .app-header__backup-alert {
@@ -603,6 +611,23 @@
   color: var(--color-warning);
 }
 
+/* Erro de validação de campo obrigatório — borda vermelha + mensagem logo abaixo. */
+.input--error {
+  border-color: var(--color-danger);
+}
+
+.input--error:focus {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 2px var(--color-danger-bg);
+}
+
+.field__error {
+  display: none;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+}
+
 .textarea {
   resize: vertical;
   min-height: 160px;
@@ -745,6 +770,15 @@ button.item-row:hover {
   flex-direction: column;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
+}
+
+/* Em telas largas, título e ações ficam lado a lado para aproveitar o espaço horizontal. */
+@media (min-width: 600px) {
+  .section-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
 }
 
 .section-header__title {
@@ -1563,4 +1597,38 @@ button.item-row:hover {
   color: var(--color-text-faint);
   text-align: center;
   margin-top: var(--space-1);
+}
+
+/* Rodapé discreto com a versão do app */
+
+.app-footer {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) 0 var(--space-6);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+}
+
+/* Estado de carregamento das telas (spinner centralizado) */
+
+.screen-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) 0;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
 }

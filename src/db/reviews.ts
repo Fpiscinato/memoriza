@@ -15,9 +15,8 @@ export interface QueueEntry {
 export async function getTodayQueue(perfilId: string): Promise<QueueEntry[]> {
   const db = await getDB();
   const hoje = todayLondonISODate();
-  const itens = (await db.getAllFromIndex('itens_revisao', 'perfil_id', perfilId)).filter(
-    (i) => i.status === 'pendente' && i.data_agendada <= hoje,
-  );
+  const pendentes = await db.getAllFromIndex('itens_revisao', 'perfil_status', IDBKeyRange.only([perfilId, 'pendente']));
+  const itens = pendentes.filter((i) => i.data_agendada <= hoje);
 
   const notaIds = Array.from(new Set(itens.map((i) => i.nota_id)));
   const notas = await Promise.all(notaIds.map((id) => db.get('notas', id)));
@@ -101,8 +100,8 @@ export async function completeReview(
 export async function countRevisoesHoje(perfilId: string): Promise<number> {
   const db = await getDB();
   const hoje = todayLondonISODate();
-  const itens = await db.getAllFromIndex('itens_revisao', 'perfil_id', perfilId);
-  return itens.filter((i) => i.status === 'feita' && i.avaliacao && i.data_concluida === hoje).length;
+  const feitas = await db.getAllFromIndex('itens_revisao', 'perfil_status', IDBKeyRange.only([perfilId, 'feita']));
+  return feitas.filter((i) => i.avaliacao && i.data_concluida === hoje).length;
 }
 
 /** Move manualmente o(s) item(ns) pendente(s) de uma nota para 'consulta' (fora da fila). */

@@ -17,6 +17,8 @@ import { renderFavoritos } from './screens/favoritos';
 import { renderAjuda } from './screens/ajuda';
 import { renderSettings } from './screens/settings';
 import { initWakeLock } from '../lib/wakelock';
+import { APP_VERSION } from '../version';
+import { canNavigateAway } from '../lib/form-guard';
 import type { Perfil } from '../types';
 
 const BACKUP_REMINDER_DAYS = 14;
@@ -105,7 +107,7 @@ async function render(root: HTMLElement): Promise<void> {
             }
             <span class="app-header__date" title="Data de hoje">${escapeHtml(formatDateWeekdayShortBR(toLondonISODate()))}</span>
             <button class="app-header__help" id="btn-ajuda" type="button" aria-label="Como usar">?</button>
-            <span class="app-header__profile">${escapeHtml(perfil.nome)}</span>
+            <span class="app-header__profile" title="Memoriza ${APP_VERSION}">${escapeHtml(perfil.nome)}</span>
           </span>
         </header>
         <main class="app-main" id="screen-content"></main>
@@ -114,16 +116,42 @@ async function render(root: HTMLElement): Promise<void> {
   `;
 
   root.querySelectorAll<HTMLButtonElement>('.app-nav__item').forEach((btn) => {
-    btn.addEventListener('click', () => navigateTop(btn.dataset.route as TopLevelRoute));
+    btn.addEventListener('click', () => {
+      if (!canNavigateAway()) return;
+      navigateTop(btn.dataset.route as TopLevelRoute);
+    });
   });
-  root.querySelector('#btn-ajuda')?.addEventListener('click', () => navigate('ajuda'));
-  root.querySelector('#btn-backup-alert')?.addEventListener('click', () => navigate('config'));
+  root.querySelector('#btn-ajuda')?.addEventListener('click', () => {
+    if (!canNavigateAway()) return;
+    navigate('ajuda');
+  });
+  root.querySelector('#btn-backup-alert')?.addEventListener('click', () => {
+    if (!canNavigateAway()) return;
+    navigate('config');
+  });
 
   const content = root.querySelector<HTMLElement>('#screen-content')!;
 
   const screenContainer = document.createElement('div');
+  screenContainer.className = 'screen-container';
   content.appendChild(screenContainer);
 
+  screenContainer.innerHTML = '<div class="screen-loading" aria-hidden="true"><div class="spinner"></div></div>';
+
+  try {
+    await renderScreen(screenContainer, route, perfil);
+  } catch (err) {
+    console.error('Erro ao renderizar tela:', err);
+    screenContainer.innerHTML =
+      '<div class="banner banner--warning" role="alert">Algo deu errado ao carregar esta tela. Tente novamente.</div>';
+  }
+}
+
+async function renderScreen(
+  screenContainer: HTMLElement,
+  route: ReturnType<typeof getCurrentRoute>,
+  perfil: Perfil,
+): Promise<void> {
   switch (route.name) {
     case 'hoje':
       await renderToday(screenContainer, { perfilId: perfil.id });
@@ -161,7 +189,6 @@ async function render(root: HTMLElement): Promise<void> {
         onSwitchProfile: () => {
           setSelectedProfileId(null);
           navigate('perfil');
-          render(root);
         },
       });
       break;

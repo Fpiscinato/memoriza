@@ -24,19 +24,19 @@ interface MemorizaDB extends DBSchema {
   itens_revisao: {
     key: string;
     value: ItemRevisao;
-    indexes: { perfil_id: string; nota_id: string };
+    indexes: { perfil_id: string; nota_id: string; perfil_status: string };
   };
 }
 
 const DB_NAME = 'memoriza';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<MemorizaDB>> | undefined;
 
 export function getDB(): Promise<IDBPDatabase<MemorizaDB>> {
   if (!dbPromise) {
     dbPromise = openDB<MemorizaDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion) {
         if (!db.objectStoreNames.contains('perfis')) {
           db.createObjectStore('perfis', { keyPath: 'id' });
         }
@@ -56,6 +56,12 @@ export function getDB(): Promise<IDBPDatabase<MemorizaDB>> {
           const store = db.createObjectStore('itens_revisao', { keyPath: 'id' });
           store.createIndex('perfil_id', 'perfil_id');
           store.createIndex('nota_id', 'nota_id');
+        }
+        if (oldVersion < 2 && db.objectStoreNames.contains('itens_revisao')) {
+          const store = db.transaction('itens_revisao', 'versionchange').objectStore('itens_revisao');
+          if (!store.indexNames.contains('perfil_status')) {
+            store.createIndex('perfil_status', ['perfil_id', 'status']);
+          }
         }
       },
     });

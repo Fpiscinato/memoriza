@@ -310,10 +310,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
 
 async function countNotasPorTema(temaIds: string[]): Promise<Map<string, number>> {
   const db = await getDB();
+  const resultados = await Promise.all(
+    temaIds.map((id) => db.getAllFromIndex('notas', 'tema_id', id)),
+  );
   const counts = new Map<string, number>();
-  for (const id of temaIds) {
-    const notas = await db.getAllFromIndex('notas', 'tema_id', id);
-    counts.set(id, notas.length);
-  }
+  temaIds.forEach((id, i) => counts.set(id, resultados[i].length));
   return counts;
 }

@@ -169,10 +169,10 @@ function renderRow(e: { id: string; nome: string }, temaCount: number): string {
 
 async function countTemasPorEspaco(espacoIds: string[]): Promise<Map<string, number>> {
   const db = await getDB();
+  const resultados = await Promise.all(
+    espacoIds.map((id) => db.getAllFromIndex('temas', 'espaco_id', id)),
+  );
   const counts = new Map<string, number>();
-  for (const id of espacoIds) {
-    const temas = await db.getAllFromIndex('temas', 'espaco_id', id);
-    counts.set(id, temas.length);
-  }
+  espacoIds.forEach((id, i) => counts.set(id, resultados[i].length));
   return counts;
 }

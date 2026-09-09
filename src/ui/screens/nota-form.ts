@@ -1,7 +1,7 @@
 import { createNota, deleteNota, getNota, listNotas, toggleNotaFavorito, updateNota } from '../../db/notas';
 import { getTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
-import { devReviewNow, stopReviewing } from '../../db/reviews';
+import { stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
@@ -11,6 +11,7 @@ import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderFieldHint } from '../components/field-hint';
+import { clearFormDirty, setFormDirty, setFormDirtyPrompt, canNavigateAway } from '../../lib/form-guard';
 
 export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
 
@@ -119,6 +120,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       <div class="field">
         <label class="field__label" for="input-titulo">Título${renderFieldHint('É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.')}</label>
         <input class="input${tituloSugerido ? ' input--sugerido' : ''}" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? tituloSugerido ?? '')}" lang="pt-BR" spellcheck="true" autocorrect="on" autocapitalize="sentences" />
+        <p class="field__error" role="alert"></p>
         ${tituloSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
       </div>
 
@@ -134,6 +136,8 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           <button type="button" class="editor-toolbar__btn" data-cmd="bold" title="Negrito" aria-label="Negrito"><strong>N</strong></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico" aria-label="Itálico"><em>I</em></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="insertUnorderedList" title="Lista com marcadores (Tab indenta, Shift+Tab volta)" aria-label="Lista com marcadores">☰</button>
+          <span class="editor-toolbar__sep" aria-hidden="true"></span>
+          <button type="button" class="editor-toolbar__btn" data-cmd="undo" title="Desfazer" aria-label="Desfazer">↩</button>
           <span class="editor-toolbar__sep" aria-hidden="true"></span>
           <div class="color-picker" role="group" aria-label="Cor do texto">
             ${TEXT_COLOR_NAMES.map(
@@ -153,6 +157,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           lang="pt-BR"
           data-placeholder="Escreva aqui a explicação completa..."
         >${nota?.conteudo ? renderMarkdown(nota.conteudo) : '<p><br></p>'}</div>
+        <p class="field__error" role="alert"></p>
       </div>
 
       <div>
@@ -184,7 +189,6 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           <p class="text-muted">Essa nota está na fila de revisão normalmente.</p>
           <div class="form-actions">
             <button class="btn btn--secondary btn--sm" id="btn-parar-revisar" type="button">Parar de revisar</button>
-            <button class="btn btn--secondary btn--sm" id="btn-revisar-agora" type="button">Revisar agora (teste)</button>
           </div>
         `
             : `<p class="text-muted">Essa nota não está mais na fila de revisão (estágio "consulta").</p>`
@@ -198,11 +202,22 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   const backRoute = `temas/${temaId}`;
   bindBreadcrumb(container);
-  container.querySelector('#btn-cancelar')?.addEventListener('click', () => navigate(backRoute));
+  container.querySelector('#btn-cancelar')?.addEventListener('click', () => {
+    if (!canNavigateAway()) return;
+    clearFormDirty();
+    navigate(backRoute);
+  });
 
   const conteudoInput = container.querySelector<HTMLElement>('#input-conteudo')!;
   const tituloInput = container.querySelector<HTMLInputElement>('#input-titulo')!;
   const fonteInput = container.querySelector<HTMLInputElement>('#input-fonte')!;
+
+  // Marca o formulário como "sujado" quando o usuário edita qualquer campo.
+  const onDirty = () => setFormDirty(true);
+  tituloInput.addEventListener('input', onDirty);
+  fonteInput.addEventListener('input', onDirty);
+  conteudoInput.addEventListener('input', onDirty);
+  setFormDirtyPrompt(() => window.confirm('Há alterações não salvas nesta nota. Deseja sair mesmo assim?'));
 
   if (tituloSugerido) tituloInput.addEventListener('input', () => clearInputSugestao(tituloInput), { once: true });
   if (fonteSugerido) fonteInput.addEventListener('input', () => clearInputSugestao(fonteInput), { once: true });
@@ -441,15 +456,33 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   container.querySelector('#btn-salvar')?.addEventListener('click', async () => {
     const titulo = tituloInput.value.trim();
-    if (!titulo) {
-      tituloInput.focus();
-      return;
-    }
     const conteudo = htmlToStoredText(conteudoInput).trim();
-    if (!conteudo) {
-      conteudoInput.focus();
+    let primeiroErro: HTMLElement | null = null;
+
+    const marcarErro = (el: HTMLElement, msg: string) => {
+      el.classList.add('input--error');
+      el.setAttribute('aria-invalid', 'true');
+      const hint = el.closest('.field')?.querySelector<HTMLElement>('.field__error');
+      if (hint) {
+        hint.textContent = msg;
+        hint.style.display = 'block';
+      }
+      if (!primeiroErro) primeiroErro = el;
+    };
+    const limparErro = (el: HTMLElement) => {
+      el.classList.remove('input--error');
+      el.removeAttribute('aria-invalid');
+    };
+
+    if (!titulo) marcarErro(tituloInput, 'Informe um título para a nota.');
+    if (!conteudo) marcarErro(conteudoInput, 'Informe o conteúdo da nota.');
+    if (primeiroErro) {
+      (primeiroErro as HTMLElement).focus();
       return;
     }
+    limparErro(tituloInput);
+    limparErro(conteudoInput);
+
     const input = {
       titulo,
       conteudo,
@@ -463,6 +496,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     } else {
       await updateNota(params.notaId, input);
     }
+    clearFormDirty();
     navigate(backRoute);
   });
 
@@ -498,10 +532,6 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       setTimeout(() => {
         btnCompartilhar.textContent = original;
       }, 1800);
-    });
-    container.querySelector('#btn-revisar-agora')?.addEventListener('click', async () => {
-      await devReviewNow(nota.id);
-      navigate('hoje');
     });
     container.querySelector('#btn-excluir-nota')?.addEventListener('click', async () => {
       const ok = await confirmAction({

@@ -3,7 +3,7 @@ import { buildPlainText } from '../../lib/pdf-text';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { accentVar } from '../../lib/color';
-import { formatDateBR } from '../../lib/time';
+import { formatDateBR, toLondonISODate } from '../../lib/time';
 import { navigate } from '../router';
 
 export async function renderEspacoPdf(container: HTMLElement, espacoId: string, categoria?: string): Promise<void> {
@@ -31,7 +31,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
         <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>${escapeHtml(espaco.nome)}
       </h1>
       <p class="pdf-meta">
-        ${categoria !== undefined ? `Categoria: ${escapeHtml(categoria || 'Sem categoria')} · ` : ''}Gerado em ${formatDateBR(new Date().toISOString())}
+        ${categoria !== undefined ? `Categoria: ${escapeHtml(categoria || 'Sem categoria')} · ` : ''}Gerado em ${formatDateBR(toLondonISODate() + 'T00:00:00Z')}
       </p>
 
       ${
