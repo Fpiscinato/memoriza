@@ -6,6 +6,7 @@ import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
+import { ICONS } from '../icons';
 
 export interface EspacosContext {
   perfilId: string;
@@ -45,9 +46,10 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       ativos.length === 0
         ? `
       <div class="empty-state">
-        <div class="empty-state__icon" aria-hidden="true">📚</div>
+        <div class="empty-state__icon" aria-hidden="true">${ICONS.bookOpen}</div>
         <div class="empty-state__title">Nenhum espaço de estudo ainda</div>
         <p class="empty-state__hint">Crie um espaço (ex: "Curso de Investimentos") para organizar seus temas e notas.</p>
+        <button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-novo-espaco" type="button">Criar o primeiro espaço</button>
       </div>
     `
         : grupos
@@ -100,10 +102,12 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   bindCategoriaChips(container);
 
   const form = container.querySelector<HTMLElement>('#form-novo-espaco')!;
-  container.querySelector('#btn-novo-espaco')?.addEventListener('click', () => {
+  const abrirFormEspaco = () => {
     form.style.display = 'block';
     container.querySelector<HTMLInputElement>('#input-nome-espaco')?.focus();
-  });
+  };
+  container.querySelector('#btn-novo-espaco')?.addEventListener('click', abrirFormEspaco);
+  container.querySelector('#btn-empty-novo-espaco')?.addEventListener('click', abrirFormEspaco);
   container.querySelector('#btn-cancelar-espaco')?.addEventListener('click', () => {
     form.style.display = 'none';
   });

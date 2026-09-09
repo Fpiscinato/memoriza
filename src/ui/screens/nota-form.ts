@@ -12,6 +12,7 @@ import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderFieldHint } from '../components/field-hint';
 import { clearFormDirty, setFormDirty, setFormDirtyPrompt, canNavigateAway } from '../../lib/form-guard';
+import { ICONS } from '../icons';
 
 export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
 
@@ -137,7 +138,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico" aria-label="Itálico"><em>I</em></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="insertUnorderedList" title="Lista com marcadores (Tab indenta, Shift+Tab volta)" aria-label="Lista com marcadores">☰</button>
           <span class="editor-toolbar__sep" aria-hidden="true"></span>
-          <button type="button" class="editor-toolbar__btn" data-cmd="undo" title="Desfazer" aria-label="Desfazer">↩</button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="undo" title="Desfazer" aria-label="Desfazer">${ICONS.undo}</button>
           <span class="editor-toolbar__sep" aria-hidden="true"></span>
           <div class="color-picker" role="group" aria-label="Cor do texto">
             ${TEXT_COLOR_NAMES.map(

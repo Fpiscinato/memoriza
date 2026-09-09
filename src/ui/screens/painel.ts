@@ -1,6 +1,7 @@
 import { getDashboardStats } from '../../db/dashboard';
 import { escapeHtml } from '../../lib/dom';
 import { formatDuracao } from '../../lib/time';
+import { ICONS } from '../icons';
 
 export interface PainelContext {
   perfilId: string;
@@ -23,7 +24,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
     <p class="screen-hint" style="margin-top:0;">Sua sequência de dias estudando e os Temas onde você mais marcou "Difícil" — os pontos fracos reais.</p>
 
     <div class="streak-hero">
-      <div class="streak-hero__flame" aria-hidden="true">🔥</div>
+      <div class="streak-hero__flame" aria-hidden="true">${ICONS.flame}</div>
       <div class="streak-hero__count">${stats.streakDias}</div>
       <div class="streak-hero__label">${stats.streakDias === 1 ? 'dia seguido estudando' : 'dias seguidos estudando'}</div>
       <div class="streak-hero__week" role="img" aria-label="Últimos 7 dias: ${stats.diasAtivosUltimos7.filter(Boolean).length} de 7 com revisão feita">

@@ -13,6 +13,7 @@ import { showInfo } from '../components/info-modal';
 import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
+import { ICONS } from '../icons';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
   const espaco = await getEspaco(espacoId);
@@ -53,8 +54,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <details class="item-menu">
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
-            <button id="btn-detalhes" type="button">ℹ️ Detalhes</button>
-            <button id="btn-avaliar" type="button">🎲 Avaliação aleatória</button>
+            <button id="btn-detalhes" type="button">${ICONS.info} Detalhes</button>
+            <button id="btn-avaliar" type="button">${ICONS.dice} Avaliação aleatória</button>
             <button id="btn-excluir" class="danger" type="button">Excluir espaço</button>
           </div>
         </details>
@@ -113,9 +114,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       temas.length === 0
         ? `
       <div class="empty-state">
-        <div class="empty-state__icon" aria-hidden="true">🗂️</div>
+        <div class="empty-state__icon" aria-hidden="true">${ICONS.folder}</div>
         <div class="empty-state__title">Nenhum tema neste espaço ainda</div>
         <p class="empty-state__hint">Temas organizam as notas dentro de um espaço — ex: "Renda Fixa", "Renda Variável".</p>
+        ${!espaco.arquivado ? `<button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-novo-tema" type="button">Criar o primeiro tema</button>` : ''}
       </div>
     `
         : grupos
@@ -142,7 +144,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
               (t) => `
             <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.categoria ? grupo.categoria.toLowerCase() : t.id)}">
               <span class="item-row__main">
-                <span class="item-row__title">${t.favorito ? '⭐ ' : ''}${escapeHtml(t.nome)}</span>
+                <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(t.nome)}</span>
                 <span class="item-row__meta">${notaCounts.get(t.id) ?? 0} nota(s)</span>
               </span>
             </button>
@@ -266,10 +268,12 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   });
 
   const formTema = container.querySelector<HTMLElement>('#form-novo-tema');
-  container.querySelector('#btn-novo-tema')?.addEventListener('click', () => {
+  const abrirFormTema = () => {
     if (formTema) formTema.style.display = 'block';
     container.querySelector<HTMLInputElement>('#input-nome-tema')?.focus();
-  });
+  };
+  container.querySelector('#btn-novo-tema')?.addEventListener('click', abrirFormTema);
+  container.querySelector('#btn-empty-novo-tema')?.addEventListener('click', abrirFormTema);
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
     if (formTema) formTema.style.display = 'none';
   });

@@ -74,15 +74,24 @@
 .app-header__backup-alert {
   border: none;
   background: none;
-  padding: 0;
-  font-size: var(--font-size-md);
+  padding: var(--space-1);
   line-height: 1;
   cursor: pointer;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-header__backup-alert .icon-inline {
+  width: 20px;
+  height: 20px;
   opacity: 0.6;
 }
 
-.app-header__backup-alert.is-urgent {
+.app-header__backup-alert.is-urgent .icon-inline {
   opacity: 1;
+  color: var(--color-warning);
 }
 
 .app-main {
@@ -268,12 +277,10 @@
 .btn--primary {
   background: var(--color-brand);
   color: var(--color-brand-contrast);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn--primary:hover {
   background: var(--color-brand-hover);
-  box-shadow: var(--shadow-md);
 }
 
 .btn--secondary {
@@ -289,6 +296,10 @@
 .btn--danger {
   background: var(--color-danger-bg);
   color: var(--color-danger);
+}
+
+.btn--danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 16%, var(--color-surface));
 }
 
 .btn--block {
@@ -307,15 +318,13 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
 }
 
 .card + .card {
   margin-top: var(--space-4);
 }
 
-/* Estado vazio */
-
+/* Estado vazio — "medalhão" com a cor de marca no lugar do emoji, e ação clara abaixo */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -327,7 +336,20 @@
 }
 
 .empty-state__icon {
-  font-size: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand-bg);
+  color: var(--color-brand);
+}
+
+.empty-state__icon .icon-inline {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.5;
 }
 
 .empty-state__title {
@@ -340,6 +362,10 @@
 .empty-state__hint {
   max-width: 32ch;
   font-size: var(--font-size-sm);
+}
+
+.empty-state__action {
+  margin-top: var(--space-2);
 }
 
 /* Seletor de perfil */
@@ -383,16 +409,13 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
   transition:
     transform var(--transition-fast),
-    box-shadow var(--transition-fast),
     border-color var(--transition-fast);
 }
 
 .profile-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
   border-color: var(--color-brand);
 }
 
@@ -434,6 +457,12 @@
   margin-bottom: var(--space-1);
 }
 
+.settings-section__title .icon-inline {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-faint);
+}
+
 /* Linha dentro de uma lista já dentro de um .card — divisor simples em vez de virar um
    card-dentro-de-card (com a própria sombra/borda), que é o que deixava Configurações
    "pesada" de tantas caixas empilhadas. */
@@ -464,7 +493,6 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
 }
 
 .settings-row__label {
@@ -500,7 +528,6 @@
 .segmented__option[aria-pressed='true'] {
   background: var(--color-surface);
   color: var(--color-text);
-  box-shadow: var(--shadow-sm);
   font-weight: var(--font-weight-medium);
 }
 
@@ -689,12 +716,38 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* Ícones pequenos de acompanhar texto (botões, badges, títulos de seção) — herdam tamanho
+   da fonte e a cor do texto; o próprio <svg> carrega a classe (ver src/ui/icons.ts). */
+.icon-inline {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
+/* Transição suave ao trocar de tela — a classe é aplicada no app.ts depois do render
+   (com reflow forçado), senão a animação dispararia no spinner e não no conteúdo. */
+.screen-container.screen-enter {
+  animation: screen-enter 220ms ease;
+}
+
+@keyframes screen-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Listas de itens simples (espaços, temas, notas) */
 
 .item-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
 /* Desktop/tablet: aproveita a largura com múltiplas colunas em vez de uma lista única
@@ -703,31 +756,74 @@
   .item-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--space-4);
+    gap: var(--space-3);
     align-items: start;
   }
 }
 
 .item-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--row-accent, transparent);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  height: 100%;
-  transition:
-    box-shadow var(--transition-fast),
-    transform var(--transition-fast);
+  padding: var(--space-4) var(--space-1);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  transition: background var(--transition-fast);
+}
+
+/* Barra lateral com gradiente da cor do Espaço/Tema — substitui a borda colorida chapada
+   por um desenho mais suave: desce da cor cheia até quase transparente. */
+.item-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: var(--radius-full);
+  /* Fallback plano corrigido abaixo se color-mix não existir — sem ele, um navegador antigo
+     invalida a declaração do gradiente inteira e some com a barra. */
+  background: var(--row-accent, transparent);
+  background: linear-gradient(
+    180deg,
+    var(--row-accent, transparent),
+    color-mix(in srgb, var(--row-accent, transparent) 12%, transparent)
+  );
+}
+
+/* Na grade larga o divisor de "lista" não funciona bem — as células voltam a ser tiles com
+   borda arredondada, mas sem sombra, mantendo a barra de cor. */
+@media (min-width: 720px) {
+  .item-row {
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--row-accent, transparent);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    height: 100%;
+    background: var(--color-surface);
+  }
+
+  button.item-row:hover {
+    border-color: var(--color-text-faint);
+  }
 }
 
 button.item-row:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  background: var(--color-surface);
+}
+
+@media (max-width: 719px) {
+  .item-list {
+    gap: 0;
+  }
+
+  .item-row:last-child {
+    border-bottom: none;
+  }
 }
 
 /* Pequeno indicador de cor (Espaço/Categoria) — ver src/lib/color.ts */
@@ -824,7 +920,6 @@ button.item-row:hover {
   background: var(--color-surface);
   color: var(--color-text);
   font-weight: var(--font-weight-medium);
-  box-shadow: var(--shadow-sm);
 }
 
 /* Trechos coloridos dentro do conteúdo da nota — sintaxe [texto]{cor}, ver src/lib/markdown.ts.
@@ -979,7 +1074,6 @@ button.item-row:hover {
   font-weight: var(--font-weight-bold);
   letter-spacing: -0.01em;
   line-height: var(--line-height-tight);
-  margin-top: calc(-1 * var(--space-2));
 }
 
 @keyframes review-reveal {
@@ -1008,7 +1102,76 @@ button.item-row:hover {
 .review-actions .btn {
   flex-direction: column;
   padding: var(--space-4) var(--space-2);
-  gap: var(--space-1);
+  gap: var(--space-2);
+}
+
+.review-actions .btn .icon-inline {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.5;
+}
+
+/* Avaliação com cor por nível (Fácil=verde, Médio=âmbar, Difícil=vermelho) — semântica que
+   reforça o texto, em vez dos emojis (que variavam entre sistema operacional). */
+.btn--review-dificil {
+  background: var(--color-danger-bg);
+  border-color: transparent;
+  color: var(--color-danger);
+}
+
+.btn--review-dificil:hover {
+  background: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
+  border-color: transparent;
+}
+
+.btn--review-medio {
+  background: var(--color-warning-bg);
+  border-color: transparent;
+  color: var(--color-warning);
+}
+
+.btn--review-medio:hover {
+  background: color-mix(in srgb, var(--color-warning) 18%, var(--color-surface));
+  border-color: transparent;
+}
+
+.btn--review-facil {
+  background: var(--color-success-bg);
+  border-color: transparent;
+  color: var(--color-success);
+}
+
+.btn--review-facil:hover {
+  background: color-mix(in srgb, var(--color-success) 18%, var(--color-surface));
+  border-color: transparent;
+}
+
+/* Barra de progresso "X de Y revisadas hoje", no topo do cartão de revisão */
+.review-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.review-progress__track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg);
+  overflow: hidden;
+}
+
+.review-progress__fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-brand);
+  transition: width var(--transition-base);
+}
+
+.review-progress__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .queue-group {
@@ -1044,6 +1207,11 @@ button.item-row:hover {
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+}
+
+.badge .icon-inline {
+  width: 0.9em;
+  height: 0.9em;
 }
 
 .badge--muted {
@@ -1105,6 +1273,15 @@ button.item-row:hover {
   border: none;
   font-size: var(--font-size-sm);
   color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.item-menu__panel button .icon-inline {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-faint);
 }
 
 .item-menu__panel button:hover {
@@ -1219,8 +1396,17 @@ button.item-row:hover {
 }
 
 .streak-hero__flame {
-  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+}
+
+.streak-hero__flame .icon-inline {
+  width: 34px;
+  height: 34px;
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
 }
 
 .streak-hero__count {
@@ -1321,7 +1507,6 @@ button.item-row:hover {
   border-radius: var(--radius-md);
   padding: var(--space-4);
   text-align: center;
-  box-shadow: var(--shadow-sm);
 }
 
 .stat-tile__value {
@@ -1350,7 +1535,6 @@ button.item-row:hover {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
 }
 
 /* Exportação em PDF (tela normal: instruções + botão; impressão: só o conteúdo) */
@@ -1508,9 +1692,12 @@ button.item-row:hover {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-muted);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-sm);
   flex-shrink: 0;
+}
+
+.app-header__help .icon-inline {
+  width: 18px;
+  height: 18px;
 }
 
 /* Ícone "ⓘ" ao lado do rótulo de um campo — balão com a explicação, no lugar de um parágrafo
@@ -1607,6 +1794,30 @@ button.item-row:hover {
   padding: var(--space-4) 0 var(--space-6);
   font-size: var(--font-size-xs);
   color: var(--color-text-faint);
+}
+
+/* Ícones pequenos dentro de títulos de lista/revisão (estrela de favorito, lápis de editar) */
+.item-row__title .icon-inline,
+.review-card__titulo .icon-inline,
+.pdf-tema__title .icon-inline,
+.pdf-nota__titulo .icon-inline {
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.12em;
+}
+
+.link .icon-inline {
+  width: 15px;
+  height: 15px;
+  vertical-align: -0.18em;
+}
+
+/* Usuário que prefere menos movimento: navegação e revisão aparecem sem animação */
+@media (prefers-reduced-motion: reduce) {
+  .screen-container.screen-enter,
+  .review-card__content {
+    animation: none;
+  }
 }
 
 /* Estado de carregamento das telas (spinner centralizado) */

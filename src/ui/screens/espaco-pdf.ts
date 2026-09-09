@@ -5,6 +5,7 @@ import { renderMarkdown } from '../../lib/markdown';
 import { accentVar } from '../../lib/color';
 import { formatDateBR, toLondonISODate } from '../../lib/time';
 import { navigate } from '../router';
+import { ICONS } from '../icons';
 
 export async function renderEspacoPdf(container: HTMLElement, espacoId: string, categoria?: string): Promise<void> {
   const data = await buildEspacoPdfData(espacoId);
@@ -53,7 +54,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
               const temaKey = temaPdf.tema.categoria ? temaPdf.tema.categoria.toLowerCase() : temaPdf.tema.id;
               return `
             <section class="pdf-tema" style="--tema-accent:${accentVar(temaKey)}">
-              <div class="pdf-tema__title">${temaPdf.tema.favorito ? '⭐ ' : ''}${escapeHtml(temaPdf.tema.nome)}</div>
+              <div class="pdf-tema__title">${temaPdf.tema.favorito ? `${ICONS.star} ` : ''}${escapeHtml(temaPdf.tema.nome)}</div>
               ${
                 temaPdf.notas.length === 0
                   ? `<p class="text-muted">Sem notas.</p>`
@@ -62,7 +63,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
                         (notaPdf) => `
                 <div class="pdf-nota">
                   <div class="pdf-nota__titulo">
-                    ${notaPdf.nota.favorito ? '⭐ ' : ''}${notaPdf.fraca ? '⚠️ Reforçar — ' : ''}${escapeHtml(notaPdf.nota.titulo || '(sem título)')}
+                    ${notaPdf.nota.favorito ? `${ICONS.star} ` : ''}${notaPdf.fraca ? `${ICONS.alert} Reforçar — ` : ''}${escapeHtml(notaPdf.nota.titulo || '(sem título)')}
                   </div>
                   ${notaPdf.nota.fonte ? `<div class="pdf-nota__meta">${escapeHtml(notaPdf.nota.fonte)}</div>` : ''}
                   <div class="markdown-preview">${renderMarkdown(notaPdf.nota.conteudo)}</div>

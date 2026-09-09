@@ -2,6 +2,7 @@ import { getFavoritos } from '../../db/favorites';
 import { escapeHtml } from '../../lib/dom';
 import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
+import { ICONS } from '../icons';
 
 export interface FavoritosContext {
   perfilId: string;
@@ -13,11 +14,13 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
   if (temas.length === 0 && notas.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state__icon" aria-hidden="true">⭐</div>
+        <div class="empty-state__icon" aria-hidden="true">${ICONS.star}</div>
         <div class="empty-state__title">Nenhum favorito ainda</div>
         <p class="empty-state__hint">Marque um Tema ou uma Nota como favorito (☆ Favoritar) pra vê-los aqui, organizados.</p>
+        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Espaços</button>
       </div>
     `;
+    container.querySelector('#btn-empty-espacos')?.addEventListener('click', () => navigate('espacos'));
     return;
   }
 
@@ -65,9 +68,9 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
             ${grupo.itens
               .map(
                 (tf) => `
-              <button class="item-row" data-tema="${escapeHtml(tf.tema.id)}" type="button" style="cursor:pointer; text-align:left;">
+              <button class="item-row" data-tema="${escapeHtml(tf.tema.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.espacoId)}">
                 <span class="item-row__main">
-                  <span class="item-row__title">⭐ ${escapeHtml(tf.tema.nome)}</span>
+                  <span class="item-row__title">${ICONS.star} ${escapeHtml(tf.tema.nome)}</span>
                 </span>
               </button>
             `,
@@ -97,9 +100,9 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
             ${grupo.itens
               .map(
                 (nf) => `
-              <button class="item-row" data-nota="${escapeHtml(nf.nota.id)}" type="button" style="cursor:pointer; text-align:left;">
+              <button class="item-row" data-nota="${escapeHtml(nf.nota.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.espacoId)}">
                 <span class="item-row__main">
-                  <span class="item-row__title">⭐ ${escapeHtml(nf.nota.titulo || '(sem título)')}</span>
+                  <span class="item-row__title">${ICONS.star} ${escapeHtml(nf.nota.titulo || '(sem título)')}</span>
                   <span class="item-row__meta">${escapeHtml(nf.nota.fonte || 'Sem fonte')}</span>
                 </span>
               </button>

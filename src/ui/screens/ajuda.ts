@@ -147,7 +147,7 @@ const SECOES: Secao[] = [
       confirmação antes, pra evitar clique sem querer, mas dá pra reativar quando quiser.
       <strong>Excluir</strong> é definitivo, apaga tudo (Temas, Notas, histórico de
       revisão) — use só se criou algo por engano.</p>
-      <p>O botão <strong>ℹ️ Detalhes</strong> (no menu "⋯" do Espaço) mostra um resumo:
+      <p>O botão <strong>Detalhes</strong> (no menu "⋯" do Espaço) mostra um resumo:
       quantos Temas e Notas, quanto tempo total você já passou revisando notas daquele
       Espaço, e há quantos dias ele está ativo (ou quanto tempo levou até ser arquivado).</p>`,
   },

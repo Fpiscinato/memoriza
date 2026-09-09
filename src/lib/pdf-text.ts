@@ -58,7 +58,7 @@ export function buildNotaPlainText(nota: { titulo: string; fonte: string; conteu
  * primeira vista num documento longo).
  */
 export function buildPlainText(espaco: EspacoPdfData['espaco'], grupos: CategoriaPdf[]): string {
-  const lines: string[] = [`📚 *${espaco.nome.toUpperCase()}*`];
+  const lines: string[] = [`*${espaco.nome.toUpperCase()}*`];
 
   for (const grupo of grupos) {
     if (grupo.temas.length === 0) continue;
@@ -72,7 +72,7 @@ export function buildPlainText(espaco: EspacoPdfData['espaco'], grupos: Categori
         continue;
       }
       for (const notaPdf of temaPdf.notas) {
-        const flags = `${notaPdf.nota.favorito ? '⭐ ' : ''}${notaPdf.fraca ? '⚠️ ' : ''}`;
+        const flags = `${notaPdf.nota.favorito ? '⭐ ' : ''}${notaPdf.fraca ? '⚠ ' : ''}`;
         lines.push('', `${flags}*${notaPdf.nota.titulo || '(sem título)'}*`);
         if (notaPdf.nota.fonte) lines.push(`_${notaPdf.nota.fonte}_`);
         lines.push(blockToPlain(notaPdf.nota.conteudo));

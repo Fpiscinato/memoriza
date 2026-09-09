@@ -14,6 +14,7 @@ import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import { confirmAction } from '../components/confirm-modal';
 import { navigate } from '../router';
 import { APP_VERSION_LABEL } from '../../version';
+import { ICONS } from '../icons';
 import type { Perfil } from '../../types';
 
 export interface SettingsContext {
@@ -36,7 +37,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   container.innerHTML = `
     <div class="stack content-narrow">
       <section class="settings-section">
-        <div class="settings-section__title">👤 Perfil</div>
+        <div class="settings-section__title">${ICONS.user} Perfil</div>
         <div class="card">
           <div class="settings-list-row">
             <div>
@@ -56,7 +57,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       </section>
 
       <section class="settings-section">
-        <div class="settings-section__title">👥 Gerenciar perfis</div>
+        <div class="settings-section__title">${ICONS.users} Gerenciar perfis</div>
         <div class="card stack">
           <div>
             ${perfis
@@ -101,7 +102,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       </section>
 
       <section class="settings-section">
-        <div class="settings-section__title">🎨 Aparência</div>
+        <div class="settings-section__title">${ICONS.moon} Aparência</div>
         <div class="card">
           <div class="settings-list-row">
             <div class="settings-row__label">Tema</div>
@@ -122,7 +123,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       </section>
 
       <section class="settings-section">
-        <div class="settings-section__title">💾 Dados</div>
+        <div class="settings-section__title">${ICONS.database} Dados</div>
         <div class="card stack">
           <div class="settings-list-row">
             <div>
@@ -160,7 +161,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       </section>
 
       <section class="settings-section">
-        <div class="settings-section__title">⏰ Lembretes</div>
+        <div class="settings-section__title">${ICONS.clock} Lembretes</div>
         <div class="card stack">
           <p class="text-muted" style="margin:0;">
             O Memoriza não envia notificações. Escolha um horário e baixe um lembrete diário

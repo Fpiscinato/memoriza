@@ -4,7 +4,7 @@ import { escapeHtml } from '../lib/dom';
 import { getBackupBannerSnoozedUntil, getLastExportAt, getSelectedProfileId, setSelectedProfileId } from '../lib/settings';
 import { daysBetweenISODates, formatDateWeekdayShortBR, toLondonISODate } from '../lib/time';
 import { getCurrentRoute, navigate, navigateTop, onRouteChange, topLevelFor, type TopLevelRoute } from './router';
-import { NAV_ICONS } from './icons';
+import { NAV_ICONS, ICONS } from './icons';
 import { renderProfileSelect } from './screens/profile-select';
 import { renderToday } from './screens/today';
 import { renderEspacos } from './screens/espacos';
@@ -102,11 +102,11 @@ async function render(root: HTMLElement): Promise<void> {
           <span style="display:flex; align-items:center; gap: var(--space-3);">
             ${
               backupAlert
-                ? `<button class="app-header__backup-alert${backupAlert.urgente ? ' is-urgent' : ''}" id="btn-backup-alert" type="button" title="${escapeHtml(backupAlert.mensagem)}" aria-label="${escapeHtml(backupAlert.mensagem)}">📦</button>`
+                ? `<button class="app-header__backup-alert${backupAlert.urgente ? ' is-urgent' : ''}" id="btn-backup-alert" type="button" title="${escapeHtml(backupAlert.mensagem)}" aria-label="${escapeHtml(backupAlert.mensagem)}">${ICONS.backup}</button>`
                 : ''
             }
             <span class="app-header__date" title="Data de hoje">${escapeHtml(formatDateWeekdayShortBR(toLondonISODate()))}</span>
-            <button class="app-header__help" id="btn-ajuda" type="button" aria-label="Como usar">?</button>
+            <button class="app-header__help" id="btn-ajuda" type="button" aria-label="Como usar">${ICONS.help}</button>
             <span class="app-header__profile" title="Memoriza ${APP_VERSION}">${escapeHtml(perfil.nome)}</span>
           </span>
         </header>
@@ -140,6 +140,11 @@ async function render(root: HTMLElement): Promise<void> {
 
   try {
     await renderScreen(screenContainer, route, perfil);
+    // Re-dispara a animação suave de entrada a cada navegação (a classe sozinha não reinicia
+    // quando o mesmo container re-renderiza o conteúdo — o reflow forçado "zera" a animação).
+    screenContainer.classList.remove('screen-enter');
+    void screenContainer.offsetWidth;
+    screenContainer.classList.add('screen-enter');
   } catch (err) {
     console.error('Erro ao renderizar tela:', err);
     screenContainer.innerHTML =

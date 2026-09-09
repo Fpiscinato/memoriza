@@ -1,6 +1,7 @@
 import type { NotaComTema } from '../../db/notas';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
+import { ICONS } from '../icons';
 
 const TIERS = [
   { key: 'basico', label: 'Básico', n: 5 },
@@ -32,7 +33,7 @@ export function iniciarAvaliacaoAleatoria(
   if (todas.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state__icon" aria-hidden="true">🎲</div>
+        <div class="empty-state__icon" aria-hidden="true">${ICONS.dice}</div>
         <div class="empty-state__title">Nenhuma nota pra testar ainda</div>
         <p class="empty-state__hint">Crie notas aqui antes de fazer uma avaliação.</p>
       </div>
@@ -57,7 +58,7 @@ function renderEscolhaTamanho(
     </div>
     <div class="content-narrow">
       <div class="card stack" style="text-align:center;">
-        <div class="empty-state__icon" aria-hidden="true">🎲</div>
+        <div class="empty-state__icon" aria-hidden="true">${ICONS.dice}</div>
         <h2 style="margin:0;">Avaliação aleatória — ${escapeHtml(nomeContexto)}</h2>
         <p class="text-muted" style="margin:0;">
           Repasse rápido com notas aleatórias, sem afetar sua fila de revisão. ${todas.length} nota(s) no total — escolha quantas:
@@ -106,7 +107,7 @@ function renderQuiz(
     <div class="content-narrow">
     <div class="card review-card">
       <div class="review-card__meta">${escapeHtml(atual.tema.nome)} · ${indice + 1} de ${itens.length}</div>
-      <div class="review-card__titulo">${atual.nota.favorito ? '⭐ ' : ''}${escapeHtml(atual.nota.titulo || '(sem título)')}</div>
+      <div class="review-card__titulo">${atual.nota.favorito ? `${ICONS.star} ` : ''}${escapeHtml(atual.nota.titulo || '(sem título)')}</div>
       ${
         !revelado
           ? `
@@ -137,7 +138,7 @@ function renderFim(container: HTMLElement, total: number, nomeContexto: string, 
   container.innerHTML = `
     <div class="content-narrow">
     <div class="card stack" style="text-align:center;">
-      <div class="empty-state__icon" aria-hidden="true">🎉</div>
+      <div class="empty-state__icon" aria-hidden="true">${ICONS.confete}</div>
       <h2 style="margin:0;">Repasse concluído</h2>
       <p class="text-muted" style="margin:0;">
         Você passou por ${total} nota(s) de ${escapeHtml(nomeContexto)}. Isso não mudou nada na sua fila de revisão.

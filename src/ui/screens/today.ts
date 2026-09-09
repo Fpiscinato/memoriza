@@ -6,6 +6,7 @@ import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import type { Avaliacao } from '../../types';
 import { daysBetweenISODates, todayLondonISODate } from '../../lib/time';
+import { ICONS } from '../icons';
 
 export interface TodayContext {
   perfilId: string;
@@ -55,7 +56,7 @@ function badgeAtraso(item: { data_agendada: string }): string {
   const hoje = todayLondonISODate();
   if (item.data_agendada >= hoje) return '';
   const dias = daysBetweenISODates(item.data_agendada, hoje);
-  return `<span class="badge badge--danger" title="Devia ter sido revisada há ${dias} dia(s)">🔴 atrasada</span>`;
+  return `<span class="badge badge--danger" title="Devia ter sido revisada há ${dias} dia(s)">${ICONS.alert} atrasada</span>`;
 }
 
 export async function renderToday(container: HTMLElement, ctx: TodayContext): Promise<void> {
@@ -78,11 +79,13 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
     container.innerHTML = `
       ${contador ? `<div style="margin-bottom: var(--space-4);">${contador}</div>` : ''}
       <div class="empty-state">
-        <div class="empty-state__icon" aria-hidden="true">🗓️</div>
+        <div class="empty-state__icon" aria-hidden="true">${ICONS.calendar}</div>
         <div class="empty-state__title">Nenhuma revisão por enquanto</div>
         <p class="empty-state__hint">Volte amanhã, ou crie uma nota nova em Espaços — ela entra na fila a partir de amanhã.</p>
+        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Espaços</button>
       </div>
     `;
+    container.querySelector('#btn-empty-espacos')?.addEventListener('click', () => navigate('espacos'));
     return;
   }
 
@@ -118,12 +121,12 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
             ${entries
               .map(
                 (entry) => `
-              <button class="item-row" data-id="${escapeHtml(entry.item.id)}" type="button" style="cursor:pointer; text-align:left;">
+              <button class="item-row" data-id="${escapeHtml(entry.item.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(entry.espaco.id)}">
                 <span class="item-row__main">
-                  <span class="item-row__title">${entry.nota.favorito ? '⭐ ' : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}</span>
+                  <span class="item-row__title">${entry.nota.favorito ? `${ICONS.star} ` : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}</span>
                 </span>
                 ${badgeAtraso(entry.item)}
-                ${precisaAvisoDeValidade(entry.nota) ? '<span class="badge badge--muted">⚠️ desatualizada?</span>' : ''}
+                ${precisaAvisoDeValidade(entry.nota) ? `<span class="badge badge--muted">${ICONS.alert} desatualizada?</span>` : ''}
               </button>
             `,
               )
@@ -137,7 +140,7 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
   container.querySelectorAll<HTMLButtonElement>('[data-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const entry = fila.find((e) => e.item.id === btn.dataset.id);
-      if (entry) renderRevisao(container, ctx, entry, fila);
+      if (entry) renderRevisao(container, ctx, entry, fila, feitasHoje);
     });
   });
 }
@@ -147,29 +150,36 @@ function renderRevisao(
   ctx: TodayContext,
   entry: QueueEntry,
   filaCompleta: QueueEntry[],
+  feitasHoje = 0,
   revelado = false,
 ): void {
   iniciarTimerSeNecessario(entry.item.id);
   if (!revelado) window.scrollTo({ top: 0 });
-  const aviso = precisaAvisoDeValidade(entry.nota);
+  const avisoValidade = precisaAvisoDeValidade(entry.nota);
+  const totalHoje = feitasHoje + filaCompleta.length;
+  const progressoPct = totalHoje > 0 ? Math.round((feitasHoje / totalHoje) * 100) : 0;
 
   container.innerHTML = `
     <div class="breadcrumb">
       <button class="link" data-voltar type="button">← Voltar à fila</button>
-      <button class="link" data-editar type="button" style="margin-left:auto;">✎ Editar nota</button>
+      <button class="link" data-editar type="button" style="margin-left:auto;">${ICONS.pen} Editar nota</button>
     </div>
 
     <div class="content-narrow">
     <div class="card review-card">
+      <div class="review-progress" title="${feitasHoje} de ${totalHoje} revisadas hoje">
+        <div class="review-progress__track"><div class="review-progress__fill" style="width:${progressoPct}%"></div></div>
+        <span class="review-progress__label">${feitasHoje} de ${totalHoje} revisadas hoje</span>
+      </div>
       <div class="review-card__meta">
         ${escapeHtml(entry.tema.nome)}${revelado && entry.nota.fonte ? ` · ${escapeHtml(entry.nota.fonte)}` : ''}
       </div>
       <div class="review-card__titulo">
-        ${entry.nota.favorito ? '⭐ ' : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}
+        ${entry.nota.favorito ? `${ICONS.star} ` : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}
         ${badgeAtraso(entry.item)}
       </div>
 
-      ${aviso ? `<div class="banner banner--warning" style="margin-bottom:0;"><span>Isso pode estar desatualizado — confirme antes de confiar.</span></div>` : ''}
+      ${avisoValidade ? `<div class="banner banner--warning" style="margin-bottom:0;"><span>Isso pode estar desatualizado — confirme antes de confiar.</span></div>` : ''}
 
       ${
         !revelado
@@ -180,9 +190,9 @@ function renderRevisao(
           : `
         <div class="review-card__content markdown-preview">${renderMarkdown(entry.nota.conteudo)}</div>
         <div class="review-actions">
-          <button class="btn btn--secondary" data-avaliacao="dificil" type="button">😖<br>Difícil</button>
-          <button class="btn btn--secondary" data-avaliacao="medio" type="button">🙂<br>Médio</button>
-          <button class="btn btn--secondary" data-avaliacao="facil" type="button">😄<br>Fácil</button>
+          <button class="btn btn--review-dificil" data-avaliacao="dificil" type="button">${ICONS.caraTriste}<span>Difícil</span></button>
+          <button class="btn btn--review-medio" data-avaliacao="medio" type="button">${ICONS.caraNeutra}<span>Médio</span></button>
+          <button class="btn btn--review-facil" data-avaliacao="facil" type="button">${ICONS.caraFeliz}<span>Fácil</span></button>
         </div>
         <p class="review-legend">Fácil = lembrei na hora · Médio = com esforço · Difícil = não lembrei</p>
       `
@@ -197,7 +207,7 @@ function renderRevisao(
     navigate(`notas/${entry.nota.id}`);
   });
   container.querySelector('#btn-revelar')?.addEventListener('click', () => {
-    renderRevisao(container, ctx, entry, filaCompleta, true);
+    renderRevisao(container, ctx, entry, filaCompleta, feitasHoje, true);
   });
 
   container.querySelectorAll<HTMLButtonElement>('[data-avaliacao]').forEach((btn) => {
@@ -221,7 +231,7 @@ function renderAposentado(container: HTMLElement, ctx: TodayContext, novaFila: Q
   container.innerHTML = `
     <div class="card stack">
       <div class="banner banner--success" style="margin-bottom:0;">
-        <span>🎉 Duas fáceis seguidas — essa nota foi aposentada da fila de revisão. Ela continua acessível normalmente pelo Tema.</span>
+        <span>${ICONS.confete} Duas fáceis seguidas — essa nota foi aposentada da fila de revisão. Ela continua acessível normalmente pelo Tema.</span>
       </div>
       <button class="btn btn--primary" id="btn-continuar" type="button">Continuar</button>
     </div>

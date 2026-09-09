@@ -12,6 +12,7 @@ import { showInfo } from '../components/info-modal';
 import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
+import { ICONS } from '../icons';
 
 export async function renderTemaDetail(container: HTMLElement, temaId: string): Promise<void> {
   const tema = await getTema(temaId);
@@ -45,7 +46,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
 
     <div class="section-header">
       <span class="section-header__title">
-        <span class="color-dot" style="--dot-color:${accentVar(temaAccentKey)}"></span>${tema.favorito ? '⭐ ' : ''}${escapeHtml(tema.nome)}
+        <span class="color-dot" style="--dot-color:${accentVar(temaAccentKey)}"></span>${tema.favorito ? `${ICONS.star} ` : ''}${escapeHtml(tema.nome)}
       </span>
       <div class="section-header__actions">
         <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
@@ -60,8 +61,8 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         <details class="item-menu">
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
-            <button id="btn-detalhes-tema" type="button">ℹ️ Detalhes</button>
-            <button id="btn-avaliar-tema" type="button">🎲 Avaliação aleatória</button>
+            <button id="btn-detalhes-tema" type="button">${ICONS.info} Detalhes</button>
+            <button id="btn-avaliar-tema" type="button">${ICONS.dice} Avaliação aleatória</button>
             <button id="btn-excluir-tema" class="danger" type="button">Excluir tema</button>
           </div>
         </details>
@@ -94,9 +95,10 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       notas.length === 0
         ? `
       <div class="empty-state">
-        <div class="empty-state__icon" aria-hidden="true">📝</div>
+        <div class="empty-state__icon" aria-hidden="true">${ICONS.pen}</div>
         <div class="empty-state__title">Nenhuma nota neste tema ainda</div>
         <p class="empty-state__hint">Cada nota criada aqui já entra na fila de revisão automaticamente, a partir de amanhã.</p>
+        ${!espaco?.arquivado ? `<button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-nova-nota" type="button">Criar a primeira nota</button>` : ''}
       </div>
     `
         : `
@@ -106,7 +108,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
             (n) => `
           <button class="item-row" data-open="${escapeHtml(n.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(temaAccentKey)}">
             <span class="item-row__main">
-              <span class="item-row__title">${n.favorito ? '⭐ ' : ''}${escapeHtml(n.titulo || '(sem título)')}</span>
+              <span class="item-row__title">${n.favorito ? `${ICONS.star} ` : ''}${escapeHtml(n.titulo || '(sem título)')}</span>
               <span class="item-row__meta">${escapeHtml(n.fonte || 'Sem fonte')}${n.pode_desatualizar ? ' · pode desatualizar' : ''}</span>
             </span>
             ${!n.titulo_revisado ? '<span class="badge badge--muted">revisar título</span>' : ''}
@@ -122,6 +124,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   bindBreadcrumb(container);
   bindCategoriaChips(container);
   container.querySelector('#btn-nova-nota')?.addEventListener('click', () => navigate(`temas/${temaId}/nova-nota`));
+  container.querySelector('#btn-empty-nova-nota')?.addEventListener('click', () => navigate(`temas/${temaId}/nova-nota`));
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`notas/${btn.dataset.open}`));
   });
