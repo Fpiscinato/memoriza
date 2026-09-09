@@ -14,12 +14,13 @@ import { renderFieldHint } from '../components/field-hint';
 
 export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
 
-// Mapeia cada cor de texto pra sua variável de acento — azul/vermelho/verde (índices 0/4/1
-// da paleta fixa), ver as classes .text-color--* em src/styles/components.css.
+// Mapeia cada cor de texto pra sua variável de acento — azul/vermelho/verde/rosa (índices
+// 0/4/1/6 da paleta fixa), ver as classes .text-color--* em src/styles/components.css.
 const TEXT_COLOR_SWATCH: Record<(typeof TEXT_COLOR_NAMES)[number], string> = {
   azul: 'var(--accent-0)',
   vermelho: 'var(--accent-4)',
   verde: 'var(--accent-1)',
+  rosa: 'var(--accent-6)',
 };
 
 // Tira qualquer .text-color de dentro de um fragmento antes de envolvê-lo num novo — ver uso
@@ -128,10 +129,11 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       </div>
 
       <div class="field">
-        <label class="field__label" for="input-conteudo">Conteúdo${renderFieldHint('Selecione um trecho de texto pra deixar em negrito, itálico ou colorido — igual num editor de texto comum.')}</label>
+        <label class="field__label" for="input-conteudo">Conteúdo${renderFieldHint('Selecione um trecho de texto pra deixar em negrito, itálico ou colorido — igual num editor de texto comum. Enter simples só quebra a linha; Enter duas vezes cria um novo parágrafo. Numa lista, Tab indenta o item (Shift+Tab volta).')}</label>
         <div class="editor-toolbar" role="toolbar" aria-label="Formatação do conteúdo">
           <button type="button" class="editor-toolbar__btn" data-cmd="bold" title="Negrito" aria-label="Negrito"><strong>N</strong></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico" aria-label="Itálico"><em>I</em></button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="insertUnorderedList" title="Lista com marcadores (Tab indenta, Shift+Tab volta)" aria-label="Lista com marcadores">☰</button>
           <span class="editor-toolbar__sep" aria-hidden="true"></span>
           <div class="color-picker" role="group" aria-label="Cor do texto">
             ${TEXT_COLOR_NAMES.map(
@@ -150,7 +152,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           autocapitalize="sentences"
           lang="pt-BR"
           data-placeholder="Escreva aqui a explicação completa..."
-        >${renderMarkdown(nota?.conteudo ?? '')}</div>
+        >${nota?.conteudo ? renderMarkdown(nota.conteudo) : '<p><br></p>'}</div>
       </div>
 
       <div>
@@ -205,9 +207,8 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   if (tituloSugerido) tituloInput.addEventListener('input', () => clearInputSugestao(tituloInput), { once: true });
   if (fonteSugerido) fonteInput.addEventListener('input', () => clearInputSugestao(fonteInput), { once: true });
 
-  // Enter cria um novo parágrafo (<p>) em vez do <div> que alguns navegadores usam por
-  // padrão — mantém a estrutura previsível que htmlToStoredText (src/lib/markdown.ts) sabe
-  // converter de volta pro texto salvo.
+  // Mantém <p> como bloco de parágrafo (em vez do <div> que alguns navegadores usam por
+  // padrão) — necessário pro Enter duplo abaixo, que usa execCommand('insertParagraph').
   conteudoInput.addEventListener('focus', () => {
     try {
       document.execCommand('defaultParagraphSeparator', false, 'p');
@@ -216,11 +217,91 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     }
   });
 
-  // Ao apagar tudo o navegador costuma deixar um <p><br></p> pra trás — sem isso o
-  // placeholder (CSS :empty) não reaparece.
-  conteudoInput.addEventListener('input', () => {
-    if (!conteudoInput.textContent?.trim()) conteudoInput.innerHTML = '';
+  // Sobe os ancestrais a partir do cursor até `conteudoInput` procurando uma tag — usado pra
+  // saber se o cursor está dentro de um item de lista (<li>), onde Enter/Tab têm significado
+  // próprio (novo item / indentar) e não devem ser tratados como no texto normal.
+  function cursorDentroDe(tag: string): boolean {
+    let node: Node | null = window.getSelection()?.getRangeAt(0)?.commonAncestorContainer ?? null;
+    while (node && node !== conteudoInput) {
+      if (node instanceof HTMLElement && node.tagName === tag) return true;
+      node = node.parentNode;
+    }
+    return false;
+  }
+
+  // O navegador as vezes cria um <ul> DENTRO do <p> atual em vez de substituí-lo (ex: ao
+  // clicar "Lista" com o cursor num parágrafo vazio) — <ul> dentro de <p> é uma estrutura que
+  // htmlToStoredText não esperava (perderia os itens, tratando tudo como texto corrido).
+  // Desembrulha qualquer <p> que tenha acabado com uma lista dentro.
+  function desembrulharListaDeParagrafo(): void {
+    conteudoInput.querySelectorAll('p').forEach((p) => {
+      if (p.querySelector('ul')) p.replaceWith(...Array.from(p.childNodes));
+    });
+  }
+
+  // Enter simples = só quebra a linha (<br>, mesmo espaçamento de sempre); Enter de novo
+  // sem digitar nada no meio = vira parágrafo de verdade (mais espaço), como em qualquer
+  // editor de texto comum. Antes, TODO Enter criava um novo <p> (margem grande sempre) — e
+  // se o texto digitado antes do primeiro Enter nunca tivesse ficado dentro de nenhum <p>
+  // (comportamento normal de contenteditable vazio), esse primeiro trecho ficava sem a
+  // margem que os parágrafos seguintes ganhavam, dando a impressão de espaçamento
+  // "diferente" a cada Enter. Dentro de uma lista, não interfere — Enter cria um novo item
+  // (comportamento nativo do navegador).
+  let ultimaTeclaFoiEnterSimples = false;
+  conteudoInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || cursorDentroDe('LI')) {
+      ultimaTeclaFoiEnterSimples = false;
+      return;
+    }
+    e.preventDefault();
+    if (ultimaTeclaFoiEnterSimples) {
+      // 'delete' aqui apaga o <br> que a quebra de linha anterior inseriu (o cursor fica
+      // bem depois dele) — usa os comandos nativos do navegador de propósito, porque a
+      // posição do cursor logo depois de um <br> no fim do bloco tem um comportamento
+      // sutil (é tratado como "antes" dele pra digitação) que só os comandos nativos
+      // resolvem certo; montar isso à mão com Range dava cursor na posição errada.
+      document.execCommand('delete');
+      document.execCommand('insertParagraph');
+      ultimaTeclaFoiEnterSimples = false;
+    } else {
+      document.execCommand('insertLineBreak');
+      ultimaTeclaFoiEnterSimples = true;
+    }
   });
+  conteudoInput.addEventListener('mousedown', () => {
+    ultimaTeclaFoiEnterSimples = false;
+  });
+
+  // Tab só faz algo especial dentro de uma lista (indenta/volta o item, ver botão "Lista"
+  // abaixo) — fora de lista, deixa o navegador mover o foco pro próximo campo normalmente.
+  conteudoInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || !cursorDentroDe('LI')) return;
+    e.preventDefault();
+    document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+    desembrulharListaDeParagrafo();
+  });
+
+  // Editor sempre precisa ter pelo menos um <p> pra digitar dentro — um contenteditable
+  // completamente vazio deixa o próximo caractere digitado "solto" (sem <p> em volta), o
+  // mesmo problema de espaçamento inconsistente descrito acima. Placeholder usa uma classe
+  // (não mais :empty) porque com isso o editor nunca fica de fato vazio no sentido do DOM.
+  function atualizarPlaceholder(): void {
+    conteudoInput.classList.toggle('is-empty', !conteudoInput.textContent?.trim());
+  }
+  conteudoInput.addEventListener('input', () => {
+    if (conteudoInput.childNodes.length === 0) {
+      conteudoInput.innerHTML = '<p><br></p>';
+      const p = conteudoInput.firstChild as HTMLElement;
+      const range = document.createRange();
+      range.setStart(p, 0);
+      range.collapse(true);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+    atualizarPlaceholder();
+  });
+  atualizarPlaceholder();
 
   // Botões de formatação perdem o foco/seleção do editor ao serem clicados — preventDefault
   // no mousedown evita isso, então o comando age sobre o texto selecionado, não sobre o botão.
@@ -228,6 +309,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => {
       document.execCommand(btn.dataset.cmd!);
+      if (btn.dataset.cmd === 'insertUnorderedList') desembrulharListaDeParagrafo();
       conteudoInput.focus();
     });
   });

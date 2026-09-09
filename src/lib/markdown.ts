@@ -4,16 +4,17 @@
 
 import { escapeHtml } from './dom';
 
-// 3 cores fixas pra destacar trechos do texto — de propósito só 3 (não a paleta de 8 de
-// Espaço/Categoria): são cores universais (azul/vermelho/verde), fáceis de reconhecer numa
-// bolinha pequena sem precisar de legenda.
-export const TEXT_COLOR_NAMES = ['azul', 'vermelho', 'verde'] as const;
+// Cores fixas pra destacar trechos do texto — de propósito poucas (não a paleta de 8 de
+// Espaço/Categoria): são cores universais, fáceis de reconhecer numa bolinha pequena sem
+// precisar de legenda.
+export const TEXT_COLOR_NAMES = ['azul', 'vermelho', 'verde', 'rosa'] as const;
 export type TextColorName = (typeof TEXT_COLOR_NAMES)[number];
 
 export const TEXT_COLOR_LABELS: Record<TextColorName, string> = {
   azul: 'Azul',
   vermelho: 'Vermelho',
   verde: 'Verde',
+  rosa: 'Rosa',
 };
 
 const COLOR_SPAN_RE = new RegExp(`\\[([^\\]]+)\\]\\{(${TEXT_COLOR_NAMES.join('|')})\\}`, 'g');
@@ -31,15 +32,49 @@ function renderInline(text: string): string {
   return html;
 }
 
+// Lista com sub-itens (Tab pra indentar no editor, ver nota-form.ts) — 2 espaços de
+// indentação por nível na hora de guardar como texto. Constrói uma árvore a partir da lista
+// achatada de {nível, texto} pra poder gerar <ul><li>texto<ul>...</ul></li></ul> aninhado.
+interface ListNode {
+  text: string;
+  children: ListNode[];
+}
+
+function buildListTree(items: { level: number; text: string }[]): ListNode[] {
+  const root: ListNode[] = [];
+  const stack: { level: number; nodes: ListNode[] }[] = [{ level: -1, nodes: root }];
+
+  for (const item of items) {
+    while (stack.length > 1 && stack[stack.length - 1].level > item.level) stack.pop();
+
+    if (stack[stack.length - 1].level < item.level) {
+      const parentNodes = stack[stack.length - 1].nodes;
+      const parentNode = parentNodes[parentNodes.length - 1];
+      // Item mais indentado que o anterior sem um "pai" pra aninhar (ex: primeira linha já
+      // vem indentada) — trata como se fosse do mesmo nível, pra não perder o conteúdo.
+      stack.push({ level: item.level, nodes: parentNode ? parentNode.children : parentNodes });
+    }
+
+    stack[stack.length - 1].nodes.push({ text: item.text, children: [] });
+  }
+  return root;
+}
+
+function renderListTree(nodes: ListNode[]): string {
+  return `<ul>${nodes
+    .map((n) => `<li>${renderInline(n.text)}${n.children.length > 0 ? renderListTree(n.children) : ''}</li>`)
+    .join('')}</ul>`;
+}
+
 export function renderMarkdown(source: string): string {
   const lines = source.replace(/\r\n/g, '\n').split('\n');
   const blocks: string[] = [];
-  let listBuffer: string[] = [];
+  let listItems: { level: number; text: string }[] = [];
 
   function flushList() {
-    if (listBuffer.length > 0) {
-      blocks.push(`<ul>${listBuffer.join('')}</ul>`);
-      listBuffer = [];
+    if (listItems.length > 0) {
+      blocks.push(renderListTree(buildListTree(listItems)));
+      listItems = [];
     }
   }
 
@@ -73,10 +108,13 @@ export function renderMarkdown(source: string): string {
       continue;
     }
 
+    // Nível de indentação vem do espaço em branco ANTES do trim (rawLine), não da linha já
+    // cortada — senão a informação de sub-item se perde antes mesmo de chegar aqui.
     const listMatch = /^[-*]\s+(.*)$/.exec(line);
     if (listMatch) {
       flushParagraph();
-      listBuffer.push(`<li>${renderInline(listMatch[1])}</li>`);
+      const indentacao = rawLine.length - rawLine.trimStart().length;
+      listItems.push({ level: Math.floor(indentacao / 2), text: listMatch[1] });
       continue;
     }
 
@@ -122,13 +160,40 @@ function inlineNodeToText(node: Node): string {
   }
 }
 
-function blockElementToLines(el: HTMLElement): string[] {
-  if (el.tagName === 'UL') {
-    return Array.from(el.children)
-      .filter((child): child is HTMLElement => child.tagName === 'LI')
-      .map((li) => `- ${inlineNodeToText(li).trim()}`)
-      .filter((line) => line !== '-');
+// Serializa um <ul> de volta pra linhas "- item" com 2 espaços de indentação por nível —
+// espelha buildListTree/renderMarkdown no sentido contrário. A sub-lista de um item indentado
+// (Tab, ver nota-form.ts) pode vir de duas formas, dependendo do navegador: ANINHADA dentro do
+// próprio <li> (`<li>texto<ul>...</ul></li>`) ou como <ul> IRMÃO do <li> anterior dentro do
+// mesmo pai (`<li>texto</li><ul>...</ul>`, o que o Chrome produz com execCommand('indent')) —
+// as duas precisam ser entendidas como "sub-lista do item anterior".
+function ulToLines(ul: HTMLElement, level: number): string[] {
+  const lines: string[] = [];
+  let itemAnterior: HTMLElement | null = null;
+
+  for (const child of Array.from(ul.children)) {
+    if (child.tagName === 'UL') {
+      if (itemAnterior) lines.push(...ulToLines(child as HTMLElement, level + 1));
+      continue;
+    }
+    if (child.tagName !== 'LI') continue;
+    const li = child as HTMLElement;
+    const nestedULs = Array.from(li.children).filter((c): c is HTMLElement => c.tagName === 'UL');
+
+    // Serializa só o texto do próprio item — sem isso, o texto de uma sub-lista aninhada
+    // entraria misturado no meio do texto do item pai.
+    const clone = li.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll('ul').forEach((nested) => nested.remove());
+    const text = inlineNodeToText(clone).trim();
+    if (text) lines.push(`${'  '.repeat(level)}- ${text}`);
+
+    for (const nested of nestedULs) lines.push(...ulToLines(nested, level + 1));
+    itemAnterior = li;
   }
+  return lines;
+}
+
+function blockElementToLines(el: HTMLElement): string[] {
+  if (el.tagName === 'UL') return ulToLines(el, 0);
   const headingMatch = /^H([1-3])$/.exec(el.tagName);
   const text = inlineNodeToText(el).trim();
   if (!text) return [];

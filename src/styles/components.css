@@ -796,6 +796,10 @@ button.item-row:hover {
   color: var(--accent-1);
 }
 
+.text-color--rosa {
+  color: var(--accent-6);
+}
+
 /* Bolinhas de cor clicáveis no editor da nota, no lugar de um <select> nativo (cujo menu
    suspenso o navegador não deixa estilizar — ficava sem cor nenhuma). */
 .color-picker {
@@ -869,7 +873,10 @@ button.item-row:hover {
   border-color: var(--color-brand);
 }
 
-.editor-conteudo:empty::before {
+/* Não usa :empty porque o editor sempre tem pelo menos um <p><br></p> por dentro (ver
+   nota-form.ts) — sem isso, o primeiro caractere digitado ficava "solto" sem <p> em volta,
+   causando espaçamento inconsistente a cada Enter. */
+.editor-conteudo.is-empty::before {
   content: attr(data-placeholder);
   color: var(--color-text-faint);
 }
@@ -889,6 +896,12 @@ button.item-row:hover {
 .markdown-preview ul {
   margin: 0 0 var(--space-3);
   padding-left: var(--space-5);
+}
+
+/* Sub-lista (Tab pra indentar, ver nota-form.ts) — sem a margem de baixo do <ul> normal,
+   senão cada nível de indentação soma outro espaço grande embaixo. */
+.markdown-preview li > ul {
+  margin: var(--space-1) 0 0;
 }
 
 .markdown-preview code {

@@ -100,8 +100,13 @@ const SECOES: Secao[] = [
       laranja some.</p>
       <p>O campo <strong>Conteúdo</strong> é um editor de texto simples: selecione um trecho
       e use os botões acima dele — <strong>N</strong> para negrito, <em>I</em> para itálico,
-      ou uma das bolinhas (azul/vermelho/verde) pra colorir. O ✕ remove a cor de um trecho já
-      colorido. O corretor ortográfico do navegador/celular funciona normalmente aí.</p>`,
+      ☰ pra transformar a linha numa lista com marcadores, ou uma das bolinhas (azul/vermelho/
+      verde/rosa) pra colorir. O ✕ remove a cor de um trecho já colorido. O corretor
+      ortográfico do navegador/celular funciona normalmente aí.</p>
+      <p>Enter simples só quebra a linha (pra continuar escrevendo sem abrir um parágrafo
+      novo); apertar Enter de novo, sem escrever nada no meio, cria um parágrafo de verdade
+      (com mais espaço acima). Dentro de uma lista, Enter cria um novo item, e <strong>Tab</strong>
+      indenta o item atual como sub-item da lista (Shift+Tab volta pro nível anterior).</p>`,
   },
   {
     titulo: '"Esse conteúdo pode ficar desatualizado?"',
