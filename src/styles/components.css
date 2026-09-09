@@ -61,6 +61,22 @@
   }
 }
 
+/* Alerta de backup atrasado — era um banner grande no topo do conteúdo (competia com a
+   tela); virou um ícone pequeno e clicável aqui, perto da data (leva pra Configurações). */
+.app-header__backup-alert {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: var(--font-size-md);
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.app-header__backup-alert.is-urgent {
+  opacity: 1;
+}
+
 .app-main {
   flex: 1;
   width: 100%;

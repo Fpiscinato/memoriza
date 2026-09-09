@@ -1,11 +1,15 @@
 import { countTemaCascade, deleteTemaCascade, getTema, listTemas, toggleTemaFavorito, updateTema } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { listNotas } from '../../db/notas';
+import { getTempoTotalTema } from '../../db/dashboard';
 import { escapeHtml } from '../../lib/dom';
 import { accentVar } from '../../lib/color';
 import { distinctCategorias } from '../../lib/group';
+import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { showInfo } from '../components/info-modal';
+import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 
@@ -21,11 +25,14 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   // pro "curso" atual.
   const temasDoEspaco = espaco ? await listTemas(espaco.id) : [];
   const categoriasTema = distinctCategorias(temasDoEspaco.map((t) => t.categoria));
+  // Cai pro próprio id do Tema quando não há categoria (nem dele, nem do Espaço) — cair pro
+  // id do Espaço fazia TODOS os temas sem categoria dentro do mesmo Espaço saírem com a
+  // MESMA cor (a do próprio Espaço), impossível de diferenciar um do outro.
   const temaAccentKey = tema.categoria
     ? tema.categoria.toLowerCase()
     : espaco?.categoria
       ? espaco.categoria.toLowerCase()
-      : (espaco?.id ?? tema.id);
+      : tema.id;
 
   container.innerHTML = `
     ${renderBreadcrumb([
@@ -53,6 +60,8 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         <details class="item-menu">
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
+            <button id="btn-detalhes-tema" type="button">ℹ️ Detalhes</button>
+            <button id="btn-avaliar-tema" type="button">🎲 Avaliação aleatória</button>
             <button id="btn-excluir-tema" class="danger" type="button">Excluir tema</button>
           </div>
         </details>
@@ -120,6 +129,37 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   container.querySelector('#btn-favoritar-tema')?.addEventListener('click', async () => {
     await toggleTemaFavorito(tema.id);
     renderTemaDetail(container, temaId);
+  });
+
+  container.querySelector('#btn-detalhes-tema')?.addEventListener('click', async () => {
+    const tempoTotalSegundos = await getTempoTotalTema(tema.id);
+    const dias = daysBetweenISODates(toLondonISODate(new Date(tema.criado_em)), toLondonISODate());
+
+    showInfo({
+      title: tema.nome,
+      bodyHtml: `
+        <div class="stat-grid" style="margin-bottom: var(--space-3); grid-template-columns: repeat(2, 1fr);">
+          <div class="stat-tile">
+            <div class="stat-tile__value">${notas.length}</div>
+            <div class="stat-tile__label">Notas</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value" style="font-size: var(--font-size-md);">${formatDuracao(tempoTotalSegundos)}</div>
+            <div class="stat-tile__label">Tempo revisando</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value">${dias}</div>
+            <div class="stat-tile__label">${dias === 1 ? 'Dia ativo' : 'Dias ativo'}</div>
+          </div>
+        </div>
+        <p class="text-muted" style="margin:0;">Criado em ${formatDateBR(tema.criado_em)}</p>
+      `,
+    });
+  });
+
+  container.querySelector('#btn-avaliar-tema')?.addEventListener('click', () => {
+    const notasComTema = notas.map((nota) => ({ nota, tema }));
+    iniciarAvaliacaoAleatoria(container, notasComTema, tema.nome, () => renderTemaDetail(container, temaId));
   });
 
   const formEditar = container.querySelector<HTMLElement>('#form-editar-tema')!;

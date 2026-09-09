@@ -47,7 +47,10 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
           </div>
           ${grupo.temas
             .map((temaPdf) => {
-              const temaKey = temaPdf.tema.categoria ? temaPdf.tema.categoria.toLowerCase() : catKey;
+              // Cai pro próprio id do Tema (não pra cor da categoria/Espaço) quando ele não
+              // tem categoria — senão todo tema sem categoria dentro do mesmo grupo sai com
+              // a mesma cor, impossível de diferenciar um do outro no PDF.
+              const temaKey = temaPdf.tema.categoria ? temaPdf.tema.categoria.toLowerCase() : temaPdf.tema.id;
               return `
             <section class="pdf-tema" style="--tema-accent:${accentVar(temaKey)}">
               <div class="pdf-tema__title">${temaPdf.tema.favorito ? '⭐ ' : ''}${escapeHtml(temaPdf.tema.nome)}</div>

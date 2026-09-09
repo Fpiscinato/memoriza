@@ -229,6 +229,27 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     return false;
   }
 
+  // execCommand('insertUnorderedList') deixa o cursor no INÍCIO do item de lista recém-criado
+  // (não no fim, como seria intuitivo quando já havia texto na linha) — sem isso, continuar
+  // digitando depois de clicar "Lista" insere o texto novo ANTES do texto que já existia ali,
+  // não depois. Move o cursor pro fim do <li> mais próximo, se houver.
+  function moverCursorParaFimDoItem(): void {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    let node: Node | null = sel.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== conteudoInput) {
+      if (node instanceof HTMLElement && node.tagName === 'LI') {
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return;
+      }
+      node = node.parentNode;
+    }
+  }
+
   // O navegador as vezes cria um <ul> DENTRO do <p> atual em vez de substituí-lo (ex: ao
   // clicar "Lista" com o cursor num parágrafo vazio) — <ul> dentro de <p> é uma estrutura que
   // htmlToStoredText não esperava (perderia os itens, tratando tudo como texto corrido).
@@ -239,6 +260,51 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     });
   }
 
+  // Insere um <br> na posição do cursor e deixa o cursor DEPOIS dele — um <br> no fim de um
+  // bloco é tratado pelo navegador como "marcador de linha vazia", sem posição de digitação
+  // depois dele (o cursor volta pra ANTES), por isso a "âncora": um caractere invisível
+  // (zero-width space) logo após o <br>, onde o cursor de fato fica. Sem isso, digitar depois
+  // de um Enter simples inseria o texto ANTES da quebra de linha, não depois.
+  // htmlToStoredText (src/lib/markdown.ts) descarta esse caractere na hora de salvar.
+  function inserirQuebraDeLinha(): { br: HTMLBRElement; ancora: Text } {
+    const sel = window.getSelection()!;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const br = document.createElement('br');
+    range.insertNode(br);
+    const ancora = document.createTextNode('​');
+    br.after(ancora);
+    const novoRange = document.createRange();
+    novoRange.setStart(ancora, 1);
+    novoRange.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(novoRange);
+    return { br, ancora };
+  }
+
+  // Remove a "âncora" (zero-width space) de uma quebra de linha pendente, mantendo o <br> —
+  // a âncora sozinha (mesmo sem nenhum texto digitado depois dela) faz o
+  // execCommand('insertUnorderedList') se confundir e criar uma lista NOVA e vazia,
+  // desconectada do parágrafo atual (cujo texto sobra solto fora de qualquer <p>). Chamado
+  // antes de qualquer comando da toolbar que não seja "continuar digitando".
+  function assentarQuebraPendente(): void {
+    if (!ultimaQuebraSimples) return;
+    const { br, ancora } = ultimaQuebraSimples;
+    ultimaQuebraSimples = null;
+    if (!document.contains(ancora)) return;
+    const parent = ancora.parentNode;
+    if (!parent) return;
+    const idx = Array.from(parent.childNodes).indexOf(ancora);
+    ancora.remove();
+    const sel = window.getSelection();
+    if (!sel || !document.contains(br)) return;
+    const range = document.createRange();
+    range.setStart(parent, idx);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
   // Enter simples = só quebra a linha (<br>, mesmo espaçamento de sempre); Enter de novo
   // sem digitar nada no meio = vira parágrafo de verdade (mais espaço), como em qualquer
   // editor de texto comum. Antes, TODO Enter criava um novo <p> (margem grande sempre) — e
@@ -247,29 +313,24 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   // margem que os parágrafos seguintes ganhavam, dando a impressão de espaçamento
   // "diferente" a cada Enter. Dentro de uma lista, não interfere — Enter cria um novo item
   // (comportamento nativo do navegador).
-  let ultimaTeclaFoiEnterSimples = false;
+  let ultimaQuebraSimples: { br: HTMLBRElement; ancora: Text } | null = null;
   conteudoInput.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || cursorDentroDe('LI')) {
-      ultimaTeclaFoiEnterSimples = false;
+      ultimaQuebraSimples = null;
       return;
     }
     e.preventDefault();
-    if (ultimaTeclaFoiEnterSimples) {
-      // 'delete' aqui apaga o <br> que a quebra de linha anterior inseriu (o cursor fica
-      // bem depois dele) — usa os comandos nativos do navegador de propósito, porque a
-      // posição do cursor logo depois de um <br> no fim do bloco tem um comportamento
-      // sutil (é tratado como "antes" dele pra digitação) que só os comandos nativos
-      // resolvem certo; montar isso à mão com Range dava cursor na posição errada.
-      document.execCommand('delete');
+    if (ultimaQuebraSimples && document.contains(ultimaQuebraSimples.br)) {
+      ultimaQuebraSimples.ancora.remove();
+      ultimaQuebraSimples.br.remove();
       document.execCommand('insertParagraph');
-      ultimaTeclaFoiEnterSimples = false;
+      ultimaQuebraSimples = null;
     } else {
-      document.execCommand('insertLineBreak');
-      ultimaTeclaFoiEnterSimples = true;
+      ultimaQuebraSimples = inserirQuebraDeLinha();
     }
   });
   conteudoInput.addEventListener('mousedown', () => {
-    ultimaTeclaFoiEnterSimples = false;
+    ultimaQuebraSimples = null;
   });
 
   // Tab só faz algo especial dentro de uma lista (indenta/volta o item, ver botão "Lista"
@@ -277,6 +338,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   conteudoInput.addEventListener('keydown', (e) => {
     if (e.key !== 'Tab' || !cursorDentroDe('LI')) return;
     e.preventDefault();
+    assentarQuebraPendente();
     document.execCommand(e.shiftKey ? 'outdent' : 'indent');
     desembrulharListaDeParagrafo();
   });
@@ -308,8 +370,12 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]').forEach((btn) => {
     btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => {
+      assentarQuebraPendente();
       document.execCommand(btn.dataset.cmd!);
-      if (btn.dataset.cmd === 'insertUnorderedList') desembrulharListaDeParagrafo();
+      if (btn.dataset.cmd === 'insertUnorderedList') {
+        desembrulharListaDeParagrafo();
+        moverCursorParaFimDoItem();
+      }
       conteudoInput.focus();
     });
   });
@@ -317,6 +383,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   container.querySelectorAll<HTMLButtonElement>('.color-picker__swatch').forEach((swatch) => {
     swatch.addEventListener('mousedown', (e) => e.preventDefault());
     swatch.addEventListener('click', () => {
+      assentarQuebraPendente();
       const cor = swatch.dataset.cor!;
       const sel = window.getSelection();
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
@@ -343,6 +410,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const btnLimparCor = container.querySelector<HTMLButtonElement>('[data-cor-limpar]')!;
   btnLimparCor.addEventListener('mousedown', (e) => e.preventDefault());
   btnLimparCor.addEventListener('click', () => {
+    assentarQuebraPendente();
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     const range = sel.getRangeAt(0);

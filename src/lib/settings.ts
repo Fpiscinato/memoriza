@@ -39,14 +39,11 @@ export function setLastExportAt(iso: string): void {
   localStorage.setItem(KEYS.lastExportAt, iso);
 }
 
-/** ISO da data até quando o aviso de backup foi adiado (dispensado manualmente) — evita
- * reaparecer a cada recarregamento, mas ainda volta depois de alguns dias. */
+/** ISO da data até quando o aviso de backup foi adiado — não tem mais como criar esse adiamento
+ * pela UI (o aviso virou um ícone pequeno no cabeçalho, sem botão de dispensar), mas ainda
+ * respeita um adiamento já salvo de antes dessa mudança. */
 export function getBackupBannerSnoozedUntil(): string | null {
   return localStorage.getItem(KEYS.backupBannerSnoozedUntil);
-}
-
-export function snoozeBackupBannerUntil(iso: string): void {
-  localStorage.setItem(KEYS.backupBannerSnoozedUntil, iso);
 }
 
 export function wasStoragePersistRequested(): boolean {

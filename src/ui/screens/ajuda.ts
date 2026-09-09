@@ -77,7 +77,11 @@ const SECOES: Secao[] = [
       ver. Pra ajudar a lembrar como foi feito da última vez, os campos Nome e Categoria já
       vêm preenchidos com os do último Tema criado neste Espaço — aparecem em <strong>laranja
       </strong> pra deixar claro que é só uma sugestão a conferir, não um valor já
-      confirmado.</p>`,
+      confirmado.</p>
+      <p>No menu "⋯" de um Tema tem os mesmos dois atalhos que existem no nível do Espaço:
+      <strong>Detalhes</strong> (quantas notas, tempo total revisando e há quantos dias esse
+      Tema existe) e <strong>Avaliação aleatória</strong> (repasse rápido só com as notas
+      deste Tema, sem afetar a fila de revisão).</p>`,
   },
   {
     titulo: 'Notas — o que você anota',

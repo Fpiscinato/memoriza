@@ -132,7 +132,10 @@ export function renderMarkdown(source: string): string {
 // que a gente guarda no banco. Mantém as duas funções em par — qualquer tag que renderMarkdown
 // sabe produzir, esta função precisa saber ler de volta.
 function inlineNodeToText(node: Node): string {
-  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+  // ​ (zero-width space) é a "âncora" que o editor usa pra posicionar o cursor logo
+  // depois de um <br> (ver inserirQuebraDeLinha em nota-form.ts) — nunca deve aparecer no
+  // texto salvo.
+  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? '').replace(/​/g, '');
   if (node.nodeType !== Node.ELEMENT_NODE) return '';
   const el = node as HTMLElement;
   const inner = Array.from(el.childNodes).map(inlineNodeToText).join('');

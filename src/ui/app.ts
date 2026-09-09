@@ -1,14 +1,8 @@
 import { getDB } from '../db/schema';
 import { getProfile } from '../db/profiles';
 import { escapeHtml } from '../lib/dom';
-import {
-  getBackupBannerSnoozedUntil,
-  getLastExportAt,
-  getSelectedProfileId,
-  setSelectedProfileId,
-  snoozeBackupBannerUntil,
-} from '../lib/settings';
-import { addDaysToISODate, daysBetweenISODates, formatDateWeekdayShortBR, toLondonISODate } from '../lib/time';
+import { getBackupBannerSnoozedUntil, getLastExportAt, getSelectedProfileId, setSelectedProfileId } from '../lib/settings';
+import { daysBetweenISODates, formatDateWeekdayShortBR, toLondonISODate } from '../lib/time';
 import { getCurrentRoute, navigate, navigateTop, onRouteChange, topLevelFor, type TopLevelRoute } from './router';
 import { NAV_ICONS } from './icons';
 import { renderProfileSelect } from './screens/profile-select';
@@ -27,7 +21,6 @@ import type { Perfil } from '../types';
 
 const BACKUP_REMINDER_DAYS = 14;
 const BACKUP_REMINDER_URGENT_DAYS = 30;
-const BACKUP_BANNER_SNOOZE_DAYS = 3;
 
 const NAV_ITEMS: { route: TopLevelRoute; label: string }[] = [
   { route: 'hoje', label: 'Hoje' },
@@ -82,6 +75,7 @@ async function render(root: HTMLElement): Promise<void> {
 
   const route = getCurrentRoute();
   const topLevel = topLevelFor(route);
+  const backupAlert = await getBackupAlert(perfil);
 
   root.innerHTML = `
     <div class="app-shell">
@@ -104,6 +98,11 @@ async function render(root: HTMLElement): Promise<void> {
         <header class="app-header">
           <span class="app-header__title">${TOP_LEVEL_TITLES[topLevel]}</span>
           <span style="display:flex; align-items:center; gap: var(--space-3);">
+            ${
+              backupAlert
+                ? `<button class="app-header__backup-alert${backupAlert.urgente ? ' is-urgent' : ''}" id="btn-backup-alert" type="button" title="${escapeHtml(backupAlert.mensagem)}" aria-label="${escapeHtml(backupAlert.mensagem)}">📦</button>`
+                : ''
+            }
             <span class="app-header__date" title="Data de hoje">${escapeHtml(formatDateWeekdayShortBR(toLondonISODate()))}</span>
             <button class="app-header__help" id="btn-ajuda" type="button" aria-label="Como usar">?</button>
             <span class="app-header__profile">${escapeHtml(perfil.nome)}</span>
@@ -118,9 +117,9 @@ async function render(root: HTMLElement): Promise<void> {
     btn.addEventListener('click', () => navigateTop(btn.dataset.route as TopLevelRoute));
   });
   root.querySelector('#btn-ajuda')?.addEventListener('click', () => navigate('ajuda'));
+  root.querySelector('#btn-backup-alert')?.addEventListener('click', () => navigate('config'));
 
   const content = root.querySelector<HTMLElement>('#screen-content')!;
-  await renderBackupBanner(content, perfil);
 
   const screenContainer = document.createElement('div');
   content.appendChild(screenContainer);
@@ -171,40 +170,31 @@ async function render(root: HTMLElement): Promise<void> {
   }
 }
 
-async function renderBackupBanner(content: HTMLElement, perfil: Perfil): Promise<void> {
+/** Alerta compacto perto da data no cabeçalho (era um banner grande no topo do conteúdo,
+ * competindo com a tela — agora é só um ícone pequeno, clicável, que leva pra Configurações). */
+async function getBackupAlert(perfil: Perfil): Promise<{ urgente: boolean; mensagem: string } | null> {
   const today = toLondonISODate();
 
   const snoozedUntil = getBackupBannerSnoozedUntil();
-  if (snoozedUntil && today < snoozedUntil) return;
+  if (snoozedUntil && today < snoozedUntil) return null;
 
-  if (!(await hasAnyDataForProfile(perfil.id))) return;
+  if (!(await hasAnyDataForProfile(perfil.id))) return null;
 
   const lastExportAt = getLastExportAt();
   const daysSinceExport = lastExportAt
     ? daysBetweenISODates(toLondonISODate(new Date(lastExportAt)), today)
     : Infinity;
 
-  if (daysSinceExport <= BACKUP_REMINDER_DAYS) return;
+  if (daysSinceExport <= BACKUP_REMINDER_DAYS) return null;
 
   // Só vira um aviso "de verdade" (laranja) quando o backup está realmente muito velho —
-  // antes disso é só um lembrete discreto, sem competir visualmente com o resto da tela.
+  // antes disso é só um lembrete discreto.
   const urgente = lastExportAt !== null && daysSinceExport > BACKUP_REMINDER_URGENT_DAYS;
+  const mensagem = `${
+    lastExportAt ? `Faz mais de ${BACKUP_REMINDER_DAYS} dias desde o último backup.` : 'Você ainda não exportou um backup.'
+  } Toque pra exportar em Configurações — os dados só existem neste aparelho.`;
 
-  const banner = document.createElement('div');
-  banner.className = `banner ${urgente ? 'banner--warning' : 'banner--muted'}`;
-  banner.setAttribute('role', 'status');
-  banner.innerHTML = `
-    <span>
-      ${lastExportAt ? `Faz mais de ${BACKUP_REMINDER_DAYS} dias desde o último backup.` : 'Você ainda não exportou um backup.'}
-      Considere exportar em Configurações — os dados só existem neste aparelho.
-    </span>
-    <button class="banner__dismiss" type="button" aria-label="Adiar aviso por alguns dias">×</button>
-  `;
-  banner.querySelector('.banner__dismiss')?.addEventListener('click', () => {
-    snoozeBackupBannerUntil(addDaysToISODate(today, BACKUP_BANNER_SNOOZE_DAYS));
-    banner.remove();
-  });
-  content.appendChild(banner);
+  return { urgente, mensagem };
 }
 
 async function hasAnyDataForProfile(perfilId: string): Promise<boolean> {

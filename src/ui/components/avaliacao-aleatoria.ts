@@ -1,4 +1,4 @@
-import { listNotasPorEspaco, type NotaComTema } from '../../db/notas';
+import type { NotaComTema } from '../../db/notas';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 
@@ -18,24 +18,23 @@ function shuffle<T>(itens: T[]): T[] {
 }
 
 /**
- * Repasse avulso e aleatório pelas notas de um Espaço — não mexe na revisão espaçada
- * (itens_revisao), é só um teste opcional pra relembrar, disponível a qualquer momento
- * (arquivado ou não). Assume o container inteiro até `onSair` ser chamado.
+ * Repasse avulso e aleatório pelas notas de um Espaço OU de um Tema (quem chama já busca a
+ * lista de notas certa — `listNotasPorEspaco` ou as notas de um Tema só) — não mexe na
+ * revisão espaçada (itens_revisao), é só um teste opcional pra relembrar, disponível a
+ * qualquer momento (arquivado ou não). Assume o container inteiro até `onSair` ser chamado.
  */
-export async function iniciarAvaliacaoAleatoria(
+export function iniciarAvaliacaoAleatoria(
   container: HTMLElement,
-  espacoId: string,
-  espacoNome: string,
+  todas: NotaComTema[],
+  nomeContexto: string,
   onSair: () => void,
-): Promise<void> {
-  const todas = await listNotasPorEspaco(espacoId);
-
+): void {
   if (todas.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">🎲</div>
         <div class="empty-state__title">Nenhuma nota pra testar ainda</div>
-        <p class="empty-state__hint">Crie notas nos Temas deste Espaço antes de fazer uma avaliação.</p>
+        <p class="empty-state__hint">Crie notas aqui antes de fazer uma avaliação.</p>
       </div>
       <button class="btn btn--secondary" id="btn-sair-avaliacao" type="button">← Voltar</button>
     `;
@@ -43,13 +42,13 @@ export async function iniciarAvaliacaoAleatoria(
     return;
   }
 
-  renderEscolhaTamanho(container, todas, espacoNome, onSair);
+  renderEscolhaTamanho(container, todas, nomeContexto, onSair);
 }
 
 function renderEscolhaTamanho(
   container: HTMLElement,
   todas: NotaComTema[],
-  espacoNome: string,
+  nomeContexto: string,
   onSair: () => void,
 ): void {
   container.innerHTML = `
@@ -59,7 +58,7 @@ function renderEscolhaTamanho(
     <div class="content-narrow">
       <div class="card stack" style="text-align:center;">
         <div class="empty-state__icon" aria-hidden="true">🎲</div>
-        <h2 style="margin:0;">Avaliação aleatória — ${escapeHtml(espacoNome)}</h2>
+        <h2 style="margin:0;">Avaliação aleatória — ${escapeHtml(nomeContexto)}</h2>
         <p class="text-muted" style="margin:0;">
           Repasse rápido com notas aleatórias, sem afetar sua fila de revisão. ${todas.length} nota(s) no total — escolha quantas:
         </p>
@@ -81,7 +80,7 @@ function renderEscolhaTamanho(
     btn.addEventListener('click', () => {
       const tier = TIERS.find((t) => t.key === btn.dataset.tier)!;
       const selecionadas = shuffle(todas).slice(0, Math.min(tier.n, todas.length));
-      renderQuiz(container, selecionadas, 0, espacoNome, onSair);
+      renderQuiz(container, selecionadas, 0, nomeContexto, onSair);
     });
   });
 }
@@ -90,12 +89,12 @@ function renderQuiz(
   container: HTMLElement,
   itens: NotaComTema[],
   indice: number,
-  espacoNome: string,
+  nomeContexto: string,
   onSair: () => void,
   revelado = false,
 ): void {
   if (indice >= itens.length) {
-    renderFim(container, itens.length, espacoNome, onSair);
+    renderFim(container, itens.length, nomeContexto, onSair);
     return;
   }
   const atual = itens[indice];
@@ -127,23 +126,23 @@ function renderQuiz(
 
   container.querySelector('#btn-sair-avaliacao')?.addEventListener('click', onSair);
   container.querySelector('#btn-revelar')?.addEventListener('click', () => {
-    renderQuiz(container, itens, indice, espacoNome, onSair, true);
+    renderQuiz(container, itens, indice, nomeContexto, onSair, true);
   });
   container.querySelector('#btn-proxima')?.addEventListener('click', () => {
-    renderQuiz(container, itens, indice + 1, espacoNome, onSair, false);
+    renderQuiz(container, itens, indice + 1, nomeContexto, onSair, false);
   });
 }
 
-function renderFim(container: HTMLElement, total: number, espacoNome: string, onSair: () => void): void {
+function renderFim(container: HTMLElement, total: number, nomeContexto: string, onSair: () => void): void {
   container.innerHTML = `
     <div class="content-narrow">
     <div class="card stack" style="text-align:center;">
       <div class="empty-state__icon" aria-hidden="true">🎉</div>
       <h2 style="margin:0;">Repasse concluído</h2>
       <p class="text-muted" style="margin:0;">
-        Você passou por ${total} nota(s) de ${escapeHtml(espacoNome)}. Isso não mudou nada na sua fila de revisão.
+        Você passou por ${total} nota(s) de ${escapeHtml(nomeContexto)}. Isso não mudou nada na sua fila de revisão.
       </p>
-      <button class="btn btn--primary" id="btn-terminar" type="button">Voltar ao Espaço</button>
+      <button class="btn btn--primary" id="btn-terminar" type="button">Voltar</button>
     </div>
     </div>
   `;

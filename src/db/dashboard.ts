@@ -114,12 +114,20 @@ export async function getTempoTotalEspaco(espacoId: string): Promise<number> {
   const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
   let total = 0;
   for (const tema of temas) {
-    const notas = await db.getAllFromIndex('notas', 'tema_id', tema.id);
-    for (const nota of notas) {
-      const itens = await db.getAllFromIndex('itens_revisao', 'nota_id', nota.id);
-      for (const item of itens) {
-        total += item.duracao_segundos ?? 0;
-      }
+    total += await getTempoTotalTema(tema.id);
+  }
+  return total;
+}
+
+/** Mesma soma de getTempoTotalEspaco, mas só das notas de UM tema — pro modal de Detalhes do Tema. */
+export async function getTempoTotalTema(temaId: string): Promise<number> {
+  const db = await getDB();
+  const notas = await db.getAllFromIndex('notas', 'tema_id', temaId);
+  let total = 0;
+  for (const nota of notas) {
+    const itens = await db.getAllFromIndex('itens_revisao', 'nota_id', nota.id);
+    for (const item of itens) {
+      total += item.duracao_segundos ?? 0;
     }
   }
   return total;

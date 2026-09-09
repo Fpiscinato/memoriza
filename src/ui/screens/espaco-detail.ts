@@ -1,5 +1,6 @@
 import { countEspacoCascade, deleteEspacoCascade, getEspaco, listCategoriasEspacos, setEspacoArquivado, updateEspaco } from '../../db/espacos';
 import { createTema, listTemas } from '../../db/temas';
+import { listNotasPorEspaco } from '../../db/notas';
 import { getDB } from '../../db/schema';
 import { getTempoTotalEspaco } from '../../db/dashboard';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
@@ -139,7 +140,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           ${grupo.itens
             .map(
               (t) => `
-            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.categoria ? grupo.categoria.toLowerCase() : espaco.id)}">
+            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.categoria ? grupo.categoria.toLowerCase() : t.id)}">
               <span class="item-row__main">
                 <span class="item-row__title">${t.favorito ? '⭐ ' : ''}${escapeHtml(t.nome)}</span>
                 <span class="item-row__meta">${notaCounts.get(t.id) ?? 0} nota(s)</span>
@@ -248,8 +249,9 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     });
   });
 
-  container.querySelector('#btn-avaliar')?.addEventListener('click', () => {
-    iniciarAvaliacaoAleatoria(container, espaco.id, espaco.nome, () => renderEspacoDetail(container, espacoId));
+  container.querySelector('#btn-avaliar')?.addEventListener('click', async () => {
+    const notasComTema = await listNotasPorEspaco(espaco.id);
+    iniciarAvaliacaoAleatoria(container, notasComTema, espaco.nome, () => renderEspacoDetail(container, espacoId));
   });
 
   container.querySelector('#btn-excluir')?.addEventListener('click', async () => {
