@@ -14,11 +14,36 @@ const ESTAGIO_LABEL: Record<'1' | '7' | '30' | '180', string> = {
   '180': '180 dias',
 };
 
+function labelDiaSemana(dataISO: string): string {
+  return new Date(`${dataISO}T00:00:00Z`).toLocaleDateString('pt-BR', {
+    timeZone: 'UTC',
+    weekday: 'short',
+  });
+}
+
+function formatCarga(dataISO: string): string {
+  return new Date(`${dataISO}T00:00:00Z`).toLocaleDateString('pt-BR', {
+    timeZone: 'UTC',
+    day: '2-digit',
+    month: '2-digit',
+  });
+}
+
 export async function renderPainel(container: HTMLElement, ctx: PainelContext): Promise<void> {
   const stats = await getDashboardStats(ctx.perfilId);
 
   const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   const hojeIndiceSemana = new Date().getDay();
+
+  const maxCarga = Math.max(1, ...stats.cargaProximos7.map((d) => d.count));
+  const pctRetencao =
+    stats.retencao30.total > 0
+      ? {
+          facil: Math.round((stats.retencao30.facil / stats.retencao30.total) * 100),
+          medio: Math.round((stats.retencao30.medio / stats.retencao30.total) * 100),
+          dificil: Math.round((stats.retencao30.dificil / stats.retencao30.total) * 100),
+        }
+      : null;
 
   container.innerHTML = `
     <p class="screen-hint" style="margin-top:0;">Sua sequência de dias estudando e os Temas onde você mais marcou "Difícil" — os pontos fracos reais.</p>
@@ -93,6 +118,51 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
         )
         .join('')}
     </div>
+
+    <div class="section-header">
+      <span class="section-header__title" style="font-size: var(--font-size-base);">Próximos 7 dias${ICONS.chart}</span>
+    </div>
+    <p class="screen-hint" style="margin-top:0;">Revisões pendentes agendadas por dia — amanhã primeiro.</p>
+    <div class="load-chart" role="img" aria-label="Carga de revisões dos próximos 7 dias: ${stats.cargaProximos7
+      .map((d) => `${d.count} em ${formatCarga(d.data)}`)
+      .join(', ')}">
+      ${stats.cargaProximos7
+        .map((d) => {
+          const diaSemana = labelDiaSemana(d.data);
+          return `
+          <div class="load-chart__col">
+            <div class="load-chart__val">${d.count}</div>
+            <div class="load-chart__bar">
+              <div class="load-chart__fill" style="height: ${(d.count / maxCarga) * 100}%"></div>
+            </div>
+            <div class="load-chart__label">${diaSemana}</div>
+          </div>
+        `;
+        })
+        .join('')}
+    </div>
+
+    <div class="section-header">
+      <span class="section-header__title" style="font-size: var(--font-size-base);">Retenção · últimos 30 dias</span>
+    </div>
+    <p class="screen-hint" style="margin-top:0;">% de Fácil, Médio e Difícil nas revisões feitas — o quanto você realmente está lembrando.</p>
+    ${
+      stats.retencao30.total === 0
+        ? `<p class="text-muted">Ainda não há avaliações em 30 dias.</p>`
+        : `
+      <div class="retention-bar" role="img" aria-label="Fácil ${pctRetencao!.facil}%, Médio ${pctRetencao!.medio}%, Difícil ${pctRetencao!.dificil}%">
+        <div class="retention-bar__fill retention-bar__fill--dificil" style="width:${pctRetencao!.dificil}%"></div>
+        <div class="retention-bar__fill retention-bar__fill--medio" style="width:${pctRetencao!.medio}%"></div>
+        <div class="retention-bar__fill retention-bar__fill--facil" style="width:${pctRetencao!.facil}%"></div>
+      </div>
+      <div class="retention-legend">
+        <span class="badge badge--danger">Difícil ${pctRetencao!.dificil}%</span>
+        <span class="badge" style="background:var(--color-warning-bg); color:var(--color-warning);">Médio ${pctRetencao!.medio}%</span>
+        <span class="badge badge--success">Fácil ${pctRetencao!.facil}%</span>
+        <span class="text-muted" style="font-size: var(--font-size-xs);">${stats.retencao30.total} avaliada(s)</span>
+      </div>
+    `
+    }
 
     <div class="section-header">
       <span class="section-header__title" style="font-size: var(--font-size-base);">Temas com mais "Difícil"</span>

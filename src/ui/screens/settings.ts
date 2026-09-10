@@ -2,8 +2,16 @@ import { exportAll, exportProfile, downloadExportFile, parseExportFile, importDa
 import { countProfileCascade, createProfile, deleteProfileCascade, listProfiles, renameProfile } from '../../db/profiles';
 import { escapeHtml } from '../../lib/dom';
 import {
+  getGithubAutoSync,
+  getGithubGistId,
+  getGithubLastSyncAt,
+  getGithubToken,
   getLastExportAt,
   getReminderHour,
+  setGithubAutoSync,
+  setGithubGistId,
+  setGithubLastSyncAt,
+  setGithubToken,
   setLastExportAt,
   setReminderHour,
   type ThemePreference,
@@ -14,6 +22,7 @@ import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import { confirmAction } from '../components/confirm-modal';
 import { navigate } from '../router';
 import { APP_VERSION_LABEL } from '../../version';
+import { syncWithGithub } from '../../lib/github-sync';
 import { ICONS } from '../icons';
 import type { Perfil } from '../../types';
 
@@ -33,6 +42,10 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   const lastExport = getLastExportAt();
   const perfis = await listProfiles();
   const horaLembrete = getReminderHour(ctx.perfil.id);
+  const token = getGithubToken();
+  const autoSync = getGithubAutoSync();
+  const lastSyncAt = getGithubLastSyncAt();
+  const gistId = getGithubGistId();
 
   container.innerHTML = `
     <div class="stack content-narrow">
@@ -157,6 +170,57 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
             <input type="file" accept="application/json" id="import-file" class="visually-hidden" />
           </div>
           <div id="import-summary" role="status"></div>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <div class="settings-section__title">${ICONS.sync} Sincronização em nuvem</div>
+        <div class="card stack">
+          <p class="text-muted" style="margin:0;">
+            Um canto seguro do GitHub só seu (Gist privado) guarda uma cópia sincronizada do
+            app — sem servidores intermediários, direto do seu navegador. O backup é mesclado:
+            dados mais novos vencem e nada local é apagado.
+          </p>
+          <div class="field">
+            <label class="field__label" for="input-github-token">Personal Access Token (GitHub)</label>
+            <div style="display:flex; gap: var(--space-2); flex-wrap:wrap;">
+              <input
+                class="input" id="input-github-token" type="password" autocomplete="off"
+                placeholder="ghp_…  (permissão só de Gist)"
+                value="${escapeHtml(token)}"
+                style="max-width: 340px;"
+              />
+              <button class="btn btn--secondary btn--sm" id="btn-limpar-token" type="button" title="Remove o token deste navegador">Limpar</button>
+            </div>
+            <p class="settings-row__desc" style="margin-top: var(--space-1);">
+              Como criar: github.com → Settings → Developer settings → Personal access tokens →
+              “Tokens (classic)” → Generate new token → marque só <b>gist</b> → Generate.
+              O token fica salvo <b>apenas neste navegador</b>, nunca é enviado a mais ninguém.
+            </p>
+          </div>
+
+          <div>
+            <button class="btn btn--primary btn--sm" id="btn-sync-now" type="button" style="align-self:flex-start;">
+              ${ICONS.sync} Sincronizar agora
+            </button>
+          </div>
+          <div id="sync-status" role="status">
+            ${
+              lastSyncAt
+                ? `<div class="banner banner--success" style="margin-bottom:0;">${ICONS.check} Última sincronização: ${escapeHtml(formatDateTimeBR(lastSyncAt))}${gistId ? '.' : ''}</div>`
+                : token
+                  ? `<div class="banner banner--muted" style="margin-bottom:0;">Token salvo — ainda não sincronizou neste aparelho.</div>`
+                  : ''
+            }
+          </div>
+
+          <div class="settings-list-row">
+            <div>
+              <div class="settings-row__label">Sincronização automática</div>
+              <p class="settings-row__desc">Ao abrir o app, se a última sincronização tiver mais de 30 min, roda sozinha em segundo plano.</p>
+            </div>
+            <input type="checkbox" id="sync-auto" class="toggle-checkbox" ${autoSync ? 'checked' : ''} aria-label="Sincronização automática" />
+          </div>
         </div>
       </section>
 
@@ -319,5 +383,66 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
     const hora = container.querySelector<HTMLInputElement>('#input-hora-lembrete')!.value || '19:00';
     setReminderHour(ctx.perfil.id, hora);
     downloadICS(generateDailyReminderICS(hora));
+  });
+
+  const syncStatus = container.querySelector<HTMLElement>('#sync-status');
+  const syncButton = container.querySelector<HTMLButtonElement>('#btn-sync-now');
+  syncButton?.addEventListener('click', async () => {
+    const input = container.querySelector<HTMLInputElement>('#input-github-token')!;
+    const tokenAtual = input.value.trim();
+    if (!tokenAtual) {
+      if (syncStatus) {
+        syncStatus.innerHTML = `<div class="banner banner--warning" role="alert">Cole seu Personal Access Token do GitHub primeiro.</div>`;
+      }
+      return;
+    }
+
+    setGithubToken(tokenAtual);
+    syncButton.disabled = true;
+    if (syncStatus) {
+      syncStatus.innerHTML = `<div class="banner banner--muted" role="status">${ICONS.sync} Sincronizando…</div>`;
+    }
+
+    try {
+      const resultado = await syncWithGithub(tokenAtual);
+      if (syncStatus) {
+        const partes = [
+          resultado.criados > 0 ? `${resultado.criados} novo(s)` : null,
+          resultado.atualizados > 0 ? `${resultado.atualizados} atualizado(s)` : null,
+        ].filter(Boolean);
+        syncStatus.innerHTML = `
+          <div class="banner banner--success" role="status">
+            ${ICONS.check} Sincronizado!${partes.length > 0 ? ` ${partes.join(', ')} baixado(s).` : ''}
+            ${resultado.mesclouRemoto ? '' : ' (backup remoto não existia ainda — o local foi enviado.)'}
+          </div>
+        `;
+      }
+      renderSettings(container, ctx);
+    } catch (err) {
+      syncButton.disabled = false;
+      if (syncStatus) {
+        syncStatus.innerHTML = `
+          <div class="banner banner--warning" role="alert">
+            ${escapeHtml(err instanceof Error ? err.message : 'Não foi possível sincronizar.')}
+          </div>
+        `;
+      }
+    }
+  });
+
+  container.querySelector('#btn-limpar-token')?.addEventListener('click', async () => {
+    const ok = await confirmAction({
+      title: 'Remover token do GitHub?',
+      message: 'O backup já sincronizado continua no GitHub — esta ação só apaga o token salvos neste navegador.',
+    });
+    if (!ok) return;
+    setGithubToken('');
+    setGithubGistId('');
+    setGithubLastSyncAt('');
+    renderSettings(container, ctx);
+  });
+
+  container.querySelector<HTMLInputElement>('#sync-auto')?.addEventListener('change', (e) => {
+    setGithubAutoSync((e.target as HTMLInputElement).checked);
   });
 }

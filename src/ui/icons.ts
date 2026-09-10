@@ -83,4 +83,11 @@ export const ICONS: Record<string, string> = {
   help: svgIcon(
     '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r="0.2" fill="currentColor"/>',
   ),
+  search: svgIcon('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>'),
+  sync: svgIcon(
+    '<path d="M20.5 12a8.5 8.5 0 1 1-2.5-6.04M20.5 3.5V7h-3.5"/><path d="M3.5 12A8.5 8.5 0 0 1 17.2 5"/>',
+  ),
+  lock: svgIcon('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+  check: svgIcon('<path d="M20 6L9 17l-5-5"/>'),
+  chart: svgIcon('<path d="M4 20h16"/><path d="M7 17v-6M12 17V7M17 17v-9"/>'),
 };

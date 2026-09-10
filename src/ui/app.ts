@@ -19,10 +19,14 @@ import { renderSettings } from './screens/settings';
 import { initWakeLock } from '../lib/wakelock';
 import { APP_VERSION } from '../version';
 import { canNavigateAway } from '../lib/form-guard';
+import { getGithubAutoSync, getGithubToken } from '../lib/settings';
+import { shouldAutoSync, syncWithGithub } from '../lib/github-sync';
+import { openGlobalSearch } from './global-search';
 import type { Perfil } from '../types';
 
 const BACKUP_REMINDER_DAYS = 14;
 const BACKUP_REMINDER_URGENT_DAYS = 30;
+const AUTO_SYNC_INTERVAL_MINUTOS = 30;
 
 const NAV_ITEMS: { route: TopLevelRoute; label: string }[] = [
   { route: 'hoje', label: 'Hoje' },
@@ -47,6 +51,32 @@ export async function mount(root: HTMLElement): Promise<void> {
   await render(root);
   bindGlobalPopoverClose();
   initWakeLock();
+  bindGlobalSearchShortcut();
+  void autoSyncIfEnabled();
+}
+
+/** Ctrl+K / ⌘K abre a busca global — padrão conhecido de desktop, seguro no mobile também. */
+function bindGlobalSearchShortcut(): void {
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      const perfilId = getSelectedProfileId();
+      if (perfilId) void openGlobalSearch(perfilId);
+    }
+  });
+}
+
+/** Sincronização silenciosa (auto-sync) ao abrir o app, quando configurada — nunca bloqueia
+ *  o carregamento e nunca chama a rede em silêncio se já sincronizou há pouco. */
+async function autoSyncIfEnabled(): Promise<void> {
+  const token = getGithubToken();
+  if (!token || !getGithubAutoSync()) return;
+  if (!shouldAutoSync(AUTO_SYNC_INTERVAL_MINUTOS)) return;
+  try {
+    await syncWithGithub(token);
+  } catch (err) {
+    console.warn('Auto-sync falhou:', err);
+  }
 }
 
 /** Fecha qualquer menu "⋯" ou balão de ajuda (ⓘ) aberto ao clicar fora dele — <details>
@@ -100,6 +130,7 @@ async function render(root: HTMLElement): Promise<void> {
         <header class="app-header">
           <span class="app-header__title">${TOP_LEVEL_TITLES[topLevel]}</span>
           <span style="display:flex; align-items:center; gap: var(--space-3);">
+            <button class="app-header__search" id="btn-busca" type="button" aria-label="Buscar (Ctrl+K)" title="Buscar (Ctrl+K)">${ICONS.search}</button>
             ${
               backupAlert
                 ? `<button class="app-header__backup-alert${backupAlert.urgente ? ' is-urgent' : ''}" id="btn-backup-alert" type="button" title="${escapeHtml(backupAlert.mensagem)}" aria-label="${escapeHtml(backupAlert.mensagem)}">${ICONS.backup}</button>`
@@ -124,6 +155,10 @@ async function render(root: HTMLElement): Promise<void> {
   root.querySelector('#btn-ajuda')?.addEventListener('click', () => {
     if (!canNavigateAway()) return;
     navigate('ajuda');
+  });
+  root.querySelector('#btn-busca')?.addEventListener('click', () => {
+    if (!canNavigateAway()) return;
+    void openGlobalSearch(perfil.id);
   });
   root.querySelector('#btn-backup-alert')?.addEventListener('click', () => {
     if (!canNavigateAway()) return;

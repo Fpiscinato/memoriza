@@ -112,8 +112,8 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
       const espaco = entries[0].espaco;
       return `
         <div class="queue-group">
-          <div class="queue-group__title" style="--group-accent:${accentVar(espaco.id)}">
-            <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>
+          <div class="queue-group__title" style="--group-accent:${accentVar(tema.id)}">
+            <span class="color-dot" style="--dot-color:${accentVar(tema.id)}"></span>
             ${escapeHtml(tema.nome)}
             ${mostrarEspaco ? `<span class="queue-group__espaco"> · ${escapeHtml(espaco.nome)}</span>` : ''}
           </div>
@@ -121,7 +121,7 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
             ${entries
               .map(
                 (entry) => `
-              <button class="item-row" data-id="${escapeHtml(entry.item.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(entry.espaco.id)}">
+              <button class="item-row" data-id="${escapeHtml(entry.item.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(entry.tema.id)}">
                 <span class="item-row__main">
                   <span class="item-row__title">${entry.nota.favorito ? `${ICONS.star} ` : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}</span>
                 </span>

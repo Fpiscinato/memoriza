@@ -10,6 +10,10 @@ const KEYS = {
   lastExportAt: 'memoriza:lastExportAt',
   storagePersistRequested: 'memoriza:storagePersistRequested',
   backupBannerSnoozedUntil: 'memoriza:backupBannerSnoozedUntil',
+  githubToken: 'memoriza:githubToken',
+  githubGistId: 'memoriza:githubGistId',
+  githubLastSyncAt: 'memoriza:githubLastSyncAt',
+  githubAutoSync: 'memoriza:githubAutoSync',
 } as const;
 
 export function getSelectedProfileId(): string | null {
@@ -67,4 +71,46 @@ export function getReminderHour(perfilId: string): string {
 
 export function setReminderHour(perfilId: string, horaHHMM: string): void {
   localStorage.setItem(`memoriza:reminderHour:${perfilId}`, horaHHMM);
+}
+
+// --- Sincronização em nuvem (GitHub Gist privado) ---------------------------
+// O token e o id do Gist ficam no localStorage (config de dispositivo, como as demais
+// preferências). O token nunca sai do navegador — as chamadas à API do GitHub são feitas
+// direto daqui, via HTTPS.
+
+export function getGithubToken(): string {
+  return localStorage.getItem(KEYS.githubToken) ?? '';
+}
+
+export function setGithubToken(token: string): void {
+  if (token.trim()) localStorage.setItem(KEYS.githubToken, token.trim());
+  else localStorage.removeItem(KEYS.githubToken);
+}
+
+export function getGithubGistId(): string {
+  return localStorage.getItem(KEYS.githubGistId) ?? '';
+}
+
+export function setGithubGistId(gistId: string): void {
+  if (gistId) localStorage.setItem(KEYS.githubGistId, gistId);
+  else localStorage.removeItem(KEYS.githubGistId);
+}
+
+/** ISO de quando a última sincronização com o GitHub terminou com sucesso. */
+export function getGithubLastSyncAt(): string | null {
+  return localStorage.getItem(KEYS.githubLastSyncAt);
+}
+
+export function setGithubLastSyncAt(iso: string): void {
+  if (iso) localStorage.setItem(KEYS.githubLastSyncAt, iso);
+  else localStorage.removeItem(KEYS.githubLastSyncAt);
+}
+
+export function getGithubAutoSync(): boolean {
+  return localStorage.getItem(KEYS.githubAutoSync) === '1';
+}
+
+export function setGithubAutoSync(ativo: boolean): void {
+  if (ativo) localStorage.setItem(KEYS.githubAutoSync, '1');
+  else localStorage.removeItem(KEYS.githubAutoSync);
 }

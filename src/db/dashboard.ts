@@ -23,6 +23,10 @@ export interface DashboardStats {
   porEstagio: { estagio: '1' | '7' | '30' | '180'; count: number }[];
   /** Soma de duracao_segundos das revisões concluídas hoje (só conta a partir de quando isso passou a ser medido). */
   tempoHojeSegundos: number;
+  /** Quantas revisões pendentes estão agendadas pra cada um dos próximos 7 dias (amanhã primeiro). */
+  cargaProximos7: { data: string; count: number }[];
+  /** Distribuição das avaliações feitas nos últimos 30 dias — a "retenção" percebida. */
+  retencao30: { facil: number; medio: number; dificil: number; total: number };
 }
 
 const TOP_RANKING = 5;
@@ -50,6 +54,22 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
     estagio,
     count: pendentes.filter((i) => i.estagio === estagio).length,
   }));
+
+  const cargaProximos7: { data: string; count: number }[] = [];
+  for (let i = 1; i <= 7; i++) {
+    const data = addDaysToISODate(hoje, i);
+    cargaProximos7.push({ data, count: pendentes.filter((x) => x.data_agendada === data).length });
+  }
+
+  const inicioJanela30 = addDaysToISODate(hoje, -29);
+  const ultimos30 = revisoesFeitas.filter((i) => i.data_concluida! >= inicioJanela30);
+  const retencao30 = {
+    facil: ultimos30.filter((i) => i.avaliacao === 'facil').length,
+    medio: ultimos30.filter((i) => i.avaliacao === 'medio').length,
+    dificil: ultimos30.filter((i) => i.avaliacao === 'dificil').length,
+    total: 0,
+  };
+  retencao30.total = retencao30.facil + retencao30.medio + retencao30.dificil;
 
   const datasComAtividade = new Set(revisoesFeitas.map((i) => i.data_concluida!));
   const streakDias = computeStreak(datasComAtividade, hoje);
@@ -109,6 +129,8 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
     itensEmConsulta,
     porEstagio,
     tempoHojeSegundos,
+    cargaProximos7,
+    retencao30,
   };
 }
 
