@@ -1,4 +1,5 @@
 import { getDB } from './schema';
+import { ordenarPorNome } from '../lib/ordem';
 import type { Espaco, Nota, Tema } from '../types';
 
 export interface TemaFavorito {
@@ -12,7 +13,9 @@ export interface NotaFavorita {
   espaco: Espaco;
 }
 
-/** Temas e Notas favoritados do perfil, cada um já com o Espaço (e Tema, no caso da Nota) pai. */
+/** Temas e Notas favoritados do perfil, cada um já com o Espaço (e Tema, no caso da Nota) pai.
+ *  Ordenados pelo nome (meses em ordem de calendário, números como números — lib/ordem.ts);
+ *  antes saíam na ordem arbitrária em que o IndexedDB devolveu. */
 export async function getFavoritos(
   perfilId: string,
 ): Promise<{ temas: TemaFavorito[]; notas: NotaFavorita[] }> {
@@ -51,5 +54,8 @@ export async function getFavoritos(
     }
   }
 
-  return { temas: temasFavoritos, notas: notasFavoritas };
+  return {
+    temas: ordenarPorNome(temasFavoritos, (t) => t.tema.nome),
+    notas: ordenarPorNome(notasFavoritas, (n) => n.nota.titulo || n.tema.nome),
+  };
 }

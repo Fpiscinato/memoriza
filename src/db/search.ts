@@ -3,6 +3,7 @@
 
 import { getDB } from './schema';
 import type { Espaco, Tema } from '../types';
+import { compararTextos } from '../lib/ordem';
 
 export type ResultadoBusca =
   | { kind: 'espaco'; id: string; titulo: string; meta: string; snippet?: string }
@@ -112,11 +113,12 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
   }
 
   // Ordena alfabeticamente pelo título (e, em caso de empate, pelo caminho) — resultados
-  // "começando com" a busca naturalmente sobem sem precisar de heurística extra.
+  // "começando com" a busca naturalmente sobem sem precisar de heurística extra. A comparação
+  // é alfanumérica (ver lib/ordem.ts), então "Aula 2" vem antes de "Aula 10".
   resultados.sort((a, b) => {
     const aChave = `${a.titulo.toLowerCase()} ${a.meta.toLowerCase()}`;
     const bChave = `${b.titulo.toLowerCase()} ${b.meta.toLowerCase()}`;
-    return aChave.localeCompare(bChave, 'pt-BR');
+    return compararTextos(aChave, bChave);
   });
 
   return resultados.slice(0, LIMITE_TOTAL);

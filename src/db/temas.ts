@@ -2,11 +2,12 @@ import { getDB } from './schema';
 import type { Tema } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
+import { ordenarPorNome } from '../lib/ordem';
 
 export async function listTemas(espacoId: string): Promise<Tema[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
-  return all.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return ordenarPorNome(all, (t) => t.nome);
 }
 
 export async function getTema(id: string): Promise<Tema | undefined> {

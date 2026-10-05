@@ -3,11 +3,12 @@ import type { Espaco } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
 import { distinctCategorias } from '../lib/group';
+import { ordenarPorNome } from '../lib/ordem';
 
 export async function listEspacos(perfilId: string): Promise<Espaco[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
-  return all.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  return ordenarPorNome(all, (e) => e.nome);
 }
 
 /** Sugestões sempre disponíveis, mesmo num perfil novo sem nenhum Espaço ainda criado. */

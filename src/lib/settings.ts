@@ -14,6 +14,7 @@ const KEYS = {
   githubGistId: 'memoriza:githubGistId',
   githubLastSyncAt: 'memoriza:githubLastSyncAt',
   githubAutoSync: 'memoriza:githubAutoSync',
+  notasOrdem: 'memoriza:notasOrdem',
 } as const;
 
 export function getSelectedProfileId(): string | null {
@@ -113,4 +114,21 @@ export function getGithubAutoSync(): boolean {
 export function setGithubAutoSync(ativo: boolean): void {
   if (ativo) localStorage.setItem(KEYS.githubAutoSync, '1');
   else localStorage.removeItem(KEYS.githubAutoSync);
+}
+
+// --- Ordenação das Notas ---------------------------------------------------
+// Preferência do aparelho (vai junto com o resto das de interface), porque não muda nenhum
+// dado: é só como as Notas aparecem listadas dentro de um Tema.
+
+/** 'data' = mais antigo primeiro (como o app já fazia); 'titulo' = pelo título, respeitando
+ *  meses e números (ver lib/ordem.ts). */
+export type NotasOrdem = 'data' | 'titulo';
+
+export function getNotasOrdem(): NotasOrdem {
+  return localStorage.getItem(KEYS.notasOrdem) === 'titulo' ? 'titulo' : 'data';
+}
+
+export function setNotasOrdem(ordem: NotasOrdem): void {
+  if (ordem === 'titulo') localStorage.setItem(KEYS.notasOrdem, 'titulo');
+  else localStorage.removeItem(KEYS.notasOrdem);
 }

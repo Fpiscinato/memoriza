@@ -7,13 +7,16 @@ import {
   getGithubLastSyncAt,
   getGithubToken,
   getLastExportAt,
+  getNotasOrdem,
   getReminderHour,
   setGithubAutoSync,
   setGithubGistId,
   setGithubLastSyncAt,
   setGithubToken,
   setLastExportAt,
+  setNotasOrdem,
   setReminderHour,
+  type NotasOrdem,
   type ThemePreference,
 } from '../../lib/settings';
 import { currentTheme, setTheme } from '../../lib/theme';
@@ -37,6 +40,11 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Escuro' },
 ];
 
+const NOTAS_ORDEM_OPTIONS: { value: NotasOrdem; label: string }[] = [
+  { value: 'data', label: 'Mais antigas' },
+  { value: 'titulo', label: 'Título (A–Z)' },
+];
+
 export async function renderSettings(container: HTMLElement, ctx: SettingsContext): Promise<void> {
   const theme = currentTheme();
   const lastExport = getLastExportAt();
@@ -46,6 +54,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   const autoSync = getGithubAutoSync();
   const lastSyncAt = getGithubLastSyncAt();
   const gistId = getGithubGistId();
+  const notasOrdem = getNotasOrdem();
 
   container.innerHTML = `
     <div class="stack content-narrow">
@@ -119,7 +128,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         <div class="card">
           <div class="settings-list-row">
             <div class="settings-row__label">Tema</div>
-            <div class="segmented" role="group" aria-label="Tema">
+            <div class="segmented" id="tema-opcoes" role="group" aria-label="Tema">
               ${THEME_OPTIONS.map(
                 (opt) => `
                 <button
@@ -127,6 +136,34 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
                   type="button"
                   data-theme="${opt.value}"
                   aria-pressed="${opt.value === theme}"
+                >${opt.label}</button>
+              `,
+              ).join('')}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <div class="settings-section__title">${ICONS.ordenar} Ordenação</div>
+        <div class="card">
+          <div class="settings-list-row">
+            <div>
+              <div class="settings-row__label">Notas dentro do Tema</div>
+              <p class="settings-row__desc">
+                Como as Notas são listadas. Espaços, Temas e categorias já seguem sempre o
+                nome — em ordem do calendário quando são meses, e com os números como números
+                ("Aula 2" antes de "Aula 10"). A exportação em PDF segue esta escolha.
+              </p>
+            </div>
+            <div class="segmented" id="notas-ordem" role="group" aria-label="Ordenação das notas">
+              ${NOTAS_ORDEM_OPTIONS.map(
+                (opt) => `
+                <button
+                  class="segmented__option"
+                  type="button"
+                  data-notas-ordem="${opt.value}"
+                  aria-pressed="${opt.value === notasOrdem}"
                 >${opt.label}</button>
               `,
               ).join('')}
@@ -259,11 +296,20 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
 
   container.querySelector('#btn-como-usar')?.addEventListener('click', () => navigate('ajuda'));
 
-  container.querySelectorAll<HTMLButtonElement>('.segmented__option').forEach((btn) => {
+  container.querySelectorAll<HTMLButtonElement>('#tema-opcoes .segmented__option').forEach((btn) => {
     btn.addEventListener('click', () => {
       const value = btn.dataset.theme as ThemePreference;
       setTheme(value);
-      container.querySelectorAll('.segmented__option').forEach((b) => {
+      container.querySelectorAll('#tema-opcoes .segmented__option').forEach((b) => {
+        b.setAttribute('aria-pressed', String(b === btn));
+      });
+    });
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('#notas-ordem .segmented__option').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setNotasOrdem(btn.dataset.notasOrdem as NotasOrdem);
+      container.querySelectorAll('#notas-ordem .segmented__option').forEach((b) => {
         b.setAttribute('aria-pressed', String(b === btn));
       });
     });

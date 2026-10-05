@@ -2,10 +2,15 @@ import { getDB } from './schema';
 import type { ItemRevisao, Nota, Tema } from '../types';
 import { uuid } from '../lib/uuid';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
+import { getNotasOrdem } from '../lib/settings';
+import { ordenarPorNome } from '../lib/ordem';
 
 export async function listNotas(temaId: string): Promise<Nota[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('notas', 'tema_id', temaId);
+  // Por padrão a lista vai da mais antiga pra mais nova; o usuário pode trocar pro título
+  // nas Configurações, que aí entra a ordem de meses/números (lib/ordem.ts).
+  if (getNotasOrdem() === 'titulo') return ordenarPorNome(all, (n) => n.titulo);
   return all.sort((a, b) => a.criado_em.localeCompare(b.criado_em));
 }
 

@@ -246,6 +246,9 @@ src/
     markdown.ts          parser markdown minimalista (sem dependência)
     ics.ts                    gera o .ics do lembrete diário, no navegador
     group.ts                 agruparPorCategoria, distinctCategorias (Espaços, Temas, PDF)
+    ordem.ts                 ordenarTextos/ordenarPorNome/compararTextos — ordem única de
+                              listagem (meses no calendário, números como números)
+    github-sync.ts         sincronização em nuvem via Gist privado do GitHub
     color.ts                 accentIndexFor/accentVar — cor fixa por Espaço/Categoria
     uuid.ts                  geração de UUID
     dom.ts                    escape de HTML para templates
@@ -254,6 +257,7 @@ src/
     router.ts               router baseado em hash, com rotas aninhadas
                               (#/hoje, #/espacos/:id[/pdf], #/temas/:id, #/notas/:id,
                               #/painel, #/favoritos, #/config)
+    global-search.ts      busca global em overlay (Ctrl+K)
     components/
       confirm-modal.ts    modal de confirmação genérico (usado antes de excluir)
     screens/                 profile-select, today, espacos, espaco-detail, espaco-pdf,
@@ -269,6 +273,7 @@ tests/
   merge.test.ts           testes da lógica de mesclagem do importar
   algorithm.test.ts    testes da tabela de transição do algoritmo de repetição
   stats.test.ts             testes de computeStreak, isNotaFraca, agruparPorCategoria
+  ordem.test.ts             testes da ordenação (meses, números, casos mistos)
 ```
 
 ## Rodando localmente
@@ -471,6 +476,34 @@ exportar um backup.
 O Memoriza não envia notificações push. Um lembrete diário para revisar deve
 ser configurado no app de Calendário/Lembretes do próprio celular.
 
+## Ordenação das listagens
+
+Toda listagem por nome (Espaços, Temas, grupos/categorias, chips de sugestão,
+Favoritos, busca global e a ordem dos Temas no PDF) passa por um único lugar,
+`src/lib/ordem.ts`. Antes cada tela chamava `localeCompare` do seu jeito, e isso
+quebrava em dois casos:
+
+- **Números**: comparação alfabética vê "1" < "2", então "Aula 10" aparecia
+  antes de "Aula 2". Resolvido com `numeric: true` no `Intl.Collator`.
+- **Meses do ano**: em português a ordem alfabética dos nomes não é a do
+  calendário — "Abril" < "Agosto" < "Dezembro" < "Fevereiro". `numeric` não
+  resolve, então os meses são reconhecidos pelo nome (por extenso e abreviado,
+  em pt-BR e em inglês) e ordenados pelo número do mês.
+
+Reconhecer mês por nome tem um risco: "Mar", em português, é o mar, não março.
+Por isso **a ordem por mês só entra quando todos os nomes da lista são meses**.
+Uma lista com "Janeiro", "Mar" e "Aula 1" continua alfabética, e "Mar" sozinho
+nunca é reordenado.
+
+A aplicação é **por grupo**, não só sobre a lista inteira: um grupo de meses sai
+no calendário mesmo que o Espaço tenha outras categorias ao lado dele.
+
+As **Notas** são a exceção — por padrão continuam em ordem de criação (mais
+antigas primeiro), porque é o que faz sentido ao revisar um Tema. Em
+Configurações › Ordenação dá para trocar por "Título (A–Z)", que aí passa a valer
+a mesma ordem de meses e números. O PDF segue a escolha, para não sair diferente
+da tela.
+
 ## Testes
 
 ```bash
@@ -486,7 +519,12 @@ chegando a 2 (testado tanto isolado quanto no fluxo real de duas fáceis
 seguidas). E os cálculos puros do Painel/PDF (`src/domain/stats.ts`,
 `src/lib/group.ts`): sequência de dias sem quebrar por causa do dia atual,
 nota fraca por contagem de avaliações, e agrupamento/sugestão de categoria
-ignorando maiúsculas/minúsculas e espaços nas pontas.
+ignorando maiúsculas/minúsculas e espaços nas pontas. E a ordenação das
+listagens (`src/lib/ordem.ts`): os doze meses do ano na ordem do calendário (e
+não na alfabética), números acima de 9 (`Aula 2` antes de `Aula 10`, incluindo
+uma lista de 40 itens), "Mar" **não** virando março quando a lista tem itens que
+não são meses, ordem por calendário dentro de cada grupo isolado, desempate
+entre meses repetidos, e "Sem categoria" continuando por último.
 
 As funções que dependem de IndexedDB (CRUD, cascata de exclusão,
 agregações do Painel, migração de notas antigas) não têm teste
@@ -580,3 +618,14 @@ depois de excluir, e o indicador de nota fraca aparecendo certo no PDF.
       de apoio e a tela nova; confirmado rodando a mesma bateria de testes
       ponta a ponta das fases anteriores (criar/editar/excluir, revisão,
       favoritos, PDF) sem nenhuma regressão.
+- [x] Temas (e as categorias que os agrupam) batem na ordem do calendário
+      quando são meses do ano, e na ordem do número quando têm número no
+      nome — em todas as telas que listam por nome, incluindo Favoritos
+      (que antes não tinha ordenação nenhuma) e a ordem dos Temas no PDF.
+- [x] A ordem por mês não é acionada por engano: uma lista com "Janeiro",
+      "Mar" e "Aula 1" continua alfabética (o "Mar" do mar não virou março).
+- [x] Listas com mais de 10 itens numéricos saem certainas (verificado com 40
+      capítulos) — "Aula 2" antes de "Aula 10", "Capítulo 9" antes de
+      "Capítulo 10".
+- [x] Notas continuam por data de criação por padrão, e a troca por título
+      (Configurações › Ordenação) fica salva e é respeitada pelo PDF.

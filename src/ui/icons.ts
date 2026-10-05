@@ -90,4 +90,5 @@ export const ICONS: Record<string, string> = {
   lock: svgIcon('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
   check: svgIcon('<path d="M20 6L9 17l-5-5"/>'),
   chart: svgIcon('<path d="M4 20h16"/><path d="M7 17v-6M12 17V7M17 17v-9"/>'),
+  ordenar: svgIcon('<path d="M4 6h16M4 12h11M4 18h6"/>'),
 };
