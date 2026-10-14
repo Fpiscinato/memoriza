@@ -492,7 +492,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     buttons.forEach((btn) => {
       const cmd = btn.dataset.cmd!;
       try {
-        if (cmd === 'bold' || cmd === 'italic' || cmd === 'strikeThrough' || cmd === 'insertUnorderedList') {
+        if (cmd === 'bold' || cmd === 'italic' || cmd === 'underline' || cmd === 'strikeThrough' || cmd === 'insertUnorderedList') {
           btn.setAttribute('aria-pressed', document.queryCommandState(cmd) ? 'true' : 'false');
         } else {
           btn.removeAttribute('aria-pressed');
@@ -522,6 +522,10 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       case 'i':
         e.preventDefault();
         document.execCommand('italic');
+        break;
+      case 'u':
+        e.preventDefault();
+        document.execCommand('underline');
         break;
       case 's':
         e.preventDefault();
