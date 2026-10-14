@@ -140,6 +140,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         <div class="editor-toolbar" role="toolbar" aria-label="Formatação do conteúdo">
           <button type="button" class="editor-toolbar__btn" data-cmd="bold" title="Negrito (Ctrl+B)" aria-label="Negrito"><strong>N</strong></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico (Ctrl+I)" aria-label="Itálico"><em>I</em></button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="underline" title="Sublinhado (Ctrl+U)" aria-label="Sublinhado"><u>U</u></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="strikeThrough" title="Tachado (Ctrl+S)" aria-label="Tachado"><s>S</s></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="insertUnorderedList" title="Lista com marcadores (Tab indenta, Shift+Tab volta)" aria-label="Lista com marcadores">☰</button>
           <button type="button" class="editor-toolbar__btn" data-cmd="createLink" title="Link (Ctrl+K)" aria-label="Link">🔗</button>
@@ -461,16 +462,18 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       // Sem texto selecionado (só o cursor) — remove a cor do span onde o cursor está, se houver.
       let node: Node | null = range.commonAncestorContainer;
       while (node && node !== conteudoInput) {
-        if (node instanceof HTMLElement && (node.classList.contains('text-color') || node.tagName === 'SPAN')) {
-          try {
-            document.execCommand('removeFormat');
-          } catch {}
+        if (node instanceof HTMLElement && node.classList.contains('text-color')) {
+          const parent = node.parentNode;
+          if (parent) {
+            const frag = document.createDocumentFragment();
+            Array.from(node.childNodes).forEach((c) => frag.appendChild(c));
+            parent.replaceChild(frag, node);
+            unwrapColorSpans(parent as HTMLElement);
+          }
           break;
         }
         node = node.parentNode;
       }
-      // fallback
-      unwrapColorSpans(conteudoInput);
     } else {
       const fragment = range.extractContents();
       unwrapColorSpans(fragment);

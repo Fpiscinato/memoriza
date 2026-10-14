@@ -17,7 +17,7 @@ import { renderFavoritos } from './screens/favoritos';
 import { renderAjuda } from './screens/ajuda';
 import { renderSettings } from './screens/settings';
 import { initWakeLock } from '../lib/wakelock';
-import { APP_VERSION } from '../version';
+import { APP_VERSION, APP_VERSION_LABEL } from '../version';
 import { canNavigateAway } from '../lib/form-guard';
 import { getGithubAutoSync, getGithubToken } from '../lib/settings';
 import { shouldAutoSync, syncWithGithub } from '../lib/github-sync';
@@ -142,6 +142,7 @@ async function render(root: HTMLElement): Promise<void> {
           </span>
         </header>
         <main class="app-main" id="screen-content"></main>
+        <footer class="app-footer"><span>${escapeHtml(APP_VERSION_LABEL)}</span></footer>
       </div>
     </div>
   `;

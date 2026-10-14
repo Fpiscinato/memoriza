@@ -7,7 +7,7 @@ import { escapeHtml } from './dom';
 // Cores fixas pra destacar trechos do texto — de propósito poucas (não a paleta de 8 de
 // Espaço/Categoria): são cores universais, fáceis de reconhecer numa bolinha pequena sem
 // precisar de legenda.
-export const TEXT_COLOR_NAMES = ['azul', 'vermelho', 'verde', 'rosa'] as const;
+export const TEXT_COLOR_NAMES = ['azul', 'vermelho', 'verde', 'rosa', 'amarelo', 'laranja', 'roxo', 'cinza'] as const;
 export type TextColorName = (typeof TEXT_COLOR_NAMES)[number];
 
 export const TEXT_COLOR_LABELS: Record<TextColorName, string> = {
@@ -15,6 +15,10 @@ export const TEXT_COLOR_LABELS: Record<TextColorName, string> = {
   vermelho: 'Vermelho',
   verde: 'Verde',
   rosa: 'Rosa',
+  amarelo: 'Amarelo',
+  laranja: 'Laranja',
+  roxo: 'Roxo',
+  cinza: 'Cinza',
 };
 
 const COLOR_SPAN_RE = new RegExp(`\\[([^\\]]+)\\]\\{(${TEXT_COLOR_NAMES.join('|')})\\}`, 'g');
@@ -24,6 +28,7 @@ function renderInline(text: string): string {
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
   html = html.replace(COLOR_SPAN_RE, '<span class="text-color text-color--$2">$1</span>');
   html = html.replace(
     /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
@@ -154,6 +159,10 @@ function inlineNodeToText(node: Node): string {
       const href = el.getAttribute('href');
       return href ? `[${inner}](${href})` : inner;
     }
+    case 'DEL':
+    case 'S':
+    case 'STRIKE':
+      return inner.trim() ? `~~${inner}~~` : inner;
     case 'SPAN': {
       const cor = TEXT_COLOR_NAMES.find((c) => el.classList.contains(`text-color--${c}`));
       return cor && inner.trim() ? `[${inner}]{${cor}}` : inner;
