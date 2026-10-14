@@ -945,6 +945,21 @@ button.item-row:hover {
   color: var(--accent-6);
 }
 
+.text-color--amarelo {
+  color: var(--accent-2);
+}
+
+.text-color--laranja {
+  color: var(--accent-3);
+}
+
+.text-color--roxo {
+  color: var(--accent-7);
+}
+
+.text-color--cinza {
+  color: var(--color-text-muted);
+}
 /* Bolinhas de cor clicáveis no editor da nota, no lugar de um <select> nativo (cujo menu
    suspenso o navegador não deixa estilizar — ficava sem cor nenhuma). */
 .color-picker {
@@ -2193,4 +2208,10 @@ button.item-row:hover {
   width: 12px;
   height: 12px;
   aspect-ratio: auto;
+}
+
+.editor-toolbar__btn[aria-pressed="true"] {
+  background: var(--color-brand-bg);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
 }

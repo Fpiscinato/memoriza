@@ -23,6 +23,10 @@ const TEXT_COLOR_SWATCH: Record<(typeof TEXT_COLOR_NAMES)[number], string> = {
   vermelho: 'var(--accent-4)',
   verde: 'var(--accent-1)',
   rosa: 'var(--accent-6)',
+  amarelo: 'var(--accent-2)',
+  laranja: 'var(--accent-3)',
+  roxo: 'var(--accent-7)',
+  cinza: 'var(--color-text-muted)',
 };
 
 // Tira qualquer .text-color de dentro de um fragmento antes de envolvê-lo num novo — ver uso
@@ -134,11 +138,15 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       <div class="field">
         <label class="field__label" for="input-conteudo">Conteúdo${renderFieldHint('Selecione um trecho de texto pra deixar em negrito, itálico ou colorido — igual num editor de texto comum. Enter simples só quebra a linha; Enter duas vezes cria um novo parágrafo. Numa lista, Tab indenta o item (Shift+Tab volta).')}</label>
         <div class="editor-toolbar" role="toolbar" aria-label="Formatação do conteúdo">
-          <button type="button" class="editor-toolbar__btn" data-cmd="bold" title="Negrito" aria-label="Negrito"><strong>N</strong></button>
-          <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico" aria-label="Itálico"><em>I</em></button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="bold" title="Negrito (Ctrl+B)" aria-label="Negrito"><strong>N</strong></button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico (Ctrl+I)" aria-label="Itálico"><em>I</em></button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="strikeThrough" title="Tachado (Ctrl+S)" aria-label="Tachado"><s>S</s></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="insertUnorderedList" title="Lista com marcadores (Tab indenta, Shift+Tab volta)" aria-label="Lista com marcadores">☰</button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="createLink" title="Link (Ctrl+K)" aria-label="Link">🔗</button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="removeFormat" title="Limpar formatação" aria-label="Limpar formatação">⌫</button>
           <span class="editor-toolbar__sep" aria-hidden="true"></span>
-          <button type="button" class="editor-toolbar__btn" data-cmd="undo" title="Desfazer" aria-label="Desfazer">${ICONS.undo}</button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer">${ICONS.undo}</button>
+          <button type="button" class="editor-toolbar__btn" data-cmd="redo" title="Refazer (Ctrl+Y ou Ctrl+Shift+Z)" aria-label="Refazer">${ICONS.redo ? ICONS.redo : ICONS.undo}</button>
           <span class="editor-toolbar__sep" aria-hidden="true"></span>
           <div class="color-picker" role="group" aria-label="Cor do texto">
             ${TEXT_COLOR_NAMES.map(
@@ -387,12 +395,30 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => {
       assentarQuebraPendente();
-      document.execCommand(btn.dataset.cmd!);
-      if (btn.dataset.cmd === 'insertUnorderedList') {
+      const cmd = btn.dataset.cmd!;
+      if (cmd === 'strikeThrough') {
+        document.execCommand('strikeThrough');
+      } else if (cmd === 'createLink') {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+          conteudoInput.focus();
+          return;
+        }
+        const href = prompt('URL do link:', 'https://');
+        if (href && href.trim()) {
+          document.execCommand('createLink', false, href.trim());
+        }
+      } else if (cmd === 'removeFormat') {
+        document.execCommand('removeFormat');
+      } else {
+        document.execCommand(cmd);
+      }
+      if (cmd === 'insertUnorderedList') {
         desembrulharListaDeParagrafo();
         moverCursorParaFimDoItem();
       }
       conteudoInput.focus();
+      atualizarToolbarState();
     });
   });
 
@@ -436,7 +462,13 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       let node: Node | null = range.commonAncestorContainer;
       while (node && node !== conteudoInput) {
         if (node instanceof HTMLElement && node.classList.contains('text-color')) {
-          node.replaceWith(...Array.from(node.childNodes));
+          const parent = node.parentNode;
+          if (parent) {
+            const frag = document.createDocumentFragment();
+            Array.from(node.childNodes).forEach((c) => frag.appendChild(c));
+            parent.replaceChild(frag, node);
+            unwrapColorSpans(parent as HTMLElement);
+          }
           break;
         }
         node = node.parentNode;
@@ -455,6 +487,76 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     wrapperValidade.style.display = checkboxDesatualizar.checked ? 'flex' : 'none';
   });
 
+  function atualizarToolbarState(): void {
+    const buttons = container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]');
+    buttons.forEach((btn) => {
+      const cmd = btn.dataset.cmd!;
+      try {
+        if (cmd === 'bold' || cmd === 'italic' || cmd === 'strikeThrough' || cmd === 'insertUnorderedList') {
+          btn.setAttribute('aria-pressed', document.queryCommandState(cmd) ? 'true' : 'false');
+        } else {
+          btn.removeAttribute('aria-pressed');
+        }
+      } catch {}
+    });
+  }
+
+  document.addEventListener('selectionchange', () => {
+    if (document.activeElement === conteudoInput) {
+      atualizarToolbarState();
+    }
+  });
+  conteudoInput.addEventListener('keyup', atualizarToolbarState);
+  conteudoInput.addEventListener('mouseup', atualizarToolbarState);
+  conteudoInput.addEventListener('focus', atualizarToolbarState);
+  conteudoInput.addEventListener('keydown', (e) => {
+    const isMac = navigator.platform.includes('Mac') || navigator.userAgent.includes('Mac');
+    const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+    if (!ctrlOrCmd) return;
+    let handled = true;
+    switch (e.key.toLowerCase()) {
+      case 'b':
+        e.preventDefault();
+        document.execCommand('bold');
+        break;
+      case 'i':
+        e.preventDefault();
+        document.execCommand('italic');
+        break;
+      case 's':
+        e.preventDefault();
+        document.execCommand('strikeThrough');
+        break;
+      case 'k':
+        e.preventDefault();
+        assentarQuebraPendente();
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed) {
+          const href = prompt('URL do link:', 'https://');
+          if (href && href.trim()) {
+            document.execCommand('createLink', false, href.trim());
+          }
+        }
+        break;
+      case 'z':
+        e.preventDefault();
+        if (e.shiftKey) {
+          document.execCommand('redo');
+        } else {
+          document.execCommand('undo');
+        }
+        break;
+      case 'y':
+        e.preventDefault();
+        document.execCommand('redo');
+        break;
+      default:
+        handled = false;
+    }
+    if (handled) {
+      atualizarToolbarState();
+    }
+  });
   container.querySelector('#btn-salvar')?.addEventListener('click', async () => {
     const titulo = tituloInput.value.trim();
     const conteudo = htmlToStoredText(conteudoInput).trim();
