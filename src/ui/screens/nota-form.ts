@@ -461,18 +461,16 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       // Sem texto selecionado (só o cursor) — remove a cor do span onde o cursor está, se houver.
       let node: Node | null = range.commonAncestorContainer;
       while (node && node !== conteudoInput) {
-        if (node instanceof HTMLElement && node.classList.contains('text-color')) {
-          const parent = node.parentNode;
-          if (parent) {
-            const frag = document.createDocumentFragment();
-            Array.from(node.childNodes).forEach((c) => frag.appendChild(c));
-            parent.replaceChild(frag, node);
-            unwrapColorSpans(parent as HTMLElement);
-          }
+        if (node instanceof HTMLElement && (node.classList.contains('text-color') || node.tagName === 'SPAN')) {
+          try {
+            document.execCommand('removeFormat');
+          } catch {}
           break;
         }
         node = node.parentNode;
       }
+      // fallback
+      unwrapColorSpans(conteudoInput);
     } else {
       const fragment = range.extractContents();
       unwrapColorSpans(fragment);
