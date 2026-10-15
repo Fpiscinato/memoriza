@@ -1698,7 +1698,7 @@ button.item-row:hover {
   margin: 0 auto;
 }
 
-.pdf-page h1 {
+.pdf-capa h1 {
   font-size: var(--font-size-xl);
   margin-bottom: var(--space-1);
   display: flex;
@@ -1711,6 +1711,116 @@ button.item-row:hover {
   margin: 0 0 var(--space-5);
 }
 
+/* Opções de impressão (Índice / quebra de página) na barra de ferramentas */
+.pdf-opcao {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+/* Número de Categoria (1) / Tema (1.1) / Nota (1.1.1) — o "endereço" do item no documento */
+.pdf-num {
+  flex-shrink: 0;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--cat-accent, var(--color-text-muted));
+  background: color-mix(in srgb, var(--cat-accent, var(--color-text-faint)) 14%, transparent);
+}
+
+.pdf-num--tema {
+  color: var(--tema-accent, var(--color-text-muted));
+  background: color-mix(in srgb, var(--tema-accent, var(--color-text-faint)) 14%, transparent);
+}
+
+.pdf-num--nota {
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+}
+
+/* Rótulo do nível, em letras pequenas ("Categoria"/"Tema") */
+.pdf-nivel {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.pdf-contagem {
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.pdf-indice {
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.pdf-indice[hidden] {
+  display: none;
+}
+
+.pdf-indice__cabecalho {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.pdf-indice__titulo {
+  font-weight: var(--font-weight-bold);
+}
+
+.pdf-indice__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pdf-indice__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pdf-indice__link:hover {
+  background: var(--color-bg);
+}
+
+.pdf-indice__item--tema .pdf-indice__link {
+  padding-left: var(--space-5);
+}
+
+.pdf-indice__nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pdf-category {
   margin-bottom: var(--space-5);
   padding-left: var(--space-4);
@@ -1718,12 +1828,15 @@ button.item-row:hover {
 }
 
 .pdf-category__title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  padding-bottom: var(--space-2);
-  margin-bottom: var(--space-3);
   display: flex;
   align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  background: color-mix(in srgb, var(--cat-accent, var(--color-text-faint)) 12%, transparent);
 }
 
 .pdf-tema {
@@ -1733,9 +1846,15 @@ button.item-row:hover {
 }
 
 .pdf-tema__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
-  margin-bottom: var(--space-2);
+  background: color-mix(in srgb, var(--tema-accent, var(--color-text-faint)) 8%, transparent);
 }
 
 .pdf-nota {
@@ -1744,15 +1863,18 @@ button.item-row:hover {
 }
 
 .pdf-nota__titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
-  margin-bottom: var(--space-1);
 }
 
 .pdf-nota__meta {
+  margin-bottom: var(--space-2);
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
-  margin-bottom: var(--space-2);
 }
 
 @media print {
@@ -1769,18 +1891,72 @@ button.item-row:hover {
     margin: 0;
   }
 
+  /* O tema escuro do app não vale no papel: aqui os tokens voltam pros valores claros, senão
+     texto claro sairia invisível e as cores de destaque sairiam lavadas no fundo branco. */
+  .pdf-page {
+    --color-bg: #f7f8fb;
+    --color-surface: #ffffff;
+    --color-border: #e2e5eb;
+    --color-text: #12151c;
+    --color-text-muted: #5b6270;
+    --color-text-faint: #8a90a0;
+    --color-success: #16a34a;
+    --color-success-bg: #e9f9ef;
+    --color-warning: #b45309;
+    --color-warning-bg: #fef3e0;
+    --color-danger: #dc2626;
+    --color-danger-bg: #fdecec;
+    --accent-0: #2563eb;
+    --accent-1: #15803d;
+    --accent-2: #b45309;
+    --accent-3: #7c3aed;
+    --accent-4: #b91c1c;
+    --accent-5: #0e7490;
+    --accent-6: #be185d;
+    --accent-7: #4338ca;
+  }
+
   body,
   .pdf-page {
     background: #fff;
     color: #000;
   }
 
-  .pdf-category {
+  /* As cores de Categoria/Tema são informação — manda o navegador imprimir mesmo assim. */
+  .pdf-page,
+  .pdf-page * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Sumário numa página própria. */
+  .pdf-indice {
+    break-after: page;
+  }
+
+  /* Opcional: cada Categoria começa numa página nova (caixinha na barra de ferramentas). */
+  .pdf-page[data-quebra='categoria'] .pdf-category {
+    break-before: page;
+    break-inside: auto;
+  }
+
+  .pdf-page[data-quebra='categoria'] .pdf-category--primeira {
+    break-before: auto;
+  }
+
+  .pdf-page[data-quebra='fluxo'] .pdf-category {
     break-inside: avoid-page;
   }
 
-  .pdf-tema {
+  .pdf-tema,
+  .pdf-nota {
     break-inside: avoid;
+  }
+
+  .pdf-category__title,
+  .pdf-tema__title,
+  .pdf-nota__titulo {
+    break-after: avoid;
   }
 }
 

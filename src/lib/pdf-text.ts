@@ -3,6 +3,7 @@
 // (*negrito* com um asterisco só, _itálico_ com underscore).
 
 import type { CategoriaPdf, EspacoPdfData } from '../db/pdf-data';
+import { numerarGrupos } from '../domain/pdf-estrutura';
 import { TEXT_COLOR_NAMES } from './markdown';
 
 function inlineToPlain(text: string): string {
@@ -60,22 +61,22 @@ export function buildNotaPlainText(nota: { titulo: string; fonte: string; conteu
 export function buildPlainText(espaco: EspacoPdfData['espaco'], grupos: CategoriaPdf[]): string {
   const lines: string[] = [`*${espaco.nome.toUpperCase()}*`];
 
-  for (const grupo of grupos) {
-    if (grupo.temas.length === 0) continue;
-    lines.push('', `▸ ${(grupo.categoria || 'Sem categoria').toUpperCase()}`);
+  for (const cat of numerarGrupos(grupos)) {
+    if (cat.temas.length === 0) continue;
+    lines.push('', `▸ ${cat.numero} ${(cat.grupo.categoria || 'sem categoria').toUpperCase()}`);
 
-    for (const temaPdf of grupo.temas) {
-      lines.push('', `— ${temaPdf.tema.favorito ? '⭐ ' : ''}*${temaPdf.tema.nome}*`);
+    for (const tema of cat.temas) {
+      lines.push('', `— ${tema.numero} ${tema.temaPdf.tema.favorito ? '⭐ ' : ''}*${tema.temaPdf.tema.nome}*`);
 
-      if (temaPdf.notas.length === 0) {
+      if (tema.notas.length === 0) {
         lines.push('(sem notas)');
         continue;
       }
-      for (const notaPdf of temaPdf.notas) {
-        const flags = `${notaPdf.nota.favorito ? '⭐ ' : ''}${notaPdf.fraca ? '⚠ ' : ''}`;
-        lines.push('', `${flags}*${notaPdf.nota.titulo || '(sem título)'}*`);
-        if (notaPdf.nota.fonte) lines.push(`_${notaPdf.nota.fonte}_`);
-        lines.push(blockToPlain(notaPdf.nota.conteudo));
+      for (const nota of tema.notas) {
+        const flags = `${nota.notaPdf.nota.favorito ? '⭐ ' : ''}${nota.notaPdf.fraca ? '⚠ ' : ''}`;
+        lines.push('', `${flags}${nota.numero} *${nota.notaPdf.nota.titulo || '(sem título)'}*`);
+        if (nota.notaPdf.nota.fonte) lines.push(`_${nota.notaPdf.nota.fonte}_`);
+        lines.push(blockToPlain(nota.notaPdf.nota.conteudo));
       }
     }
   }

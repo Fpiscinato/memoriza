@@ -168,7 +168,15 @@ const SECOES: Secao[] = [
     titulo: 'Exportar em PDF',
     corpoHtml: `<p>Bom momento pra usar: quando terminar um módulo do curso, terminar o
       livro, ou só quiser um resumo pra imprimir/consultar sem abrir o app. Gera um
-      documento organizado por módulo (categoria) e Tema, na ordem que você aprendeu.</p>`,
+      documento organizado por módulo (categoria) e Tema, na ordem que você aprendeu.</p>
+      <p>Cada nível tem seu <strong>número</strong> — Categoria <code>1</code>, Tema
+      <code>1.1</code>, Nota <code>1.1.1</code> — e cada Categoria tem uma <strong>cor</strong>
+      própria (a mesma nos Temas e Notas dela), então dá pra "bater o olho" e saber onde você
+      está. No começo sai um <strong>índice</strong> com tudo e quantas notas cada parte tem.</p>
+      <p>Na barra de ferramentas dá pra ligar/desligar o <strong>Índice</strong> e o
+      <strong>Nova página por Categoria</strong> (útil pra imprimir um módulo por folha). O app
+      lembra da sua escolha. No celular, o caminho é o mesmo: "Imprimir" e depois "Salvar como
+      PDF".</p>`,
   },
   {
     titulo: 'Lembrete no celular',
