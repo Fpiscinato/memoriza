@@ -61,17 +61,18 @@
   }
 }
 
-/* Em telas muito estreitas (< 360px), o ícone de backup compete com o espaço restante
-   — some junto, já que a rota Configurações continua acessível pela nav de baixo. */
+/* Em telas muito estreitas (< 360px), os ícones de status competem com o espaço restante
+   — somem junto, já que a rota Configurações continua acessível pela nav de baixo. */
 @media (max-width: 359px) {
-  .app-header__backup-alert {
+  .app-header__status {
     display: none;
   }
 }
 
-/* Alerta de backup atrasado — era um banner grande no topo do conteúdo (competia com a
-   tela); virou um ícone pequeno e clicável aqui, perto da data (leva pra Configurações). */
-.app-header__backup-alert {
+/* Ícones de status do cabeçalho (nuvem = sync GitHub, banco = snapshot local, lixeira) —
+   pequenos e clicáveis perto da data; a cor reflete o estado e o clique leva à seção. */
+.app-header__status {
+  position: relative;
   border: none;
   background: none;
   padding: var(--space-1);
@@ -81,17 +82,53 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.15s ease, transform 0.1s ease;
 }
 
-.app-header__backup-alert .icon-inline {
+.app-header__status:hover {
+  transform: translateY(-1px);
+}
+
+.app-header__status .icon-inline {
   width: 20px;
   height: 20px;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-.app-header__backup-alert.is-urgent .icon-inline {
+.app-header__status.is-ok {
+  color: var(--color-success);
+}
+
+.app-header__status.is-ok .icon-inline {
   opacity: 1;
+}
+
+.app-header__status.is-atencao {
   color: var(--color-warning);
+}
+
+.app-header__status.is-atencao .icon-inline {
+  opacity: 1;
+}
+
+.app-header__status.is-off .icon-inline {
+  opacity: 0.45;
+}
+
+.app-header__status__badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  line-height: 15px;
+  text-align: center;
 }
 
 .app-main {

@@ -13,7 +13,9 @@ export interface RegistrarAvaliacaoInput {
   temaId: string;
   notaId: string;
   avaliacao: Avaliacao;
-  escopo: 'espaco' | 'tema';
+  escopo: 'espaco' | 'categoria' | 'tema';
+  /** Categoria do escopo (só quando `escopo === 'categoria'`). */
+  categoria?: string;
   sessaoId: string;
 }
 
@@ -28,6 +30,7 @@ export async function registrarAvaliacao(input: RegistrarAvaliacaoInput): Promis
     nota_id: input.notaId,
     avaliacao: input.avaliacao,
     escopo: input.escopo,
+    categoria: input.categoria,
     sessao_id: input.sessaoId,
     criado_em: agora,
     atualizado_em: agora,
@@ -42,7 +45,7 @@ export interface SessaoAvaliacao {
   facil: number;
   medio: number;
   dificil: number;
-  escopo: 'espaco' | 'tema';
+  escopo: 'espaco' | 'categoria' | 'tema';
   contexto: string;
 }
 
@@ -82,6 +85,12 @@ export async function resumoAvaliacoes(perfilId: string, limiteSessoes = 20): Pr
 
     let sessao = porSessao.get(r.sessao_id);
     if (!sessao) {
+      const contexto =
+        r.escopo === 'tema'
+          ? temas.get(r.tema_id)
+          : r.escopo === 'categoria'
+            ? (r.categoria || 'Sem categoria')
+            : espacos.get(r.espaco_id);
       sessao = {
         sessao_id: r.sessao_id,
         criado_em: r.criado_em,
@@ -90,9 +99,7 @@ export async function resumoAvaliacoes(perfilId: string, limiteSessoes = 20): Pr
         medio: 0,
         dificil: 0,
         escopo: r.escopo,
-        contexto:
-          (r.escopo === 'tema' ? temas.get(r.tema_id) : espacos.get(r.espaco_id)) ??
-          'Conteúdo excluído',
+        contexto: contexto ?? 'Conteúdo excluído',
       };
       porSessao.set(r.sessao_id, sessao);
     }

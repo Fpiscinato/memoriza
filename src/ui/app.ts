@@ -15,7 +15,10 @@ import { renderNotaForm } from './screens/nota-form';
 import { renderPainel } from './screens/painel';
 import { renderFavoritos } from './screens/favoritos';
 import { renderAjuda } from './screens/ajuda';
-import { renderSettings } from './screens/settings';
+import { renderSettings, agendarScrollSettings } from './screens/settings';
+import { listarSnapshots } from '../db/snapshots';
+import { listarLixeira } from '../db/lixeira';
+import { montarStatusHeader, type StatusHeader, type StatusItem } from '../domain/header-status';
 import { initWakeLock } from '../lib/wakelock';
 import { APP_VERSION, APP_VERSION_LABEL } from '../version';
 import { canNavigateAway } from '../lib/form-guard';
@@ -23,7 +26,6 @@ import { shouldAutoSync, syncWithGithub } from '../lib/github-sync';
 import { openGlobalSearch } from './global-search';
 import type { Perfil } from '../types';
 
-const SYNC_REMINDER_DAYS = 7;
 const AUTO_SYNC_INTERVAL_MINUTOS = 30;
 
 const NAV_ITEMS: { route: TopLevelRoute; label: string }[] = [
@@ -105,7 +107,7 @@ async function render(root: HTMLElement): Promise<void> {
 
   const route = getCurrentRoute();
   const topLevel = topLevelFor(route);
-  const syncAlert = await getSyncAlert(perfil);
+  const status = await getStatusHeader(perfil);
 
   root.innerHTML = `
     <div class="app-shell">
@@ -130,8 +132,18 @@ async function render(root: HTMLElement): Promise<void> {
           <span style="display:flex; align-items:center; gap: var(--space-3);">
             <button class="app-header__search" id="btn-busca" type="button" aria-label="Buscar (Ctrl+K)" title="Buscar (Ctrl+K)">${ICONS.search}</button>
             ${
-              syncAlert
-                ? `<button class="app-header__backup-alert${syncAlert.urgente ? ' is-urgent' : ''}" id="btn-sync-alert" type="button" title="${escapeHtml(syncAlert.mensagem)}" aria-label="${escapeHtml(syncAlert.mensagem)}">${ICONS.cloud}</button>`
+              status.sync.visivel
+                ? botaoStatus('section-sync', ICONS.cloud, status.sync)
+                : ''
+            }
+            ${
+              status.backup.visivel
+                ? botaoStatus('section-snapshots', ICONS.database, status.backup)
+                : ''
+            }
+            ${
+              status.lixeira.visivel
+                ? botaoStatus('section-lixeira', ICONS.trash, status.lixeira, status.lixeira.contagem)
                 : ''
             }
             <span class="app-header__date" title="Data de hoje">${escapeHtml(formatDateWeekdayShortBR(toLondonISODate()))}</span>
@@ -163,9 +175,12 @@ async function render(root: HTMLElement): Promise<void> {
     if (!canNavigateAway()) return;
     void openGlobalSearch(perfil.id);
   });
-  root.querySelector('#btn-sync-alert')?.addEventListener('click', () => {
-    if (!canNavigateAway()) return;
-    navigate('config');
+  root.querySelectorAll<HTMLButtonElement>('[data-settings-secao]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!canNavigateAway()) return;
+      agendarScrollSettings(btn.dataset.settingsSecao!);
+      navigate('config');
+    });
   });
 
   const content = root.querySelector<HTMLElement>('#screen-content')!;
@@ -240,38 +255,48 @@ async function renderScreen(
   }
 }
 
-/** Alerta compacto perto da data no cabeçalho: estado da sincronização com o GitHub (não do
- * backup local). Um ícone pequeno, clicável, que leva pra Configurações — mantém o app seguro
- * pra usar em mais de um aparelho. */
-async function getSyncAlert(perfil: Perfil): Promise<{ urgente: boolean; mensagem: string } | null> {
-  if (!(await hasAnyDataForProfile(perfil.id))) return null;
+/** Ícones de status no cabeçalho: nuvem (sync com o GitHub), banco (snapshot local) e lixeira.
+ *  Sempre visíveis perto da data; clicar leva pra seção correspondente em Configurações. */
+async function getStatusHeader(perfil: Perfil): Promise<StatusHeader> {
+  if (!(await hasAnyDataForProfile(perfil.id))) {
+    return {
+      sync: { estado: 'off', visivel: false, titulo: '' },
+      backup: { estado: 'ok', visivel: false, titulo: '' },
+      lixeira: { estado: 'ok', visivel: false, titulo: 'Lixeira vazia.' },
+    };
+  }
 
   const token = getGithubToken();
-  if (!token) {
-    return {
-      urgente: false,
-      mensagem:
-        'Sincronização em nuvem desligada. Toque pra configurar — assim seus dados ficam seguros e disponíveis em outros aparelhos.',
-    };
-  }
-
   const lastSyncAt = getGithubLastSyncAt();
-  if (!lastSyncAt) {
-    return {
-      urgente: false,
-      mensagem: 'Sincronização configurada, mas ainda não rodou neste aparelho. Toque pra sincronizar agora.',
-    };
-  }
-
   const today = toLondonISODate();
-  const daysSinceSync = daysBetweenISODates(toLondonISODate(new Date(lastSyncAt)), today);
 
-  if (daysSinceSync <= SYNC_REMINDER_DAYS) return null;
+  const diasDesdeSync = lastSyncAt
+    ? daysBetweenISODates(toLondonISODate(new Date(lastSyncAt)), today)
+    : null;
 
-  return {
-    urgente: daysSinceSync > SYNC_REMINDER_DAYS * 2,
-    mensagem: `Faz mais de ${SYNC_REMINDER_DAYS} dias desde a última sincronização com o GitHub. Toque pra sincronizar.`,
-  };
+  const snapshots = await listarSnapshots();
+  const ultimoSnapshot = snapshots[0];
+  const diasDesdeSnapshot = ultimoSnapshot
+    ? daysBetweenISODates(toLondonISODate(new Date(ultimoSnapshot.criado_em)), today)
+    : null;
+
+  const lixeira = await listarLixeira(perfil.id);
+
+  return montarStatusHeader({
+    syncConfigurado: Boolean(token),
+    diasDesdeSync,
+    diasDesdeSnapshot,
+    lixeiraContagem: lixeira.length,
+  });
+}
+
+/** Botão de status do cabeçalho (nuvem/banco/lixeira) — a cor vem do estado calculado, e o
+ *  clique leva pra seção certa em Configurações (`data-settings-secao`). */
+function botaoStatus(secao: string, icone: string, item: StatusItem, badge?: number): string {
+  const titulo = escapeHtml(item.titulo);
+  return `<button class="app-header__status is-${item.estado}" data-settings-secao="${secao}" type="button" title="${titulo}" aria-label="${titulo}">${icone}${
+    badge ? `<span class="app-header__status__badge">${badge}</span>` : ''
+  }</button>`;
 }
 
 async function hasAnyDataForProfile(perfilId: string): Promise<boolean> {

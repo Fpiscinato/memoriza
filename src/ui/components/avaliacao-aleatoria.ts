@@ -164,6 +164,7 @@ function renderEscolhaTamanho(
       const sessao = {
         id: uuid(),
         escopo: escopo.escopo,
+        categoria: escopo.categoria,
         itens: selecionadas,
         contagem: { facil: 0, medio: 0, dificil: 0 } as Record<Avaliacao, number>,
       };
@@ -174,7 +175,8 @@ function renderEscolhaTamanho(
 
 interface Sessao {
   id: string;
-  escopo: 'espaco' | 'tema';
+  escopo: 'espaco' | 'categoria' | 'tema';
+  categoria?: string;
   itens: NotaComTema[];
   contagem: Record<Avaliacao, number>;
 }
@@ -237,6 +239,7 @@ function renderQuiz(
         notaId: atual.nota.id,
         avaliacao,
         escopo: sessao.escopo,
+        categoria: sessao.categoria,
         sessaoId: sessao.id,
       });
       renderQuiz(container, sessao, indice + 1, ctx, onSair);

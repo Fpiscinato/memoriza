@@ -47,6 +47,14 @@ export interface SettingsContext {
   onSwitchProfile: () => void;
 }
 
+/** Âncora de seção pra rolar até ela na próxima renderização de Configurações — usada pelos
+ *  ícones de status do cabeçalho (nuvem/snapshot/lixeira) pra cair direto na seção certa. */
+let ancoraPendente: string | null = null;
+
+export function agendarScrollSettings(secaoId: string): void {
+  ancoraPendente = secaoId;
+}
+
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'system', label: 'Sistema' },
   { value: 'light', label: 'Claro' },
@@ -254,7 +262,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         </div>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section" id="section-snapshots">
         <div class="settings-section__title">${ICONS.clock} Snapshots locais</div>
         <div class="card stack">
           <p class="text-muted" style="margin:0;">
@@ -290,7 +298,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         </div>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section" id="section-lixeira">
         <div class="settings-section__title">${ICONS.trash} Lixeira</div>
         <div class="card stack">
           <p class="text-muted" style="margin:0;">
@@ -323,7 +331,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         </div>
       </section>
 
-      <section class="settings-section">
+      <section class="settings-section" id="section-sync">
         <div class="settings-section__title">${ICONS.sync} Sincronização em nuvem</div>
         <div class="card stack">
           <p class="text-muted" style="margin:0;">
@@ -712,6 +720,16 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       btnGistRevisoes.disabled = false;
     }
   });
+
+  if (ancoraPendente) {
+    const alvo = container.querySelector<HTMLElement>(`#${ancoraPendente}`);
+    ancoraPendente = null;
+    if (alvo) {
+      requestAnimationFrame(() =>
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      );
+    }
+  }
 }
 
 function ligarRestauroGist(container: HTMLElement, token: string, lista: HTMLElement): void {

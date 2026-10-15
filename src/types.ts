@@ -94,8 +94,10 @@ export interface AvaliacaoRegistro {
   tema_id: string;
   nota_id: string;
   avaliacao: Avaliacao;
-  /** De onde a sessão partiu: do Espaço inteiro (todos os Temas) ou de um Tema específico. */
-  escopo: 'espaco' | 'tema';
+  /** De onde a sessão partiu: do Espaço inteiro (todos os Temas), de uma categoria específica
+   *  ou de um Tema específico. `categoria` (texto) só é preenchida no escopo 'categoria'. */
+  escopo: 'espaco' | 'categoria' | 'tema';
+  categoria?: string;
   sessao_id: string;
   criado_em: string;
   atualizado_em: string;
