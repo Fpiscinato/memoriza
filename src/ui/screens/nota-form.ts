@@ -120,7 +120,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         : ''
     }
 
-    <div class="content-narrow">
+    <div class="content-narrow" style="max-width:900px;">
     <div class="card stack">
       <div class="field">
         <label class="field__label" for="input-titulo">Título${renderFieldHint('É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.')}</label>

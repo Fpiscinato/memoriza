@@ -133,7 +133,7 @@ async function render(root: HTMLElement): Promise<void> {
             <button class="app-header__search" id="btn-busca" type="button" aria-label="Buscar (Ctrl+K)" title="Buscar (Ctrl+K)">${ICONS.search}</button>
             ${
               backupAlert
-                ? `<button class="app-header__backup-alert${backupAlert.urgente ? ' is-urgent' : ''}" id="btn-backup-alert" type="button" title="${escapeHtml(backupAlert.mensagem)}" aria-label="${escapeHtml(backupAlert.mensagem)}">${ICONS.backup}</button>`
+                ? `<button class="app-header__backup-alert${backupAlert.urgente ? ' is-urgent' : ''}" id="btn-backup-alert" type="button" title="${escapeHtml(backupAlert.mensagem)}" aria-label="${escapeHtml(backupAlert.mensagem)}">${ICONS.cloud}</button>`
                 : ''
             }
             <span class="app-header__date" title="Data de hoje">${escapeHtml(formatDateWeekdayShortBR(toLondonISODate()))}</span>
@@ -155,7 +155,11 @@ async function render(root: HTMLElement): Promise<void> {
   });
   root.querySelector('#btn-ajuda')?.addEventListener('click', () => {
     if (!canNavigateAway()) return;
-    navigate('ajuda');
+    if (location.hash === '#/ajuda') {
+      history.back();
+    } else {
+      navigate('ajuda');
+    }
   });
   root.querySelector('#btn-busca')?.addEventListener('click', () => {
     if (!canNavigateAway()) return;
