@@ -24,7 +24,13 @@ import { formatDateTimeBR } from '../../lib/time';
 import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import { confirmAction } from '../components/confirm-modal';
 import { navigate } from '../router';
-import { syncWithGithub } from '../../lib/github-sync';
+import { listGistRevisions, restoreGistRevision, syncWithGithub, type GistRevision } from '../../lib/github-sync';
+import {
+  criarSnapshot,
+  listarSnapshots,
+  removerSnapshot,
+  restaurarSnapshot,
+} from '../../db/snapshots';
 import {
   EXCLUSAO_RETENCAO_DIAS,
   expurgarItem,
@@ -34,7 +40,7 @@ import {
   type LixeiraTipo,
 } from '../../db/lixeira';
 import { ICONS } from '../icons';
-import type { Perfil } from '../../types';
+import type { Perfil, Snapshot } from '../../types';
 
 export interface SettingsContext {
   perfil: Perfil;
@@ -66,6 +72,21 @@ function rotuloLixeira(item: LixeiraItem): string {
   return partes.join(' · ');
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function rotuloSnapshot(snap: Snapshot): string {
+  const quando = `${formatDateTimeBR(snap.criado_em)} · ${formatBytes(snap.bytes)}`;
+  return `${snap.automatico ? 'Automático' : 'Manual'} · ${quando}`;
+}
+
+function rotuloRevisao(rev: GistRevision): string {
+  return formatDateTimeBR(rev.committed_at);
+}
+
 export async function renderSettings(container: HTMLElement, ctx: SettingsContext): Promise<void> {
   const theme = currentTheme();
   const lastExport = getLastExportAt();
@@ -77,6 +98,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   const gistId = getGithubGistId();
   const notasOrdem = getNotasOrdem();
   const lixeira = await listarLixeira(ctx.perfil.id);
+  const snapshots = await listarSnapshots();
 
   container.innerHTML = `
     <div class="stack content-narrow content-wide">
@@ -233,6 +255,42 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       </section>
 
       <section class="settings-section">
+        <div class="settings-section__title">${ICONS.clock} Snapshots locais</div>
+        <div class="card stack">
+          <p class="text-muted" style="margin:0;">
+            Cópias de segurança guardadas neste aparelho, sem depender da nuvem. Uma é criada
+            sozinha ao abrir o app (uma por dia) e fica disponível por aqui. Restaurar
+            <b>mescla</b> com os dados atuais — nunca apaga nada.
+          </p>
+          <div style="display:flex; gap: var(--space-3); flex-wrap:wrap;">
+            <button class="btn btn--secondary btn--sm" id="btn-snapshot-criar" type="button">Criar snapshot agora</button>
+          </div>
+          <div id="snapshot-status" role="status"></div>
+          ${
+            snapshots.length === 0
+              ? `<p class="text-muted" style="margin:0;">Nenhum snapshot ainda.</p>`
+              : `<div>
+                  ${snapshots
+                    .map(
+                      (snap) => `
+                    <div class="settings-list-row">
+                      <div>
+                        <div class="settings-row__label">${escapeHtml(rotuloSnapshot(snap))}</div>
+                      </div>
+                      <div class="item-row__actions">
+                        <button class="btn btn--secondary btn--sm" data-snapshot-restaurar="${escapeHtml(snap.id)}" type="button">Restaurar</button>
+                        <button class="btn btn--secondary btn--sm" data-snapshot-remover="${escapeHtml(snap.id)}" type="button">Apagar</button>
+                      </div>
+                    </div>
+                  `,
+                    )
+                    .join('')}
+                </div>`
+          }
+        </div>
+      </section>
+
+      <section class="settings-section">
         <div class="settings-section__title">${ICONS.trash} Lixeira</div>
         <div class="card stack">
           <p class="text-muted" style="margin:0;">
@@ -305,6 +363,20 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
                   : ''
             }
           </div>
+
+          <details id="gist-historico">
+            <summary class="settings-row__label" style="cursor:pointer;">Histórico do backup na nuvem</summary>
+            <div class="stack" style="margin-top: var(--space-3);">
+              <p class="settings-row__desc" style="margin:0;">
+                O GitHub guarda todas as versões já gravadas no Gist. Dá pra trazer uma antiga
+                de volta — a restauração <b>mescla</b> com o que já existe local.
+              </p>
+              <div>
+                <button class="btn btn--secondary btn--sm" id="btn-gist-revisoes" type="button">${ICONS.sync} Carregar histórico</button>
+              </div>
+              <div id="gist-revisoes" role="status"></div>
+            </div>
+          </details>
 
           <div class="settings-list-row">
             <div>
@@ -394,6 +466,8 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
     try {
       const text = await file.text();
       const exportFile = parseExportFile(text);
+      // Guarda um snapshot local antes de mexer nos dados — dá pra voltar atrás em Configurações.
+      await criarSnapshot({ titulo: 'Antes de importar' });
       const summary = await importData(exportFile);
       summaryEl.innerHTML = `
         <div class="banner banner--success" role="status">
@@ -564,6 +638,99 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       btn.disabled = true;
       await expurgarItem(btn.dataset.tipo as LixeiraTipo, btn.dataset.expurgar!);
       renderSettings(container, ctx);
+    });
+  });
+
+  container.querySelector('#btn-snapshot-criar')?.addEventListener('click', async () => {
+    const btn = container.querySelector<HTMLButtonElement>('#btn-snapshot-criar')!;
+    btn.disabled = true;
+    await criarSnapshot({});
+    renderSettings(container, ctx);
+    const status = container.querySelector('#snapshot-status');
+    if (status) {
+      status.innerHTML = `<div class="banner banner--success" role="status">${ICONS.check} Snapshot criado.</div>`;
+    }
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('[data-snapshot-restaurar]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmAction({
+        title: 'Restaurar este snapshot?',
+        message: 'Os dados do snapshot serão mesclados com os atuais. Nada local é apagado.',
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      await restaurarSnapshot(btn.dataset.snapshotRestaurar!);
+      const status = container.querySelector('#snapshot-status');
+      if (status) {
+        status.innerHTML = `<div class="banner banner--success" role="status">${ICONS.check} Snapshot restaurado (mesclado).</div>`;
+      }
+    });
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('[data-snapshot-remover]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await removerSnapshot(btn.dataset.snapshotRemover!);
+      renderSettings(container, ctx);
+    });
+  });
+
+  const btnGistRevisoes = container.querySelector<HTMLButtonElement>('#btn-gist-revisoes');
+  btnGistRevisoes?.addEventListener('click', async () => {
+    const lista = container.querySelector<HTMLElement>('#gist-revisoes');
+    const input = container.querySelector<HTMLInputElement>('#input-github-token')!;
+    const tokenAtual = input.value.trim() || token;
+    if (!tokenAtual || !lista) return;
+    btnGistRevisoes.disabled = true;
+    lista.innerHTML = `<div class="banner banner--muted" role="status">${ICONS.sync} Carregando…</div>`;
+    try {
+      const revisoes = await listGistRevisions(tokenAtual);
+      if (revisoes.length === 0) {
+        lista.innerHTML = `<div class="banner banner--muted" role="status">Ainda não há versões anteriores.</div>`;
+        return;
+      }
+      lista.innerHTML = `
+        <div>
+          ${revisoes
+            .map(
+              (rev) => `
+            <div class="settings-list-row">
+              <div class="settings-row__label">${escapeHtml(rotuloRevisao(rev))}</div>
+              <div class="item-row__actions">
+                <button class="btn btn--secondary btn--sm" data-gist-restaurar="${escapeHtml(rev.version)}" type="button">Restaurar</button>
+              </div>
+            </div>
+          `,
+            )
+            .join('')}
+        </div>
+      `;
+      ligarRestauroGist(container, tokenAtual, lista);
+    } catch (err) {
+      lista.innerHTML = `<div class="banner banner--warning" role="alert">${escapeHtml(err instanceof Error ? err.message : 'Não foi possível carregar o histórico.')}</div>`;
+    } finally {
+      btnGistRevisoes.disabled = false;
+    }
+  });
+}
+
+function ligarRestauroGist(container: HTMLElement, token: string, lista: HTMLElement): void {
+  container.querySelectorAll<HTMLButtonElement>('[data-gist-restaurar]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const ok = await confirmAction({
+        title: 'Restaurar esta versão do backup?',
+        message:
+          'A versão escolhida será mesclada com os dados atuais e o backup na nuvem será atualizado. Nada local é apagado.',
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      lista.innerHTML = `<div class="banner banner--muted" role="status">${ICONS.sync} Restaurando…</div>`;
+      try {
+        const resultado = await restoreGistRevision(token, btn.dataset.gistRestaurar!);
+        lista.innerHTML = `<div class="banner banner--success" role="status">${ICONS.check} Backup restaurado: ${resultado.criados} criado(s), ${resultado.atualizados} atualizado(s).</div>`;
+      } catch (err) {
+        lista.innerHTML = `<div class="banner banner--warning" role="alert">${escapeHtml(err instanceof Error ? err.message : 'Não foi possível restaurar.')}</div>`;
+      }
     });
   });
 }

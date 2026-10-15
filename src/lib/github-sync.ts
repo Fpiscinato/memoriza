@@ -141,6 +141,69 @@ export async function syncWithGithub(token: string): Promise<GitHubSyncResult> {
   };
 }
 
+export interface GistRevision {
+  version: string;
+  committed_at: string;
+}
+
+/** Lista as revisões do Gist de backup, mais recentes primeiro (o GitHub guarda todo o
+ *  histórico de edições — é a "máquina do tempo" do backup na nuvem). */
+export async function listGistRevisions(token: string, limite = 30): Promise<GistRevision[]> {
+  const gistId = getGithubGistId();
+  if (!gistId) throw new Error('Nenhum backup sincronizado ainda.');
+  const api = ghApi(token);
+  const res = await api(`/gists/${gistId}`);
+  if (!res.ok) throw new Error('Não foi possível ler o histórico do backup. Confira o token.');
+  const gist = (await res.json()) as {
+    history?: { version: string; committed_at: string }[];
+  };
+  return (gist.history ?? []).slice(0, limite).map((h) => ({
+    version: h.version,
+    committed_at: h.committed_at,
+  }));
+}
+
+async function readGistRevisionContent(
+  api: (path: string, init?: RequestInit) => Promise<Response>,
+  token: string,
+  gistId: string,
+  version: string,
+): Promise<string | null> {
+  const res = await api(`/gists/${gistId}/${version}`);
+  if (!res.ok) return null;
+  const gist = (await res.json()) as {
+    files?: Record<string, { content?: string; truncated?: boolean; raw_url?: string } | undefined>;
+  };
+  const file = gist.files?.[GIST_FILENAME];
+  if (!file) return null;
+  // Gists grandes vêm truncados: o conteúdo cru fica no raw_url (que exige o token, se privado).
+  if (file.truncated && file.raw_url) {
+    const raw = await fetch(file.raw_url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!raw.ok) return null;
+    return raw.text();
+  }
+  return file.content ?? null;
+}
+
+/** Restaura uma revisão antiga do backup remoto (mesclando com o local) e regrava o Gist. */
+export async function restoreGistRevision(token: string, version: string): Promise<GitHubSyncResult> {
+  const api = ghApi(token);
+  const gistId = getGithubGistId();
+  if (!gistId) throw new Error('Nenhum backup sincronizado ainda.');
+  const content = await readGistRevisionContent(api, token, gistId, version);
+  if (!content) throw new Error('Não foi possível ler essa versão do backup.');
+  const summary = await importData(parseExportFile(content));
+  const merged = await exportAll();
+  await updateGist(api, gistId, JSON.stringify(merged));
+  setGithubLastSyncAt(nowISO());
+  return {
+    ...summary,
+    porLoja: summary.porLoja ?? createEmptyPorLoja(),
+    push: true,
+    mesclouRemoto: true,
+  };
+}
+
 function createEmptyPorLoja(): Record<string, { criados: number; atualizados: number; mantidos: number }> {
   const inicial = { criados: 0, atualizados: 0, mantidos: 0 };
   return {

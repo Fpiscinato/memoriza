@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Espaco, ItemRevisao, Nota, Perfil, Tema } from '../types';
+import type { Espaco, ItemRevisao, Nota, Perfil, Snapshot, Tema } from '../types';
 
 interface MemorizaDB extends DBSchema {
   perfis: {
@@ -26,10 +26,14 @@ interface MemorizaDB extends DBSchema {
     value: ItemRevisao;
     indexes: { perfil_id: string; nota_id: string; perfil_status: string };
   };
+  snapshots: {
+    key: string;
+    value: Snapshot;
+  };
 }
 
 const DB_NAME = 'memoriza';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<MemorizaDB>> | undefined;
 
@@ -62,6 +66,9 @@ export function getDB(): Promise<IDBPDatabase<MemorizaDB>> {
           if (!store.indexNames.contains('perfil_status')) {
             store.createIndex('perfil_status', ['perfil_id', 'status']);
           }
+        }
+        if (!db.objectStoreNames.contains('snapshots')) {
+          db.createObjectStore('snapshots', { keyPath: 'id' });
         }
       },
     });

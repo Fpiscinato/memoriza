@@ -190,6 +190,20 @@ const SECOES: Secao[] = [
       Espaço, volta com os Temas e Notas junto. Depois de 30 dias o item é apagado sozinho,
       ou você pode <b>Excluir de vez</b> na hora, se quiser.</p>`,
   },
+  {
+    titulo: 'Snapshots locais',
+    corpoHtml: `<p>Além do backup exportado e da nuvem, o Memoriza guarda uma cópia própria
+      aqui neste aparelho, sozinho, uma vez por dia. Em Configurações → Snapshots locais dá pra
+      criar uma na hora e <b>restaurar</b> uma versão anterior (mesclando com os dados atuais,
+      sem apagar nada). As cópias mais antigas são descartadas com o tempo pra não ocupar
+      espaço.</p>`,
+  },
+  {
+    titulo: 'Histórico do backup na nuvem',
+    corpoHtml: `<p>Se você usa a sincronização com o GitHub, todo backup já gravado fica no
+      histórico do Gist. Em Configurações → Sincronização, abra <b>Histórico do backup na
+      nuvem</b> para ver as versões e trazer uma de volta, se precisar.</p>`,
+  },
 ];
 
 export function renderAjuda(container: HTMLElement): void {

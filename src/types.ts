@@ -87,6 +87,18 @@ export interface ItemRevisao {
 export const STORE_NAMES = ['perfis', 'espacos', 'temas', 'notas', 'itens_revisao'] as const;
 export type StoreName = (typeof STORE_NAMES)[number];
 
+/** Cópia de segurança local (IndexedDB), fora do export/sync. `conteudo` é o ExportFile
+ *  inteiro serializado — dá pra restaurar (mesclando) ou baixar como .json. */
+export interface Snapshot {
+  id: string;
+  criado_em: string;
+  automatico: boolean;
+  titulo: string;
+  /** Tamanho do conteúdo serializado, em bytes (só para exibir). */
+  bytes: number;
+  conteudo: string;
+}
+
 export interface MemorizaData {
   perfis: Perfil[];
   espacos: Espaco[];
