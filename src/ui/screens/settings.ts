@@ -25,6 +25,14 @@ import { downloadICS, generateDailyReminderICS } from '../../lib/ics';
 import { confirmAction } from '../components/confirm-modal';
 import { navigate } from '../router';
 import { syncWithGithub } from '../../lib/github-sync';
+import {
+  EXCLUSAO_RETENCAO_DIAS,
+  expurgarItem,
+  listarLixeira,
+  restaurarItem,
+  type LixeiraItem,
+  type LixeiraTipo,
+} from '../../db/lixeira';
 import { ICONS } from '../icons';
 import type { Perfil } from '../../types';
 
@@ -44,6 +52,20 @@ const NOTAS_ORDEM_OPTIONS: { value: NotasOrdem; label: string }[] = [
   { value: 'titulo', label: 'Título (A–Z)' },
 ];
 
+const LIXEIRA_TIPO_LABEL: Record<LixeiraTipo, string> = {
+  espaco: 'Espaço',
+  tema: 'Tema',
+  nota: 'Nota',
+};
+
+function rotuloLixeira(item: LixeiraItem): string {
+  const partes = [`${LIXEIRA_TIPO_LABEL[item.tipo]} em ${item.contexto}`];
+  if (item.temas) partes.push(`${item.temas} tema(s)`);
+  if (item.notas) partes.push(`${item.notas} nota(s)`);
+  if (item.excluido_em) partes.push(`excluído em ${formatDateTimeBR(item.excluido_em)}`);
+  return partes.join(' · ');
+}
+
 export async function renderSettings(container: HTMLElement, ctx: SettingsContext): Promise<void> {
   const theme = currentTheme();
   const lastExport = getLastExportAt();
@@ -54,6 +76,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   const lastSyncAt = getGithubLastSyncAt();
   const gistId = getGithubGistId();
   const notasOrdem = getNotasOrdem();
+  const lixeira = await listarLixeira(ctx.perfil.id);
 
   container.innerHTML = `
     <div class="stack content-narrow content-wide">
@@ -206,6 +229,39 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
             <input type="file" accept="application/json" id="import-file" class="visually-hidden" />
           </div>
           <div id="import-summary" role="status"></div>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <div class="settings-section__title">${ICONS.trash} Lixeira</div>
+        <div class="card stack">
+          <p class="text-muted" style="margin:0;">
+            Excluir um Espaço, Tema ou Nota manda pra cá em vez de apagar na hora. Dá pra
+            restaurar a qualquer momento; depois de ${EXCLUSAO_RETENCAO_DIAS} dias o item é
+            removido de vez, sozinho.
+          </p>
+          ${
+            lixeira.length === 0
+              ? `<p class="text-muted" style="margin:0;">A lixeira está vazia.</p>`
+              : `<div>
+                  ${lixeira
+                    .map(
+                      (item) => `
+                    <div class="settings-list-row">
+                      <div>
+                        <div class="settings-row__label">${escapeHtml(item.nome)}</div>
+                        <p class="settings-row__desc">${escapeHtml(rotuloLixeira(item))}</p>
+                      </div>
+                      <div class="item-row__actions">
+                        <button class="btn btn--secondary btn--sm" data-restaurar="${escapeHtml(item.id)}" data-tipo="${item.tipo}" type="button">${ICONS.undo} Restaurar</button>
+                        <button class="btn btn--secondary btn--sm" data-expurgar="${escapeHtml(item.id)}" data-tipo="${item.tipo}" data-nome="${escapeHtml(item.nome)}" type="button">Excluir de vez</button>
+                      </div>
+                    </div>
+                  `,
+                    )
+                    .join('')}
+                </div>`
+          }
         </div>
       </section>
 
@@ -486,5 +542,28 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
 
   container.querySelector<HTMLInputElement>('#sync-auto')?.addEventListener('change', (e) => {
     setGithubAutoSync((e.target as HTMLInputElement).checked);
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('[data-restaurar]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      await restaurarItem(btn.dataset.tipo as LixeiraTipo, btn.dataset.restaurar!);
+      renderSettings(container, ctx);
+    });
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('[data-expurgar]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const nome = btn.dataset.nome ?? '';
+      const ok = await confirmAction({
+        title: `Excluir "${nome}" de vez?`,
+        message:
+          'O item e tudo que foi junto com ele (temas e notas) serão apagados deste aparelho, sem volta. Um eventual backup no GitHub ainda guarda uma cópia.',
+      });
+      if (!ok) return;
+      btn.disabled = true;
+      await expurgarItem(btn.dataset.tipo as LixeiraTipo, btn.dataset.expurgar!);
+      renderSettings(container, ctx);
+    });
   });
 }

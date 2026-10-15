@@ -20,7 +20,7 @@ export async function getFavoritos(
   perfilId: string,
 ): Promise<{ temas: TemaFavorito[]; notas: NotaFavorita[] }> {
   const db = await getDB();
-  const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
+  const espacos = (await db.getAllFromIndex('espacos', 'perfil_id', perfilId)).filter((e) => !e.excluido);
 
   const temasPorEspaco = await Promise.all(
     espacos.map((espaco) => db.getAllFromIndex('temas', 'espaco_id', espaco.id)),
@@ -32,21 +32,21 @@ export async function getFavoritos(
 
   for (let i = 0; i < espacos.length; i++) {
     const espaco = espacos[i];
-    const temas = temasPorEspaco[i];
+    const temas = temasPorEspaco[i].filter((t) => !t.excluido);
     for (const tema of temas) {
       espacoPorTema.set(tema.id, espaco);
       if (tema.favorito) temasFavoritos.push({ tema, espaco });
     }
   }
 
-  const todosTemas = temasPorEspaco.flat();
+  const todosTemas = temasPorEspaco.flat().filter((t) => !t.excluido);
   const notasPorTema = await Promise.all(
     todosTemas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),
   );
 
   for (let i = 0; i < todosTemas.length; i++) {
     const tema = todosTemas[i];
-    const notas = notasPorTema[i];
+    const notas = notasPorTema[i].filter((n) => !n.excluido);
     const espaco = espacoPorTema.get(tema.id);
     if (!espaco) continue;
     for (const nota of notas) {

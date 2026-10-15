@@ -36,6 +36,8 @@ export async function getTodayQueue(perfilId: string): Promise<QueueEntry[]> {
     const tema = nota && temaById.get(nota.tema_id);
     const espaco = tema && espacoById.get(tema.espaco_id);
     if (!nota || !tema || !espaco) continue;
+    // Nota/Tema/Espaço na Lixeira não entram na fila (exclusão suave — ver db/lixeira.ts).
+    if (nota.excluido || tema.excluido || espaco.excluido) continue;
     entries.push({ item, nota, tema, espaco });
   }
 

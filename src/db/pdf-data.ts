@@ -35,7 +35,7 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
   const espaco = await db.get('espacos', espacoId);
   if (!espaco) return undefined;
 
-  const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
+  const temas = (await db.getAllFromIndex('temas', 'espaco_id', espacoId)).filter((t) => !t.excluido);
   const gruposTemas = agruparPorCategoria(temas);
   const porTitulo = getNotasOrdem() === 'titulo';
 
@@ -44,7 +44,7 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
     const temasPdf: TemaPdf[] = [];
 
     for (const tema of grupo.itens) {
-      const notas = await db.getAllFromIndex('notas', 'tema_id', tema.id);
+      const notas = (await db.getAllFromIndex('notas', 'tema_id', tema.id)).filter((n) => !n.excluido);
       if (porTitulo) ordenarPorNome(notas, (n) => n.titulo);
       else notas.sort((a, b) => a.criado_em.localeCompare(b.criado_em));
       const notasPdf: NotaPdf[] = [];

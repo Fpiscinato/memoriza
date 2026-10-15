@@ -185,7 +185,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     const contagem = await countTemaCascade(tema.id);
     const ok = await confirmAction({
       title: `Excluir "${tema.nome}"?`,
-      message: `Isso vai apagar ${contagem.notas} nota(s), com todo o histórico de revisão delas.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
+      message: `Isso manda pra Lixeira o tema com ${contagem.notas} nota(s).\nDá pra restaurar tudo em Configurações → Lixeira, por até 30 dias.`,
     });
     if (!ok) return;
     await deleteTemaCascade(tema.id);

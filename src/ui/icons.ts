@@ -92,4 +92,7 @@ export const ICONS: Record<string, string> = {
   check: svgIcon('<path d="M20 6L9 17l-5-5"/>'),
   chart: svgIcon('<path d="M4 20h16"/><path d="M7 17v-6M12 17V7M17 17v-9"/>'),
   ordenar: svgIcon('<path d="M4 6h16M4 12h11M4 18h6"/>'),
+  trash: svgIcon(
+    '<path d="M4 7h16"/><path d="M9 7V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9l.8-12"/><path d="M10 11v6M14 11v6"/>',
+  ),
 };

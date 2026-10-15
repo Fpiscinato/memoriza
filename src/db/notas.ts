@@ -4,10 +4,11 @@ import { uuid } from '../lib/uuid';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
 import { getNotasOrdem } from '../lib/settings';
 import { ordenarPorNome } from '../lib/ordem';
+import { marcarExcluido } from './lixeira';
 
 export async function listNotas(temaId: string): Promise<Nota[]> {
   const db = await getDB();
-  const all = await db.getAllFromIndex('notas', 'tema_id', temaId);
+  const all = (await db.getAllFromIndex('notas', 'tema_id', temaId)).filter((n) => !n.excluido);
   // Por padrão a lista vai da mais antiga pra mais nova; o usuário pode trocar pro título
   // nas Configurações, que aí entra a ordem de meses/números (lib/ordem.ts).
   if (getNotasOrdem() === 'titulo') return ordenarPorNome(all, (n) => n.titulo);
@@ -28,10 +29,10 @@ export interface NotaComTema {
  * src/ui/components/avaliacao-aleatoria.ts. */
 export async function listNotasPorEspaco(espacoId: string): Promise<NotaComTema[]> {
   const db = await getDB();
-  const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
+  const temas = (await db.getAllFromIndex('temas', 'espaco_id', espacoId)).filter((t) => !t.excluido);
   const porTema = await Promise.all(
     temas.map(async (tema) => {
-      const notas = await db.getAllFromIndex('notas', 'tema_id', tema.id);
+      const notas = (await db.getAllFromIndex('notas', 'tema_id', tema.id)).filter((n) => !n.excluido);
       return notas.map((nota) => ({ nota, tema }));
     }),
   );
@@ -119,14 +120,13 @@ export async function toggleNotaFavorito(id: string): Promise<boolean> {
   return nota.favorito;
 }
 
-/** Apaga a Nota e, em cascata, todos os seus Itens de Revisão (histórico incluso). */
+/** Manda a Nota pra Lixeira (exclusão suave; os Itens de Revisão ficam guardados e são
+ *  ignorados enquanto a Nota estiver excluída — ver db/reviews.ts). */
 export async function deleteNota(id: string): Promise<void> {
   const db = await getDB();
-  const itens = await db.getAllFromIndex('itens_revisao', 'nota_id', id);
-  const tx = db.transaction(['notas', 'itens_revisao'], 'readwrite');
-  await tx.objectStore('notas').delete(id);
-  for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
-  await tx.done;
+  const nota = await db.get('notas', id);
+  if (!nota) return;
+  await db.put('notas', marcarExcluido(nota));
 }
 
 /**

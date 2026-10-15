@@ -9,6 +9,7 @@ import { applyTheme } from './lib/theme';
 import { requestPersistentStorageOnce } from './lib/storage-persist';
 import { ensureDefaultProfiles } from './db/profiles';
 import { migrateNotasSemTitulo } from './db/notas';
+import { limparLixeiraAntiga } from './db/lixeira';
 import { mount } from './ui/app';
 import { APP_VERSION_LABEL } from './version';
 import * as formGuard from './lib/form-guard';
@@ -22,6 +23,7 @@ async function bootstrap() {
   formGuard.init();
   await ensureDefaultProfiles();
   await migrateNotasSemTitulo();
+  await limparLixeiraAntiga();
   await requestPersistentStorageOnce();
 
   const root = document.getElementById('app');

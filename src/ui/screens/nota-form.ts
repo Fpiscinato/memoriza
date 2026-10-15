@@ -644,7 +644,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     container.querySelector('#btn-excluir-nota')?.addEventListener('click', async () => {
       const ok = await confirmAction({
         title: 'Excluir esta nota?',
-        message: 'Isso vai apagar a nota e todo o seu histórico de revisões.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.',
+        message: 'A nota vai pra Lixeira e dá pra restaurar em Configurações → Lixeira por até 30 dias.',
       });
       if (!ok) return;
       await deleteNota(nota.id);

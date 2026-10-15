@@ -3,11 +3,12 @@ import type { Tema } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
 import { ordenarPorNome } from '../lib/ordem';
+import { marcarExcluido } from './lixeira';
 
 export async function listTemas(espacoId: string): Promise<Tema[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
-  return ordenarPorNome(all, (t) => t.nome);
+  return ordenarPorNome(all.filter((t) => !t.excluido), (t) => t.nome);
 }
 
 export async function getTema(id: string): Promise<Tema | undefined> {
@@ -51,25 +52,23 @@ export async function toggleTemaFavorito(id: string): Promise<boolean> {
   return tema.favorito;
 }
 
-/** Conta o que seria apagado em cascata (Notas), pra mostrar no modal de confirmação. */
+/** Conta o que seria mandado pra Lixeira em cascata (Notas), pra mostrar no modal de confirmação. */
 export async function countTemaCascade(temaId: string): Promise<{ notas: number }> {
   const db = await getDB();
   const notas = await db.getAllFromIndex('notas', 'tema_id', temaId);
-  return { notas: notas.length };
+  return { notas: notas.filter((n) => !n.excluido).length };
 }
 
-/** Apaga o Tema e, em cascata, suas Notas e os Itens de Revisão delas. */
+/** Manda o Tema e, em cascata, suas Notas pra Lixeira (exclusão suave). */
 export async function deleteTemaCascade(temaId: string): Promise<void> {
   const db = await getDB();
-  const notas = await db.getAllFromIndex('notas', 'tema_id', temaId);
-  const itensPorNota = await Promise.all(
-    notas.map((nota) => db.getAllFromIndex('itens_revisao', 'nota_id', nota.id)),
-  );
-  const itens = itensPorNota.flat();
+  const tema = await db.get('temas', temaId);
+  if (!tema) return;
+  const notas = (await db.getAllFromIndex('notas', 'tema_id', temaId)).filter((n) => !n.excluido);
 
-  const tx = db.transaction(['temas', 'notas', 'itens_revisao'], 'readwrite');
-  await tx.objectStore('temas').delete(temaId);
-  for (const nota of notas) await tx.objectStore('notas').delete(nota.id);
-  for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+  const agora = nowISO();
+  const tx = db.transaction(['temas', 'notas'], 'readwrite');
+  await tx.objectStore('temas').put(marcarExcluido(tema, agora));
+  for (const nota of notas) await tx.objectStore('notas').put(marcarExcluido(nota, agora));
   await tx.done;
 }

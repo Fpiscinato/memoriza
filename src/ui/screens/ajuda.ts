@@ -183,6 +183,13 @@ const SECOES: Secao[] = [
       que já existe no aparelho, sem apagar nada — o mais recente de cada item é o que
       vale.</p>`,
   },
+  {
+    titulo: 'Lixeira',
+    corpoHtml: `<p>Quando você exclui um Espaço, Tema ou Nota, ele não some de vez: vai pra
+      Lixeira, em Configurações. Lá dá pra <b>restaurar</b> a qualquer momento — se excluiu o
+      Espaço, volta com os Temas e Notas junto. Depois de 30 dias o item é apagado sozinho,
+      ou você pode <b>Excluir de vez</b> na hora, se quiser.</p>`,
+  },
 ];
 
 export function renderAjuda(container: HTMLElement): void {

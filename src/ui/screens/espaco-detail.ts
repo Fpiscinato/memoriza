@@ -277,7 +277,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     const contagem = await countEspacoCascade(espaco.id);
     const ok = await confirmAction({
       title: `Excluir "${espaco.nome}"?`,
-      message: `Isso vai apagar ${contagem.temas} tema(s) e ${contagem.notas} nota(s), com todo o histórico de revisão delas.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
+      message: `Isso manda pra Lixeira o espaço com ${contagem.temas} tema(s) e ${contagem.notas} nota(s).\nDá pra restaurar tudo em Configurações → Lixeira, por até 30 dias.`,
     });
     if (!ok) return;
     await deleteEspacoCascade(espaco.id);

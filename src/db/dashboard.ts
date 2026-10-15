@@ -1,6 +1,7 @@
 import { getDB } from './schema';
 import { addDaysToISODate, todayLondonISODate } from '../lib/time';
 import { computeStreak } from '../domain/stats';
+import type { ItemRevisao } from '../types';
 
 export interface TemaDificil {
   temaId: string;
@@ -36,11 +37,28 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   const hoje = todayLondonISODate();
   const inicioJanela = addDaysToISODate(hoje, -6);
 
-  const [feitas, pendentes] = await Promise.all([
+  const [feitas, pendentes, todasNotas, todosTemasDb, todosEspacosDb] = await Promise.all([
     db.getAllFromIndex('itens_revisao', 'perfil_status', IDBKeyRange.only([perfilId, 'feita'])),
     db.getAllFromIndex('itens_revisao', 'perfil_status', IDBKeyRange.only([perfilId, 'pendente'])),
+    db.getAll('notas'),
+    db.getAll('temas'),
+    db.getAll('espacos'),
   ]);
-  const revisoesFeitas = feitas.filter((i) => i.avaliacao);
+  const notaById = new Map(todasNotas.map((n) => [n.id, n]));
+  const temaByIdDb = new Map(todosTemasDb.map((t) => [t.id, t]));
+  const espacoByIdDb = new Map(todosEspacosDb.map((e) => [e.id, e]));
+  // Um item de revisão só conta se toda a cadeia (nota -> tema -> espaço) existir e não
+  // estiver na Lixeira — excluir um Espaço/Tema/Nota some também das estatísticas.
+  const itemValido = (item: ItemRevisao): boolean => {
+    const nota = notaById.get(item.nota_id);
+    if (!nota || nota.excluido) return false;
+    const tema = temaByIdDb.get(nota.tema_id);
+    if (!tema || tema.excluido) return false;
+    const espaco = espacoByIdDb.get(tema.espaco_id);
+    return !!espaco && !espaco.excluido;
+  };
+  const revisoesFeitas = feitas.filter((i) => i.avaliacao && itemValido(i));
+  const pendentesValidas = pendentes.filter(itemValido);
 
   const revisoesDeHoje = revisoesFeitas.filter((i) => i.data_concluida === hoje);
   const revisoesHoje = revisoesDeHoje.length;
@@ -52,13 +70,13 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
 
   const porEstagio = (['1', '7', '30', '180'] as const).map((estagio) => ({
     estagio,
-    count: pendentes.filter((i) => i.estagio === estagio).length,
+    count: pendentesValidas.filter((i) => i.estagio === estagio).length,
   }));
 
   const cargaProximos7: { data: string; count: number }[] = [];
   for (let i = 1; i <= 7; i++) {
     const data = addDaysToISODate(hoje, i);
-    cargaProximos7.push({ data, count: pendentes.filter((x) => x.data_agendada === data).length });
+    cargaProximos7.push({ data, count: pendentesValidas.filter((x) => x.data_agendada === data).length });
   }
 
   const inicioJanela30 = addDaysToISODate(hoje, -29);
@@ -103,19 +121,19 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
     .sort((a, b) => b.count - a.count)
     .slice(0, TOP_RANKING);
 
-  const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
+  const espacos = todosEspacosDb.filter((e) => e.perfil_id === perfilId && !e.excluido);
   const espacosAtivos = espacos.filter((e) => !e.arquivado).length;
 
   const temasPorEspaco = await Promise.all(
     espacos.map((e) => db.getAllFromIndex('temas', 'espaco_id', e.id)),
   );
-  const todosTemas = temasPorEspaco.flat();
+  const todosTemas = temasPorEspaco.flat().filter((t) => !t.excluido);
   const totalTemas = todosTemas.length;
 
   const notasPorTema = await Promise.all(
     todosTemas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),
   );
-  const totalNotas = notasPorTema.reduce((soma, notas) => soma + notas.length, 0);
+  const totalNotas = notasPorTema.flat().filter((n) => !n.excluido).length;
 
   return {
     revisoesHoje,

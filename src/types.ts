@@ -23,6 +23,10 @@ export interface Espaco {
   icone?: string;
   /** Índice da paleta de acento (0..ACCENT_COUNT-1). Ausente = cor automática (sem repetir). */
   cor?: number;
+  /** Exclusão suave (Lixeira): fica oculto nas telas mas recuperável por EXCLUSAO_RETENCAO_DIAS. */
+  excluido?: boolean;
+  /** Quando foi mandado pra Lixeira — base do expurgo automático. */
+  excluido_em?: string;
 }
 
 export interface Tema {
@@ -33,6 +37,8 @@ export interface Tema {
   favorito: boolean;
   criado_em: string;
   atualizado_em: string;
+  excluido?: boolean;
+  excluido_em?: string;
 }
 
 export interface Nota {
@@ -54,6 +60,8 @@ export interface Nota {
   titulo_revisado: boolean;
   criado_em: string;
   atualizado_em: string;
+  excluido?: boolean;
+  excluido_em?: string;
 }
 
 export type EstagioRevisao = '1' | '7' | '30' | '180' | 'consulta';

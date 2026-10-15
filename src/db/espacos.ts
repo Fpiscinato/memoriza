@@ -2,13 +2,14 @@ import { getDB } from './schema';
 import type { Espaco } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
+import { marcarExcluido } from './lixeira';
 import { distinctCategorias } from '../lib/group';
 import { ordenarPorNome } from '../lib/ordem';
 
 export async function listEspacos(perfilId: string): Promise<Espaco[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
-  return ordenarPorNome(all, (e) => e.nome);
+  return ordenarPorNome(all.filter((e) => !e.excluido), (e) => e.nome);
 }
 
 /** Sugestões sempre disponíveis, mesmo num perfil novo sem nenhum Espaço ainda criado. */
@@ -91,36 +92,34 @@ export interface EspacoCascadeCount {
   notas: number;
 }
 
-/** Conta o que seria apagado em cascata, pra mostrar no modal de confirmação. */
+/** Conta o que seria mandado pra Lixeira em cascata, pra mostrar no modal de confirmação. */
 export async function countEspacoCascade(espacoId: string): Promise<EspacoCascadeCount> {
   const db = await getDB();
-  const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
+  const temas = (await db.getAllFromIndex('temas', 'espaco_id', espacoId)).filter((t) => !t.excluido);
   let notas = 0;
   for (const tema of temas) {
-    notas += (await db.getAllFromIndex('notas', 'tema_id', tema.id)).length;
+    notas += (await db.getAllFromIndex('notas', 'tema_id', tema.id)).filter((n) => !n.excluido).length;
   }
   return { temas: temas.length, notas };
 }
 
-/** Apaga o Espaço e, em cascata, seus Temas, Notas e Itens de Revisão. */
+/** Manda o Espaço e, em cascata, seus Temas e Notas pra Lixeira (exclusão suave — dá pra
+ *  restaurar por EXCLUSAO_RETENCAO_DIAS; o expurgo definitivo é feito em db/lixeira.ts). */
 export async function deleteEspacoCascade(espacoId: string): Promise<void> {
   const db = await getDB();
-  const temas = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
+  const espaco = await db.get('espacos', espacoId);
+  if (!espaco) return;
 
+  const temas = (await db.getAllFromIndex('temas', 'espaco_id', espacoId)).filter((t) => !t.excluido);
   const notasPorTema = await Promise.all(
     temas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),
   );
-  const notas = notasPorTema.flat();
+  const notas = notasPorTema.flat().filter((n) => !n.excluido);
 
-  const itensPorNota = await Promise.all(
-    notas.map((nota) => db.getAllFromIndex('itens_revisao', 'nota_id', nota.id)),
-  );
-  const itens = itensPorNota.flat();
-
-  const tx = db.transaction(['espacos', 'temas', 'notas', 'itens_revisao'], 'readwrite');
-  await tx.objectStore('espacos').delete(espacoId);
-  for (const tema of temas) await tx.objectStore('temas').delete(tema.id);
-  for (const nota of notas) await tx.objectStore('notas').delete(nota.id);
-  for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+  const agora = nowISO();
+  const tx = db.transaction(['espacos', 'temas', 'notas'], 'readwrite');
+  await tx.objectStore('espacos').put(marcarExcluido(espaco, agora));
+  for (const tema of temas) await tx.objectStore('temas').put(marcarExcluido(tema, agora));
+  for (const nota of notas) await tx.objectStore('notas').put(marcarExcluido(nota, agora));
   await tx.done;
 }
