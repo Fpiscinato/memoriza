@@ -84,7 +84,24 @@ export interface ItemRevisao {
   atualizado_em: string;
 }
 
-export const STORE_NAMES = ['perfis', 'espacos', 'temas', 'notas', 'itens_revisao'] as const;
+/** Uma nota avaliada numa sessão de "Avaliação" (autoteste com Fácil/Médio/Difícil), separada
+ *  da revisão espaçada — não mexe em itens_revisao. Vários registros compartilham o mesmo
+ *  `sessao_id` (uma sessão = um repasse inteiro). */
+export interface AvaliacaoRegistro {
+  id: string;
+  perfil_id: string;
+  espaco_id: string;
+  tema_id: string;
+  nota_id: string;
+  avaliacao: Avaliacao;
+  /** De onde a sessão partiu: do Espaço inteiro (todos os Temas) ou de um Tema específico. */
+  escopo: 'espaco' | 'tema';
+  sessao_id: string;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export const STORE_NAMES = ['perfis', 'espacos', 'temas', 'notas', 'itens_revisao', 'avaliacoes'] as const;
 export type StoreName = (typeof STORE_NAMES)[number];
 
 /** Cópia de segurança local (IndexedDB), fora do export/sync. `conteudo` é o ExportFile
@@ -105,6 +122,7 @@ export interface MemorizaData {
   temas: Tema[];
   notas: Nota[];
   itens_revisao: ItemRevisao[];
+  avaliacoes: AvaliacaoRegistro[];
 }
 
 /** Envelope do arquivo exportado (.json). */

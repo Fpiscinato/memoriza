@@ -1,7 +1,8 @@
 import { getDashboardStats } from '../../db/dashboard';
 import { getActivitySummary, getHeatmapData } from '../../db/activity';
+import { resumoAvaliacoes } from '../../db/avaliacoes';
 import { escapeHtml } from '../../lib/dom';
-import { formatDuracao } from '../../lib/time';
+import { formatDateTimeBR, formatDuracao } from '../../lib/time';
 import { ICONS } from '../icons';
 import { renderHeatmap } from '../components/heatmap';
 
@@ -35,6 +36,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
   const stats = await getDashboardStats(ctx.perfilId);
   const activity = await getActivitySummary(ctx.perfilId);
   const heatmap = await getHeatmapData(ctx.perfilId, 365);
+  const avaliacoes = await resumoAvaliacoes(ctx.perfilId);
 
   const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
   const hojeIndiceSemana = new Date().getDay();
@@ -49,9 +51,19 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
         }
       : null;
 
+  const pctAvaliacoes =
+    avaliacoes.total > 0
+      ? {
+          facil: Math.round((avaliacoes.facil / avaliacoes.total) * 100),
+          medio: Math.round((avaliacoes.medio / avaliacoes.total) * 100),
+          dificil: Math.round((avaliacoes.dificil / avaliacoes.total) * 100),
+        }
+      : null;
+
   container.innerHTML = `
     <div class="tabs" role="tablist" aria-label="Painel">
       <button class="tabs__tab" role="tab" aria-selected="true" data-tab="visao">Visão geral</button>
+      <button class="tabs__tab" role="tab" aria-selected="false" data-tab="avaliacoes">Avaliações</button>
       <button class="tabs__tab" role="tab" aria-selected="false" data-tab="evolucao">Evolução</button>
     </div>
 
@@ -197,6 +209,67 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       }
     </div>
 
+    <div id="tab-avaliacoes" role="tabpanel" style="display:none;">
+      <p class="screen-hint" style="margin-top:0;">Seu autoteste com Fácil, Médio e Difícil — à parte da fila de revisão espaçada. Vem do botão "Avaliar" num Espaço ou Tema.</p>
+
+      ${
+        avaliacoes.total === 0
+          ? `<p class="text-muted">Nenhuma avaliação registrada ainda. Abra um Espaço (ou um Tema) e toque em "Avaliar".</p>`
+          : `
+        <div class="stat-grid">
+          <div class="stat-tile">
+            <div class="stat-tile__value">${avaliacoes.total}</div>
+            <div class="stat-tile__label">Notas avaliadas</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value">${avaliacoes.sessoesTotal}</div>
+            <div class="stat-tile__label">Sessões</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value">${pctAvaliacoes!.facil}%</div>
+            <div class="stat-tile__label">Fácil</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile__value">${pctAvaliacoes!.dificil}%</div>
+            <div class="stat-tile__label">Difícil</div>
+          </div>
+        </div>
+
+        <div class="retention-bar" role="img" aria-label="Fácil ${pctAvaliacoes!.facil}%, Médio ${pctAvaliacoes!.medio}%, Difícil ${pctAvaliacoes!.dificil}%">
+          <div class="retention-bar__fill retention-bar__fill--dificil" style="width:${pctAvaliacoes!.dificil}%"></div>
+          <div class="retention-bar__fill retention-bar__fill--medio" style="width:${pctAvaliacoes!.medio}%"></div>
+          <div class="retention-bar__fill retention-bar__fill--facil" style="width:${pctAvaliacoes!.facil}%"></div>
+        </div>
+        <div class="retention-legend">
+          <span class="badge badge--danger">Difícil ${pctAvaliacoes!.dificil}%</span>
+          <span class="badge" style="background:var(--color-warning-bg); color:var(--color-warning);">Médio ${pctAvaliacoes!.medio}%</span>
+          <span class="badge badge--success">Fácil ${pctAvaliacoes!.facil}%</span>
+          ${avaliacoes.ultimaEm ? `<span class="text-muted" style="font-size: var(--font-size-xs);">última: ${escapeHtml(formatDateTimeBR(avaliacoes.ultimaEm))}</span>` : ''}
+        </div>
+
+        <div class="section-header">
+          <span class="section-header__title" style="font-size: var(--font-size-base);">Sessões recentes</span>
+        </div>
+        <div class="rank-list">
+          ${avaliacoes.sessoes
+            .map(
+              (s) => `
+            <div class="rank-row">
+              <span>${escapeHtml(s.contexto)} <span class="text-muted">· ${s.total} nota(s) · ${escapeHtml(formatDateTimeBR(s.criado_em))}</span></span>
+              <span style="display:flex; gap: var(--space-2); flex-wrap:wrap; justify-content:flex-end;">
+                ${s.facil > 0 ? `<span class="badge badge--success">${s.facil} fácil</span>` : ''}
+                ${s.medio > 0 ? `<span class="badge" style="background:var(--color-warning-bg); color:var(--color-warning);">${s.medio} médio</span>` : ''}
+                ${s.dificil > 0 ? `<span class="badge badge--danger">${s.dificil} difícil</span>` : ''}
+              </span>
+            </div>
+          `,
+            )
+            .join('')}
+        </div>
+      `
+      }
+    </div>
+
     <div id="tab-evolucao" role="tabpanel" style="display:none;">
       <p class="screen-hint" style="margin-top:0;">Quanto você estuda (revisões) e o ritmo de inclusão de notas ao longo do tempo.</p>
 
@@ -234,13 +307,16 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
     </div>
   `;
 
+  const ABAS = ['visao', 'avaliacoes', 'evolucao'];
   container.querySelectorAll<HTMLButtonElement>('.tabs__tab').forEach((btn) => {
     btn.addEventListener('click', () => {
       container.querySelectorAll<HTMLButtonElement>('.tabs__tab').forEach((b) => {
         b.setAttribute('aria-selected', String(b === btn));
       });
-      (container.querySelector('#tab-visao') as HTMLElement)!.style.display = btn.dataset.tab === 'visao' ? 'block' : 'none';
-      (container.querySelector('#tab-evolucao') as HTMLElement)!.style.display = btn.dataset.tab === 'evolucao' ? 'block' : 'none';
+      for (const aba of ABAS) {
+        const painel = container.querySelector<HTMLElement>(`#tab-${aba}`);
+        if (painel) painel.style.display = btn.dataset.tab === aba ? 'block' : 'none';
+      }
     });
   });
 }

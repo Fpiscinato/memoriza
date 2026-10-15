@@ -9,7 +9,7 @@ import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } fro
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
-import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
+import { iniciarAvaliacao, type AvaliacaoContexto } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { ICONS } from '../icons';
@@ -62,7 +62,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
             <button id="btn-detalhes-tema" type="button">${ICONS.info} Detalhes</button>
-            <button id="btn-avaliar-tema" type="button">${ICONS.dice} Avaliação aleatória</button>
+            <button id="btn-avaliar-tema" type="button">${ICONS.dice} Avaliar notas</button>
             <button id="btn-excluir-tema" class="danger" type="button">Excluir tema</button>
           </div>
         </details>
@@ -162,7 +162,13 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
 
   container.querySelector('#btn-avaliar-tema')?.addEventListener('click', () => {
     const notasComTema = notas.map((nota) => ({ nota, tema }));
-    iniciarAvaliacaoAleatoria(container, notasComTema, tema.nome, () => renderTemaDetail(container, temaId));
+    const ctx: AvaliacaoContexto = {
+      perfilId: espaco!.perfil_id,
+      espacoId: tema.espaco_id,
+      nomeContexto: tema.nome,
+      tipo: 'tema',
+    };
+    iniciarAvaliacao(container, notasComTema, ctx, () => renderTemaDetail(container, temaId));
   });
 
   const formEditar = container.querySelector<HTMLElement>('#form-editar-tema')!;

@@ -84,7 +84,7 @@ const SECOES: Secao[] = [
       confirmado.</p>
       <p>No menu "⋯" de um Tema tem os mesmos dois atalhos que existem no nível do Espaço:
       <strong>Detalhes</strong> (quantas notas, tempo total revisando e há quantos dias esse
-      Tema existe) e <strong>Avaliação aleatória</strong> (repasse rápido só com as notas
+      Tema existe) e <strong>Avaliar notas</strong> (repasse rápido só com as notas
       deste Tema, sem afetar a fila de revisão).</p>`,
   },
   {
@@ -203,6 +203,18 @@ const SECOES: Secao[] = [
     corpoHtml: `<p>Se você usa a sincronização com o GitHub, todo backup já gravado fica no
       histórico do Gist. Em Configurações → Sincronização, abra <b>Histórico do backup na
       nuvem</b> para ver as versões e trazer uma de volta, se precisar.</p>`,
+  },
+  {
+    titulo: 'Avaliar notas (Fácil / Médio / Difícil)',
+    corpoHtml: `<p>No menu "⋯" de um Espaço ou Tema, toque em <b>Avaliar notas</b> para fazer um
+      autoteste. Num Espaço com vários Temas você escolhe o <b>escopo</b>: avaliar
+      <b>todo o Espaço</b> ou só um <b>Tema específico</b>. Depois escolhe quantas notas
+      (Básico, Médio ou Longo).</p>
+      <p>Em cada nota: tente lembrar, revele a resposta e marque <b>Fácil</b>, <b>Médio</b> ou
+      <b>Difícil</b>. Tudo fica registrado no app — diferente da revisão espaçada, nada aqui
+      muda sua fila nem os seus prazos.</p>
+      <p>O resultado aparece no <b>Painel → aba Avaliações</b>: quanto você já avaliou, a
+      distribuição entre Fácil/Médio/Difícil e o histórico de sessões recentes.</p>`,
   },
 ];
 

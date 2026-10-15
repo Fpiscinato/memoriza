@@ -10,7 +10,7 @@ import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } fro
 import { navigate, encodeCategoriaSegment } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
-import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
+import { iniciarAvaliacao, type AvaliacaoContexto } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
@@ -60,7 +60,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
             <button id="btn-detalhes" type="button">${ICONS.info} Detalhes</button>
-            <button id="btn-avaliar" type="button">${ICONS.dice} Avaliação aleatória</button>
+            <button id="btn-avaliar" type="button">${ICONS.dice} Avaliar notas</button>
             <button id="btn-excluir" class="danger" type="button">Excluir espaço</button>
           </div>
         </details>
@@ -270,7 +270,13 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
 
   container.querySelector('#btn-avaliar')?.addEventListener('click', async () => {
     const notasComTema = await listNotasPorEspaco(espaco.id);
-    iniciarAvaliacaoAleatoria(container, notasComTema, espaco.nome, () => renderEspacoDetail(container, espacoId));
+    const ctx: AvaliacaoContexto = {
+      perfilId: espaco.perfil_id,
+      espacoId: espaco.id,
+      nomeContexto: espaco.nome,
+      tipo: 'espaco',
+    };
+    iniciarAvaliacao(container, notasComTema, ctx, () => renderEspacoDetail(container, espacoId));
   });
 
   container.querySelector('#btn-excluir')?.addEventListener('click', async () => {

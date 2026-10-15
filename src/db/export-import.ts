@@ -9,14 +9,15 @@ const EXPORT_VERSION = 1 as const;
 
 async function readAllData(): Promise<MemorizaData> {
   const db = await getDB();
-  const [perfis, espacos, temas, notas, itens_revisao] = await Promise.all([
+  const [perfis, espacos, temas, notas, itens_revisao, avaliacoes] = await Promise.all([
     db.getAll('perfis'),
     db.getAll('espacos'),
     db.getAll('temas'),
     db.getAll('notas'),
     db.getAll('itens_revisao'),
+    db.getAll('avaliacoes'),
   ]);
-  return { perfis, espacos, temas, notas, itens_revisao };
+  return { perfis, espacos, temas, notas, itens_revisao, avaliacoes };
 }
 
 /** Monta os dados de um único perfil, seguindo a cadeia perfil -> espaço -> tema -> nota. */
@@ -35,6 +36,7 @@ export async function buildProfileExportData(perfilId: string): Promise<Memoriza
   const notas = allNotas.filter((n) => temaIds.has(n.tema_id));
 
   const itens_revisao = await db.getAllFromIndex('itens_revisao', 'perfil_id', perfilId);
+  const avaliacoes = await db.getAllFromIndex('avaliacoes', 'perfil_id', perfilId);
 
   return {
     perfis: perfil ? [perfil] : [],
@@ -42,6 +44,7 @@ export async function buildProfileExportData(perfilId: string): Promise<Memoriza
     temas,
     notas,
     itens_revisao,
+    avaliacoes,
   };
 }
 
