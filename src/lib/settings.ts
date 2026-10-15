@@ -107,13 +107,16 @@ export function setGithubLastSyncAt(iso: string): void {
   else localStorage.removeItem(KEYS.githubLastSyncAt);
 }
 
+/** Sincronização automática fica ligada por padrão (basta ter um token salvo) — assim os
+ *  dados ficam sempre seguros no GitHub e disponíveis em outros aparelhos. Desligar é uma
+ *  escolha explícita, guardada como '0'. */
 export function getGithubAutoSync(): boolean {
-  return localStorage.getItem(KEYS.githubAutoSync) === '1';
+  return localStorage.getItem(KEYS.githubAutoSync) !== '0';
 }
 
 export function setGithubAutoSync(ativo: boolean): void {
-  if (ativo) localStorage.setItem(KEYS.githubAutoSync, '1');
-  else localStorage.removeItem(KEYS.githubAutoSync);
+  if (ativo) localStorage.removeItem(KEYS.githubAutoSync);
+  else localStorage.setItem(KEYS.githubAutoSync, '0');
 }
 
 // --- Ordenação das Notas ---------------------------------------------------

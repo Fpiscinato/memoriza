@@ -2,7 +2,7 @@ import { countEspacoCascade, createEspaco, deleteEspacoCascade, listCategoriasEs
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
-import { accentVar } from '../../lib/color';
+import { accentVar, assignAccentVars } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
@@ -18,6 +18,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const arquivados = todos.filter((e) => e.arquivado);
   const temaCounts = await countTemasPorEspaco(todos.map((e) => e.id));
   const grupos = agruparPorCategoria(ativos);
+  const cores = assignAccentVars(ativos.map((e) => e.id));
   const categoriasConhecidas = await listCategoriasEspacos(ctx.perfilId);
 
   container.innerHTML = `
@@ -63,7 +64,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
           </span>
         </summary>
         <div class="item-list">
-          ${grupo.itens.map((e) => renderRow(e, temaCounts.get(e.id) ?? 0)).join('')}
+          ${grupo.itens.map((e) => renderRow(e, temaCounts.get(e.id) ?? 0, cores.get(e.id) ?? accentVar(e.id))).join('')}
         </div>
       </details>
     `,
@@ -151,9 +152,9 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   });
 }
 
-function renderRow(e: { id: string; nome: string }, temaCount: number): string {
+function renderRow(e: { id: string; nome: string }, temaCount: number, cor: string): string {
   return `
-    <div class="item-row" data-id="${escapeHtml(e.id)}" style="--row-accent:${accentVar(e.id)}">
+    <div class="item-row" data-id="${escapeHtml(e.id)}" style="--row-accent:${cor}">
       <button class="item-row__main" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
         <span class="item-row__title">${escapeHtml(e.nome)}</span>
         <span class="item-row__meta">${temaCount} tema(s)</span>

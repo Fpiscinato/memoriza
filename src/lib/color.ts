@@ -20,3 +20,23 @@ export function accentIndexFor(chave: string): number {
 export function accentVar(chave: string): string {
   return `var(--accent-${accentIndexFor(chave)})`;
 }
+
+/**
+ * Distribui cores para uma lista de chaves evitando repetição dentro do mesmo conjunto
+ * (até o limite de ACCENT_COUNT). O hash sozinho pode colidir — com poucos itens é comum
+ * dois caírem na mesma cor. Aqui, se a cor sorteada já estiver em uso, avança para a
+ * próxima livre, mantendo o resultado determinístico pela ordem de entrada.
+ */
+export function assignAccentVars(chaves: string[]): Map<string, string> {
+  const usados = new Set<number>();
+  const mapa = new Map<string, string>();
+  for (const chave of chaves) {
+    let idx = accentIndexFor(chave);
+    for (let passo = 0; passo < ACCENT_COUNT && usados.has(idx); passo++) {
+      idx = (idx + 1) % ACCENT_COUNT;
+    }
+    usados.add(idx);
+    mapa.set(chave, `var(--accent-${idx})`);
+  }
+  return mapa;
+}

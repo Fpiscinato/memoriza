@@ -118,6 +118,14 @@
   margin: 0 auto;
 }
 
+/* Aproveita melhor a largura de telas grandes (notebook/desktop). Em telas estreitas o
+   conteúdo continua limitado a --max-content-width, então a leitura no celular não muda. */
+@media (min-width: 860px) {
+  .content-narrow.content-wide {
+    max-width: 960px;
+  }
+}
+
 /* Navegação inferior (mobile) / lateral (desktop) */
 
 .app-nav {

@@ -104,8 +104,9 @@ const SECOES: Secao[] = [
       laranja some.</p>
       <p>O campo <strong>Conteúdo</strong> é um editor de texto simples: selecione um trecho
       e use os botões acima dele — <strong>N</strong> para negrito, <em>I</em> para itálico,
-      ☰ pra transformar a linha numa lista com marcadores, ou uma das bolinhas (azul/vermelho/
-      verde/rosa) pra colorir. O ✕ remove a cor de um trecho já colorido. O corretor
+      ☰ pra transformar a linha numa lista com marcadores, ou uma das bolinhas de cor
+      (azul, vermelho, verde, rosa, amarelo, laranja, roxo, cinza) pra colorir. O ✕ remove
+      a cor de um trecho já colorido. O corretor
       ortográfico do navegador/celular funciona normalmente aí.</p>
       <p>Enter simples só quebra a linha (pra continuar escrevendo sem abrir um parágrafo
       novo); apertar Enter de novo, sem escrever nada no meio, cria um parágrafo de verdade
@@ -182,7 +183,7 @@ const SECOES: Secao[] = [
 
 export function renderAjuda(container: HTMLElement): void {
   container.innerHTML = `
-    <div class="content-narrow">
+    <div class="content-narrow content-wide">
       <div class="card" style="margin-bottom: var(--space-6);">
         <p class="settings-row__desc" style="margin-top:0;">
           Dois exemplos completos, de ponta a ponta, pra deixar a estrutura

@@ -56,7 +56,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
   const notasOrdem = getNotasOrdem();
 
   container.innerHTML = `
-    <div class="stack content-narrow">
+    <div class="stack content-narrow content-wide">
       <section class="settings-section">
         <div class="settings-section__title">${ICONS.user} Perfil</div>
         <div class="card">

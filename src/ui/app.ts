@@ -1,7 +1,7 @@
 import { getDB } from '../db/schema';
 import { getProfile } from '../db/profiles';
 import { escapeHtml } from '../lib/dom';
-import { getBackupBannerSnoozedUntil, getLastExportAt, getSelectedProfileId, setSelectedProfileId } from '../lib/settings';
+import { getGithubAutoSync, getGithubLastSyncAt, getGithubToken, getSelectedProfileId, setSelectedProfileId } from '../lib/settings';
 import { daysBetweenISODates, formatDateWeekdayShortBR, toLondonISODate } from '../lib/time';
 import { getCurrentRoute, navigate, navigateTop, onRouteChange, topLevelFor, type TopLevelRoute } from './router';
 import { NAV_ICONS, ICONS } from './icons';
@@ -19,13 +19,11 @@ import { renderSettings } from './screens/settings';
 import { initWakeLock } from '../lib/wakelock';
 import { APP_VERSION, APP_VERSION_LABEL } from '../version';
 import { canNavigateAway } from '../lib/form-guard';
-import { getGithubAutoSync, getGithubToken } from '../lib/settings';
 import { shouldAutoSync, syncWithGithub } from '../lib/github-sync';
 import { openGlobalSearch } from './global-search';
 import type { Perfil } from '../types';
 
-const BACKUP_REMINDER_DAYS = 14;
-const BACKUP_REMINDER_URGENT_DAYS = 30;
+const SYNC_REMINDER_DAYS = 7;
 const AUTO_SYNC_INTERVAL_MINUTOS = 30;
 
 const NAV_ITEMS: { route: TopLevelRoute; label: string }[] = [
@@ -107,7 +105,7 @@ async function render(root: HTMLElement): Promise<void> {
 
   const route = getCurrentRoute();
   const topLevel = topLevelFor(route);
-  const backupAlert = await getBackupAlert(perfil);
+  const syncAlert = await getSyncAlert(perfil);
 
   root.innerHTML = `
     <div class="app-shell">
@@ -132,8 +130,8 @@ async function render(root: HTMLElement): Promise<void> {
           <span style="display:flex; align-items:center; gap: var(--space-3);">
             <button class="app-header__search" id="btn-busca" type="button" aria-label="Buscar (Ctrl+K)" title="Buscar (Ctrl+K)">${ICONS.search}</button>
             ${
-              backupAlert
-                ? `<button class="app-header__backup-alert${backupAlert.urgente ? ' is-urgent' : ''}" id="btn-backup-alert" type="button" title="${escapeHtml(backupAlert.mensagem)}" aria-label="${escapeHtml(backupAlert.mensagem)}">${ICONS.cloud}</button>`
+              syncAlert
+                ? `<button class="app-header__backup-alert${syncAlert.urgente ? ' is-urgent' : ''}" id="btn-sync-alert" type="button" title="${escapeHtml(syncAlert.mensagem)}" aria-label="${escapeHtml(syncAlert.mensagem)}">${ICONS.cloud}</button>`
                 : ''
             }
             <span class="app-header__date" title="Data de hoje">${escapeHtml(formatDateWeekdayShortBR(toLondonISODate()))}</span>
@@ -165,7 +163,7 @@ async function render(root: HTMLElement): Promise<void> {
     if (!canNavigateAway()) return;
     void openGlobalSearch(perfil.id);
   });
-  root.querySelector('#btn-backup-alert')?.addEventListener('click', () => {
+  root.querySelector('#btn-sync-alert')?.addEventListener('click', () => {
     if (!canNavigateAway()) return;
     navigate('config');
   });
@@ -242,31 +240,38 @@ async function renderScreen(
   }
 }
 
-/** Alerta compacto perto da data no cabeçalho (era um banner grande no topo do conteúdo,
- * competindo com a tela — agora é só um ícone pequeno, clicável, que leva pra Configurações). */
-async function getBackupAlert(perfil: Perfil): Promise<{ urgente: boolean; mensagem: string } | null> {
-  const today = toLondonISODate();
-
-  const snoozedUntil = getBackupBannerSnoozedUntil();
-  if (snoozedUntil && today < snoozedUntil) return null;
-
+/** Alerta compacto perto da data no cabeçalho: estado da sincronização com o GitHub (não do
+ * backup local). Um ícone pequeno, clicável, que leva pra Configurações — mantém o app seguro
+ * pra usar em mais de um aparelho. */
+async function getSyncAlert(perfil: Perfil): Promise<{ urgente: boolean; mensagem: string } | null> {
   if (!(await hasAnyDataForProfile(perfil.id))) return null;
 
-  const lastExportAt = getLastExportAt();
-  const daysSinceExport = lastExportAt
-    ? daysBetweenISODates(toLondonISODate(new Date(lastExportAt)), today)
-    : Infinity;
+  const token = getGithubToken();
+  if (!token) {
+    return {
+      urgente: false,
+      mensagem:
+        'Sincronização em nuvem desligada. Toque pra configurar — assim seus dados ficam seguros e disponíveis em outros aparelhos.',
+    };
+  }
 
-  if (daysSinceExport <= BACKUP_REMINDER_DAYS) return null;
+  const lastSyncAt = getGithubLastSyncAt();
+  if (!lastSyncAt) {
+    return {
+      urgente: false,
+      mensagem: 'Sincronização configurada, mas ainda não rodou neste aparelho. Toque pra sincronizar agora.',
+    };
+  }
 
-  // Só vira um aviso "de verdade" (laranja) quando o backup está realmente muito velho —
-  // antes disso é só um lembrete discreto.
-  const urgente = lastExportAt !== null && daysSinceExport > BACKUP_REMINDER_URGENT_DAYS;
-  const mensagem = `${
-    lastExportAt ? `Faz mais de ${BACKUP_REMINDER_DAYS} dias desde o último backup.` : 'Você ainda não exportou um backup.'
-  } Toque pra exportar em Configurações — os dados só existem neste aparelho.`;
+  const today = toLondonISODate();
+  const daysSinceSync = daysBetweenISODates(toLondonISODate(new Date(lastSyncAt)), today);
 
-  return { urgente, mensagem };
+  if (daysSinceSync <= SYNC_REMINDER_DAYS) return null;
+
+  return {
+    urgente: daysSinceSync > SYNC_REMINDER_DAYS * 2,
+    mensagem: `Faz mais de ${SYNC_REMINDER_DAYS} dias desde a última sincronização com o GitHub. Toque pra sincronizar.`,
+  };
 }
 
 async function hasAnyDataForProfile(perfilId: string): Promise<boolean> {
