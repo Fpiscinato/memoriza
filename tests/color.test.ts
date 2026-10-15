@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACCENT_COUNT, accentIndexFor, assignAccentVars, assignEspacoCores } from '../src/lib/color';
+import { ACCENT_COUNT, accentIndexFor, assignAccentVars, assignCategoriaCores, assignEspacoCores } from '../src/lib/color';
 
 describe('assignAccentVars', () => {
   it('não repete cores para um conjunto de chaves (até o limite da paleta)', () => {
@@ -41,5 +41,18 @@ describe('assignEspacoCores', () => {
   it('usa o hash para quem não escolheu cor', () => {
     const cores = assignEspacoCores([{ id: 'x' }]);
     expect(cores.get('x')).toBe(`var(--accent-${accentIndexFor('x')})`);
+  });
+});
+
+describe('assignCategoriaCores', () => {
+  it('dá cores distintas às categorias e agrupa por chave normalizada', () => {
+    const cores = assignCategoriaCores(['Cursos', 'Bíblia', 'Livros', 'Estudos']);
+    expect(new Set(cores.values()).size).toBe(4);
+    expect(cores.get('cursos')).toBeTruthy();
+  });
+
+  it('trata categoria vazia como uma chave própria', () => {
+    const cores = assignCategoriaCores(['']);
+    expect(cores.get('\u0000sem-categoria')).toBeTruthy();
   });
 });

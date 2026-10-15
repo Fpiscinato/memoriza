@@ -5,7 +5,7 @@ import { getDB } from '../../db/schema';
 import { getTempoTotalEspaco } from '../../db/dashboard';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria, distinctCategorias } from '../../lib/group';
-import { accentVar, espacoCorVar } from '../../lib/color';
+import { accentVar, assignCategoriaCores, chaveCategoria, espacoCorVar } from '../../lib/color';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate, encodeCategoriaSegment } from '../router';
 import { confirmAction } from '../components/confirm-modal';
@@ -14,7 +14,7 @@ import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
-import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
+import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
@@ -37,6 +37,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const nomeTemaSugerido = ultimoTemaCriado?.nome?.trim() || undefined;
   const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
   const espacoIcone = getEspacoIcone(espacoIconeChave(espaco));
+  const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
 
   container.innerHTML = `
     ${renderBreadcrumb([
@@ -128,12 +129,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       </div>
     `
         : grupos
-            .map(
-              (grupo) => `
+            .map((grupo) => {
+              const corCategoria = coresCategoria.get(chaveCategoria(grupo.categoria)) ?? accentVar(grupo.categoria || 'sem-categoria');
+              const iconeCategoria = getEspacoIcone(categoriaIconeChave(grupo.categoria));
+              return `
       <details class="category-group">
-        <summary class="category-group__title" ${grupo.categoria ? `style="--group-accent:${accentVar(grupo.categoria.toLowerCase())}"` : ''}>
+        <summary class="category-group__title" style="--group-accent:${corCategoria}">
           <span class="category-group__label">
-            ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
+            <span class="espaco-icon-inline" style="--badge-accent:${corCategoria}" aria-hidden="true">${iconeCategoria.svg}</span>
             ${escapeHtml(grupo.categoria || 'Sem categoria')}
           </span>
           <span class="category-group__actions">
@@ -149,7 +152,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           ${grupo.itens
             .map(
               (t) => `
-            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.categoria ? grupo.categoria.toLowerCase() : t.id)}">
+            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${corCategoria}">
               <span class="item-row__main">
                 <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(t.nome)}</span>
                 <span class="item-row__meta">${notaCounts.get(t.id) ?? 0} nota(s)</span>
@@ -160,8 +163,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
             .join('')}
         </div>
       </details>
-    `,
-            )
+    `;
+            })
             .join('')
     }
   `;

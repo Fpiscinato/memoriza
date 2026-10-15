@@ -33,6 +33,16 @@ export function espacoCorVar(cor: number | undefined, fallback: string): string 
   return typeof cor === 'number' ? `var(--accent-${cor})` : fallback;
 }
 
+/** Chave normalizada de categoria ('' vira um marcador próprio, para o grupo "Sem categoria"). */
+export function chaveCategoria(categoria: string): string {
+  return categoria ? categoria.toLowerCase() : '\u0000sem-categoria';
+}
+
+/** Cores distintas para um conjunto de categorias (mesmo racional de `assignAccentVars`). */
+export function assignCategoriaCores(categorias: string[]): Map<string, string> {
+  return assignAccentVars(categorias.map(chaveCategoria));
+}
+
 export function assignAccentVars(chaves: string[]): Map<string, string> {
   const usados = new Set<number>();
   const mapa = new Map<string, string>();

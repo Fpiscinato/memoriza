@@ -16,6 +16,7 @@ function svg(inner: string): string {
 export const ESPACO_ICONE_FALLBACK = 'livro';
 
 export const ESPACO_ICONES: EspacoIcone[] = [
+  { chave: 'pasta', label: 'Categoria', svg: svg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>') },
   { chave: 'livro', label: 'Livro', svg: svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>') },
   { chave: 'livros', label: 'Pilha de livros', svg: svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M8 6h8M8 10h8"/>') },
   { chave: 'capelo', label: 'Formatura', svg: svg('<path d="M22 9.5L12 5 2 9.5l10 4.5 10-4.5z"/><path d="M6 11.5V16c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5v-4.5"/>') },
@@ -99,4 +100,11 @@ export function espacoIconeChave(espaco: { icone?: string; nome?: string; catego
   if (espaco.icone && POR_CHAVE.has(espaco.icone)) return espaco.icone;
   const sugerida = sugerirEspacoIcone(`${espaco.nome ?? ''} ${espaco.categoria ?? ''}`);
   return sugerida ?? ESPACO_ICONE_FALLBACK;
+}
+
+/** Ícone de um cabeçalho de categoria: sugestão pelo nome, senão a pasta. */
+export const ESPACO_ICONE_CATEGORIA_FALLBACK = 'pasta';
+
+export function categoriaIconeChave(categoria: string): string {
+  return sugerirEspacoIcone(categoria) ?? ESPACO_ICONE_CATEGORIA_FALLBACK;
 }

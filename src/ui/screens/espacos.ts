@@ -2,12 +2,12 @@ import { countEspacoCascade, createEspaco, deleteEspacoCascade, listCategoriasEs
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
-import { accentVar, assignEspacoCores } from '../../lib/color';
+import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
-import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
+import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 import type { Espaco } from '../../types';
 
@@ -22,6 +22,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const temaCounts = await countTemasPorEspaco(todos.map((e) => e.id));
   const grupos = agruparPorCategoria(ativos);
   const cores = assignEspacoCores(ativos);
+  const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
   const categoriasConhecidas = await listCategoriasEspacos(ctx.perfilId);
 
   container.innerHTML = `
@@ -60,12 +61,17 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       </div>
     `
         : grupos
-            .map(
-              (grupo) => `
+            .map((grupo) => {
+              const unico = grupo.itens.length === 1 ? grupo.itens[0] : null;
+              const corGrupo = unico
+                ? cores.get(unico.id) ?? accentVar(unico.id)
+                : coresCategoria.get(chaveCategoria(grupo.categoria)) ?? accentVar(grupo.categoria);
+              const iconeGrupo = getEspacoIcone(unico ? espacoIconeChave(unico) : categoriaIconeChave(grupo.categoria));
+              return `
       <details class="category-group">
-        <summary class="category-group__title" ${grupo.categoria ? `style="--group-accent:${accentVar(grupo.categoria.toLowerCase())}"` : ''}>
+        <summary class="category-group__title" style="--group-accent:${corGrupo}">
           <span class="category-group__label">
-            ${grupo.categoria ? `<span class="color-dot" style="--dot-color:${accentVar(grupo.categoria.toLowerCase())}"></span>` : ''}
+            <span class="espaco-icon-inline" style="--badge-accent:${corGrupo}" aria-hidden="true">${iconeGrupo.svg}</span>
             ${escapeHtml(grupo.categoria || 'Sem categoria')}
           </span>
         </summary>
@@ -73,8 +79,8 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
           ${grupo.itens.map((e) => renderRow(e, temaCounts.get(e.id) ?? 0, cores.get(e.id) ?? accentVar(e.id))).join('')}
         </div>
       </details>
-    `,
-            )
+    `;
+            })
             .join('')
     }
 
