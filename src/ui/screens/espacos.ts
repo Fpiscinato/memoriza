@@ -2,11 +2,14 @@ import { countEspacoCascade, createEspaco, deleteEspacoCascade, listCategoriasEs
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
-import { accentVar, assignAccentVars } from '../../lib/color';
+import { accentVar, assignEspacoCores } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
+import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
+import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
+import type { Espaco } from '../../types';
 
 export interface EspacosContext {
   perfilId: string;
@@ -18,7 +21,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const arquivados = todos.filter((e) => e.arquivado);
   const temaCounts = await countTemasPorEspaco(todos.map((e) => e.id));
   const grupos = agruparPorCategoria(ativos);
-  const cores = assignAccentVars(ativos.map((e) => e.id));
+  const cores = assignEspacoCores(ativos);
   const categoriasConhecidas = await listCategoriasEspacos(ctx.perfilId);
 
   container.innerHTML = `
@@ -36,6 +39,9 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         <label class="field__label" for="input-categoria-espaco">Categoria (opcional)</label>
         <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
         ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
+      </div>
+      <div style="margin-top: var(--space-4);">
+        ${renderEspacoVisualPicker({ prefix: 'novo-espaco' })}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-espaco" type="button">Criar</button>
@@ -83,7 +89,10 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
               (e) => `
             <div class="item-row" data-id="${escapeHtml(e.id)}">
               <button class="item-row__main" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
-                <span class="item-row__title">${escapeHtml(e.nome)}</span>
+                <span class="item-row__title-row">
+                  <span class="espaco-icon-badge" style="--badge-accent:${accentVar(e.id)}" aria-hidden="true">${getEspacoIcone(espacoIconeChave(e)).svg}</span>
+                  <span class="item-row__title">${escapeHtml(e.nome)}</span>
+                </span>
                 <span class="item-row__meta">Arquivado</span>
               </button>
               <div class="item-row__actions">
@@ -101,6 +110,13 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   `;
 
   bindCategoriaChips(container);
+  bindEspacoVisualPicker(container, {
+    prefix: 'novo-espaco',
+    getTexto: () =>
+      `${container.querySelector<HTMLInputElement>('#input-nome-espaco')?.value ?? ''} ${
+        container.querySelector<HTMLInputElement>('#input-categoria-espaco')?.value ?? ''
+      }`,
+  });
 
   const form = container.querySelector<HTMLElement>('#form-novo-espaco')!;
   const abrirFormEspaco = () => {
@@ -117,7 +133,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
     const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco')!;
     const nome = input.value.trim();
     if (!nome) return;
-    const novo = await createEspaco(ctx.perfilId, nome, categoriaInput.value.trim());
+    const novo = await createEspaco(ctx.perfilId, nome, categoriaInput.value.trim(), lerEspacoVisual(container, 'novo-espaco'));
     navigate(`espacos/${novo.id}`);
   });
 
@@ -152,11 +168,15 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   });
 }
 
-function renderRow(e: { id: string; nome: string }, temaCount: number, cor: string): string {
+function renderRow(e: Espaco, temaCount: number, cor: string): string {
+  const icone = getEspacoIcone(espacoIconeChave(e));
   return `
     <div class="item-row" data-id="${escapeHtml(e.id)}" style="--row-accent:${cor}">
       <button class="item-row__main" data-open="${escapeHtml(e.id)}" type="button" style="background:none;border:none;text-align:left;cursor:pointer;">
-        <span class="item-row__title">${escapeHtml(e.nome)}</span>
+        <span class="item-row__title-row">
+          <span class="espaco-icon-badge" style="--badge-accent:${cor}" aria-hidden="true">${icone.svg}</span>
+          <span class="item-row__title">${escapeHtml(e.nome)}</span>
+        </span>
         <span class="item-row__meta">${temaCount} tema(s)</span>
       </button>
       <div class="item-row__actions">

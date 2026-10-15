@@ -62,7 +62,11 @@ const SECOES: Secao[] = [
       "Bíblia" pra estudos bíblicos. Essas três já aparecem sugeridas na hora de criar um
       Espaço novo, mesmo antes de você ter usado alguma — mas é só sugestão, digite o que
       quiser. Assim que você tiver mais de um curso ou mais livros, a tela de Espaços continua
-      organizada em vez de virar uma lista solta.</p>`,
+      organizada em vez de virar uma lista solta.</p>
+      <p>Cada Espaço também tem um <strong>ícone</strong> e uma <strong>cor</strong> — escolha na
+      hora de criar (ou depois, em Editar). Conforme você digita o nome/categoria, o app sugere
+      ícones prováveis (ex: "Bíblia" → igreja, "Curso" → capa de formatura, "Livro" → pilha de
+      livros). A cor ajuda a bater o olho e achar cada Espaço mais rápido.</p>`,
   },
   {
     titulo: 'Temas — os assuntos/aulas dentro de um Espaço',

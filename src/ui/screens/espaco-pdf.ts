@@ -2,9 +2,10 @@ import { buildEspacoPdfData } from '../../db/pdf-data';
 import { buildPlainText } from '../../lib/pdf-text';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
-import { accentVar } from '../../lib/color';
+import { accentVar, espacoCorVar } from '../../lib/color';
 import { formatDateBR, toLondonISODate } from '../../lib/time';
 import { navigate } from '../router';
+import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 
 export async function renderEspacoPdf(container: HTMLElement, espacoId: string, categoria?: string): Promise<void> {
@@ -16,6 +17,8 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
   const { espaco } = data;
   const grupos = categoria === undefined ? data.grupos : data.grupos.filter((g) => g.categoria === categoria);
   const textoPlano = buildPlainText(espaco, grupos);
+  const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
+  const espacoIcone = getEspacoIcone(espacoIconeChave(espaco));
 
   container.innerHTML = `
     <div class="pdf-toolbar no-print">
@@ -29,7 +32,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
 
     <article class="pdf-page">
       <h1>
-        <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>${escapeHtml(espaco.nome)}
+        <span class="espaco-icon-inline" style="--badge-accent:${espacoCor}" aria-hidden="true">${espacoIcone.svg}</span>${escapeHtml(espaco.nome)}
       </h1>
       <p class="pdf-meta">
         ${categoria !== undefined ? `Categoria: ${escapeHtml(categoria || 'Sem categoria')} · ` : ''}Gerado em ${formatDateBR(toLondonISODate() + 'T00:00:00Z')}

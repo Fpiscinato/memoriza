@@ -1,8 +1,10 @@
 import { getFavoritos } from '../../db/favorites';
 import { escapeHtml } from '../../lib/dom';
-import { accentVar } from '../../lib/color';
+import { accentVar, assignEspacoCores } from '../../lib/color';
 import { navigate } from '../router';
+import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
+import type { Espaco } from '../../types';
 
 export interface FavoritosContext {
   perfilId: string;
@@ -24,31 +26,34 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
     return;
   }
 
-  const temasPorEspaco = new Map<string, { espacoId: string; espacoNome: string; itens: typeof temas }>();
+  const temasPorEspaco = new Map<string, { espaco: Espaco; itens: typeof temas }>();
   for (const tf of temas) {
-    const grupo = temasPorEspaco.get(tf.espaco.id) ?? {
-      espacoId: tf.espaco.id,
-      espacoNome: tf.espaco.nome,
-      itens: [],
-    };
+    const grupo = temasPorEspaco.get(tf.espaco.id) ?? { espaco: tf.espaco, itens: [] };
     grupo.itens.push(tf);
     temasPorEspaco.set(tf.espaco.id, grupo);
   }
 
-  const notasPorTema = new Map<
-    string,
-    { temaNome: string; espacoId: string; espacoNome: string; itens: typeof notas }
-  >();
+  const notasPorTema = new Map<string, { temaNome: string; espaco: Espaco; itens: typeof notas }>();
   for (const nf of notas) {
     const grupo = notasPorTema.get(nf.tema.id) ?? {
       temaNome: nf.tema.nome,
-      espacoId: nf.espaco.id,
-      espacoNome: nf.espaco.nome,
+      espaco: nf.espaco,
       itens: [],
     };
     grupo.itens.push(nf);
     notasPorTema.set(nf.tema.id, grupo);
   }
+
+  const espacosPresentes = new Map<string, Espaco>();
+  for (const tf of temas) espacosPresentes.set(tf.espaco.id, tf.espaco);
+  for (const nf of notas) espacosPresentes.set(nf.espaco.id, nf.espaco);
+  const cores = assignEspacoCores([...espacosPresentes.values()]);
+
+  const marcador = (espaco: Espaco): string => {
+    const cor = cores.get(espaco.id) ?? accentVar(espaco.id);
+    const icone = getEspacoIcone(espacoIconeChave(espaco));
+    return `<span class="espaco-icon-inline" style="--badge-accent:${cor}" aria-hidden="true">${icone.svg}</span>`;
+  };
 
   container.innerHTML = `
     <p class="screen-hint" style="margin-top:0;">Temas e Notas que você marcou pra achar rápido, sem navegar pelos Espaços.</p>
@@ -61,14 +66,14 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
         .map(
           (grupo) => `
         <div class="category-group">
-          <div class="queue-group__title" style="--group-accent:${accentVar(grupo.espacoId)}; text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
-            <span class="color-dot" style="--dot-color:${accentVar(grupo.espacoId)}"></span>${escapeHtml(grupo.espacoNome)}
+          <div class="queue-group__title" style="--group-accent:${cores.get(grupo.espaco.id) ?? accentVar(grupo.espaco.id)}; text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
+            ${marcador(grupo.espaco)}${escapeHtml(grupo.espaco.nome)}
           </div>
           <div class="item-list">
             ${grupo.itens
               .map(
                 (tf) => `
-              <button class="item-row" data-tema="${escapeHtml(tf.tema.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.espacoId)}">
+              <button class="item-row" data-tema="${escapeHtml(tf.tema.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${cores.get(grupo.espaco.id) ?? accentVar(grupo.espaco.id)}">
                 <span class="item-row__main">
                   <span class="item-row__title">${ICONS.star} ${escapeHtml(tf.tema.nome)}</span>
                 </span>
@@ -93,14 +98,14 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
         .map(
           (grupo) => `
         <div class="category-group">
-          <div class="queue-group__title" style="--group-accent:${accentVar(grupo.espacoId)}; text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
-            <span class="color-dot" style="--dot-color:${accentVar(grupo.espacoId)}"></span>${escapeHtml(grupo.temaNome)} <span class="queue-group__espaco"> · ${escapeHtml(grupo.espacoNome)}</span>
+          <div class="queue-group__title" style="--group-accent:${cores.get(grupo.espaco.id) ?? accentVar(grupo.espaco.id)}; text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
+            ${marcador(grupo.espaco)}${escapeHtml(grupo.temaNome)} <span class="queue-group__espaco"> · ${escapeHtml(grupo.espaco.nome)}</span>
           </div>
           <div class="item-list">
             ${grupo.itens
               .map(
                 (nf) => `
-              <button class="item-row" data-nota="${escapeHtml(nf.nota.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${accentVar(grupo.espacoId)}">
+              <button class="item-row" data-nota="${escapeHtml(nf.nota.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${cores.get(grupo.espaco.id) ?? accentVar(grupo.espaco.id)}">
                 <span class="item-row__main">
                   <span class="item-row__title">${ICONS.star} ${escapeHtml(nf.nota.titulo || '(sem título)')}</span>
                   <span class="item-row__meta">${escapeHtml(nf.nota.fonte || 'Sem fonte')}</span>

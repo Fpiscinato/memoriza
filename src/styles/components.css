@@ -856,6 +856,125 @@ button.item-row:hover {
   font-weight: var(--font-weight-semibold);
 }
 
+/* Ícone escolhido do Espaço (src/ui/espaco-icons.ts) — badge quadrado com fundo tingido da
+   cor do Espaço. */
+.espaco-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  color: var(--badge-accent, var(--color-text-muted));
+  background: color-mix(in srgb, var(--badge-accent, var(--color-text-faint)) 15%, transparent);
+}
+
+.espaco-icon-badge svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Variante pequena, alinhada ao texto (breadcrumb, títulos de grupo, PDF). */
+.espaco-icon-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  margin-right: var(--space-2);
+  vertical-align: -0.16em;
+  color: var(--badge-accent, var(--color-text-muted));
+  flex-shrink: 0;
+}
+
+.espaco-icon-inline svg {
+  width: 1em;
+  height: 1em;
+}
+
+.item-row__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Seletor de aparência do Espaço (ícone + cor) — components/espaco-visual.ts */
+.espaco-visual__hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-faint);
+  margin: 0 0 var(--space-2);
+}
+
+.espaco-visual__icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.espaco-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.espaco-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.espaco-icon-btn:hover {
+  border-color: var(--color-text-faint);
+  color: var(--color-text);
+}
+
+.espaco-icon-btn.is-suggested {
+  border-color: var(--color-brand);
+}
+
+.espaco-icon-btn.is-selected {
+  background: var(--color-brand-bg);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.espaco-visual__cores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--swatch, var(--color-surface));
+  cursor: pointer;
+}
+
+.color-swatch.is-selected {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.color-swatch--auto {
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
 .item-row__meta {
   font-size: var(--font-size-xs);
   color: var(--color-text-faint);
@@ -892,6 +1011,10 @@ button.item-row:hover {
   line-height: var(--line-height-tight);
   display: flex;
   align-items: center;
+}
+
+.section-header__title .espaco-icon-badge {
+  margin-right: var(--space-2);
 }
 
 .section-header__actions {

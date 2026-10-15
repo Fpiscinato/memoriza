@@ -5,7 +5,7 @@ import { getDB } from '../../db/schema';
 import { getTempoTotalEspaco } from '../../db/dashboard';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria, distinctCategorias } from '../../lib/group';
-import { accentVar } from '../../lib/color';
+import { accentVar, espacoCorVar } from '../../lib/color';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate, encodeCategoriaSegment } from '../router';
 import { confirmAction } from '../components/confirm-modal';
@@ -13,6 +13,8 @@ import { showInfo } from '../components/info-modal';
 import { iniciarAvaliacaoAleatoria } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
+import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
+import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
@@ -33,17 +35,19 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const ultimoTemaCriado = [...temas].sort((a, b) => b.criado_em.localeCompare(a.criado_em))[0];
   const categoriaTemaSugerida = ultimoTemaCriado?.categoria?.trim() || undefined;
   const nomeTemaSugerido = ultimoTemaCriado?.nome?.trim() || undefined;
+  const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
+  const espacoIcone = getEspacoIcone(espacoIconeChave(espaco));
 
   container.innerHTML = `
     ${renderBreadcrumb([
       { label: 'Espaços', route: 'espacos' },
       ...(espaco.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
-      { label: espaco.nome, colorKey: espaco.id },
+      { label: espaco.nome, iconKey: espacoIcone.chave, iconColor: espacoCor },
     ])}
 
     <div class="section-header">
       <span class="section-header__title">
-        <span class="color-dot" style="--dot-color:${accentVar(espaco.id)}"></span>${escapeHtml(espaco.nome)}
+        <span class="espaco-icon-badge" style="--badge-accent:${espacoCor}" aria-hidden="true">${espacoIcone.svg}</span>${escapeHtml(espaco.nome)}
       </span>
       <div class="section-header__actions">
         <button class="btn btn--secondary btn--sm" id="btn-editar" type="button">Editar</button>
@@ -71,6 +75,9 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <label class="field__label" for="input-categoria-espaco-editar">Categoria (opcional)</label>
         <input class="input" id="input-categoria-espaco-editar" type="text" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
         ${renderCategoriaChips(categoriasEspaco, 'input-categoria-espaco-editar')}
+      </div>
+      <div style="margin-top: var(--space-4);">
+        ${renderEspacoVisualPicker({ prefix: 'editar-espaco', icone: espaco.icone, cor: espaco.cor })}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao" type="button">Salvar</button>
@@ -161,6 +168,13 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
 
   bindBreadcrumb(container);
   bindCategoriaChips(container);
+  bindEspacoVisualPicker(container, {
+    prefix: 'editar-espaco',
+    getTexto: () =>
+      `${container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')?.value ?? ''} ${
+        container.querySelector<HTMLInputElement>('#input-categoria-espaco-editar')?.value ?? ''
+      }`,
+  });
 
   container.querySelectorAll<HTMLButtonElement>('[data-pdf-categoria]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -197,7 +211,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     const nome = container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')!.value.trim();
     const categoria = container.querySelector<HTMLInputElement>('#input-categoria-espaco-editar')!.value.trim();
     if (!nome) return;
-    await updateEspaco(espaco.id, nome, categoria);
+    await updateEspaco(espaco.id, nome, categoria, lerEspacoVisual(container, 'editar-espaco'));
     renderEspacoDetail(container, espacoId);
   });
 

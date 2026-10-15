@@ -19,6 +19,10 @@ export interface Espaco {
   arquivado: boolean;
   /** Quando arquivado virou true da última vez — ausente em Espaços arquivados antes desse campo existir. */
   arquivado_em?: string;
+  /** Chave de um ícone do conjunto curado (src/ui/espaco-icons.ts). Ausente = sugestão automática. */
+  icone?: string;
+  /** Índice da paleta de acento (0..ACCENT_COUNT-1). Ausente = cor automática (sem repetir). */
+  cor?: number;
 }
 
 export interface Tema {

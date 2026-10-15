@@ -25,7 +25,25 @@ export async function getEspaco(id: string): Promise<Espaco | undefined> {
   return db.get('espacos', id);
 }
 
-export async function createEspaco(perfilId: string, nome: string, categoria: string): Promise<Espaco> {
+/** Aparência opcional de um Espaço (ícone escolhido e cor da paleta). */
+export interface EspacoVisual {
+  icone?: string;
+  cor?: number;
+}
+
+function aplicarVisual(espaco: Espaco, visual: EspacoVisual): void {
+  if (visual.icone) espaco.icone = visual.icone;
+  else delete espaco.icone;
+  if (typeof visual.cor === 'number') espaco.cor = visual.cor;
+  else delete espaco.cor;
+}
+
+export async function createEspaco(
+  perfilId: string,
+  nome: string,
+  categoria: string,
+  visual: EspacoVisual = {},
+): Promise<Espaco> {
   const db = await getDB();
   const now = nowISO();
   const espaco: Espaco = {
@@ -37,16 +55,23 @@ export async function createEspaco(perfilId: string, nome: string, categoria: st
     atualizado_em: now,
     arquivado: false,
   };
+  aplicarVisual(espaco, visual);
   await db.put('espacos', espaco);
   return espaco;
 }
 
-export async function updateEspaco(id: string, nome: string, categoria: string): Promise<void> {
+export async function updateEspaco(
+  id: string,
+  nome: string,
+  categoria: string,
+  visual: EspacoVisual = {},
+): Promise<void> {
   const db = await getDB();
   const espaco = await db.get('espacos', id);
   if (!espaco) return;
   espaco.nome = nome;
   espaco.categoria = categoria;
+  aplicarVisual(espaco, visual);
   espaco.atualizado_em = nowISO();
   await db.put('espacos', espaco);
 }
