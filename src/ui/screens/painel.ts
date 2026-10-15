@@ -63,12 +63,13 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
   container.innerHTML = `
     <div class="tabs" role="tablist" aria-label="Painel">
       <button class="tabs__tab" role="tab" aria-selected="true" data-tab="visao">Visão geral</button>
+      <button class="tabs__tab" role="tab" aria-selected="false" data-tab="revisao">Revisão</button>
       <button class="tabs__tab" role="tab" aria-selected="false" data-tab="avaliacoes">Avaliações</button>
       <button class="tabs__tab" role="tab" aria-selected="false" data-tab="evolucao">Evolução</button>
     </div>
 
     <div id="tab-visao" role="tabpanel">
-      <p class="screen-hint" style="margin-top:0;">Sua sequência de dias estudando e os Temas onde você mais marcou "Difícil" — os pontos fracos reais.</p>
+      <p class="screen-hint" style="margin-top:0;">Sua sequência de dias estudando e os números gerais: quantas revisões fez, quanto tempo passou e o tamanho da sua coleção.</p>
 
       <div class="streak-hero">
         <div class="streak-hero__flame" aria-hidden="true">${ICONS.flame}</div>
@@ -123,6 +124,10 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
           <div class="stat-tile__label">Aposentadas</div>
         </div>
       </div>
+    </div>
+
+    <div id="tab-revisao" role="tabpanel" style="display:none;">
+      <p class="screen-hint" style="margin-top:0;">Como a revisão espaçada está indo: onde suas notas estão na escada, a carga dos próximos dias, sua retenção recente e os Temas onde você mais marca "Difícil" — os pontos fracos reais.</p>
 
       <div class="section-header">
         <span class="section-header__title" style="font-size: var(--font-size-base);">Onde suas notas estão na escada</span>
@@ -307,7 +312,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
     </div>
   `;
 
-  const ABAS = ['visao', 'avaliacoes', 'evolucao'];
+  const ABAS = ['visao', 'revisao', 'avaliacoes', 'evolucao'];
   container.querySelectorAll<HTMLButtonElement>('.tabs__tab').forEach((btn) => {
     btn.addEventListener('click', () => {
       container.querySelectorAll<HTMLButtonElement>('.tabs__tab').forEach((b) => {

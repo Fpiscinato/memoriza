@@ -158,11 +158,20 @@ const SECOES: Secao[] = [
   },
   {
     titulo: 'Painel',
-    corpoHtml: `<p>Mostra sua sequência de dias estudando (streak), quanto tempo você estudou
-      hoje, quantas notas estão em cada estágio da escada de revisão (1/7/30/180 dias — quanto
-      mais em 30/180, melhor sua retenção), e o ranking dos Temas onde você mais marcou
-      "Difícil" — geralmente esses são os pontos fracos reais, que a sensação de "acho que já
-      sei" não mostra sozinha.</p>`,
+    corpoHtml: `<p>O Painel é dividido em quatro abas:</p>
+      <ul>
+        <li><strong>Visão geral</strong>: sua sequência de dias estudando (streak), quanto tempo
+        você estudou hoje e o tamanho da coleção (Espaços, Temas, Notas).</li>
+        <li><strong>Revisão</strong>: como a revisão espaçada está indo — quantas notas estão
+        em cada estágio da escada (1/7/30/180 dias; quanto mais em 30/180, melhor sua retenção),
+        a carga dos próximos 7 dias e o ranking dos Temas onde você mais marcou "Difícil" —
+        geralmente esses são os pontos fracos reais, que a sensação de "acho que já sei" não
+        mostra sozinha.</li>
+        <li><strong>Avaliações</strong>: o resultado dos seus autotestes (Fácil/Médio/Difícil),
+        à parte da fila de revisão.</li>
+        <li><strong>Evolução</strong>: quanto você estuda e o ritmo de inclusão de notas ao
+        longo do tempo, num mapa de atividade de 365 dias.</li>
+      </ul>`,
   },
   {
     titulo: 'Exportar em PDF',
