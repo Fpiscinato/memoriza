@@ -1,5 +1,6 @@
 import { getFavoritos } from '../../db/favorites';
 import { escapeHtml } from '../../lib/dom';
+import { nomeTemaExibicao } from '../../domain/rotulos';
 import { accentVar, assignEspacoCores } from '../../lib/color';
 import { navigate } from '../router';
 import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
@@ -36,7 +37,7 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
   const notasPorTema = new Map<string, { temaNome: string; espaco: Espaco; itens: typeof notas }>();
   for (const nf of notas) {
     const grupo = notasPorTema.get(nf.tema.id) ?? {
-      temaNome: nf.tema.nome,
+      temaNome: nomeTemaExibicao(nf.tema.nome),
       espaco: nf.espaco,
       itens: [],
     };
@@ -75,7 +76,7 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
                 (tf) => `
               <button class="item-row" data-tema="${escapeHtml(tf.tema.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${cores.get(grupo.espaco.id) ?? accentVar(grupo.espaco.id)}">
                 <span class="item-row__main">
-                  <span class="item-row__title">${ICONS.star} ${escapeHtml(tf.tema.nome)}</span>
+                  <span class="item-row__title">${ICONS.star} ${escapeHtml(nomeTemaExibicao(tf.tema.nome))}</span>
                 </span>
               </button>
             `,

@@ -2,6 +2,7 @@
 // AvaliacaoRegistro; todos os registros de um mesmo repasse compartilham o `sessao_id`.
 
 import { getDB } from './schema';
+import { nomeTemaExibicao } from '../domain/rotulos';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
 import type { Avaliacao, AvaliacaoRegistro } from '../types';
@@ -62,7 +63,7 @@ export async function resumoAvaliacoes(perfilId: string, limiteSessoes = 20): Pr
   const registros = await db.getAllFromIndex('avaliacoes', 'perfil_id', perfilId);
 
   const espacos = new Map((await db.getAll('espacos')).map((e) => [e.id, e.nome]));
-  const temas = new Map((await db.getAll('temas')).map((t) => [t.id, t.nome]));
+  const temas = new Map((await db.getAll('temas')).map((t) => [t.id, nomeTemaExibicao(t.nome)]));
 
   const resumo: ResumoAvaliacoes = {
     total: 0,

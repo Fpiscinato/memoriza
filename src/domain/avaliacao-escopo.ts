@@ -2,6 +2,7 @@
 // Tema específico. Puro (sem DOM, sem IndexedDB) pra ser fácil de testar.
 
 import type { NotaComTema } from '../db/notas';
+import { nomeTemaExibicao } from './rotulos';
 
 export interface EscopoAvaliacao {
   rotulo: string;
@@ -30,7 +31,7 @@ export function montarEscopos(todas: NotaComTema[], ctx: ContextoEscopo): Escopo
   for (const item of todas) {
     let escopo = porTema.get(item.tema.id);
     if (!escopo) {
-      escopo = { rotulo: item.tema.nome, escopo: 'tema', itens: [] };
+      escopo = { rotulo: nomeTemaExibicao(item.tema.nome), escopo: 'tema', itens: [] };
       porTema.set(item.tema.id, escopo);
     }
     escopo.itens.push(item);

@@ -6,6 +6,7 @@ import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { buildNotaPlainText } from '../../lib/pdf-text';
+import { nomeTemaExibicao } from '../../domain/rotulos';
 import { formatDateBR } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
@@ -77,7 +78,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       ...(espaco?.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
       ...(espaco ? [{ label: espaco.nome, route: `espacos/${espaco.id}`, colorKey: espaco.id }] : []),
       ...(tema.categoria ? [{ label: tema.categoria, colorKey: tema.categoria.toLowerCase() }] : []),
-      { label: tema.nome, route: `temas/${tema.id}` },
+      { label: nomeTemaExibicao(tema.nome), route: `temas/${tema.id}` },
       { label: params.mode === 'nova' ? 'Nova nota' : nota?.titulo || 'Editar nota' },
     ])}
 

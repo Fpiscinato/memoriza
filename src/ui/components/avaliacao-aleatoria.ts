@@ -1,6 +1,7 @@
 import type { NotaComTema } from '../../db/notas';
 import { registrarAvaliacao } from '../../db/avaliacoes';
 import { montarEscopos, type EscopoAvaliacao } from '../../domain/avaliacao-escopo';
+import { nomeTemaExibicao } from '../../domain/rotulos';
 import { uuid } from '../../lib/uuid';
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
@@ -196,7 +197,7 @@ function renderQuiz(
     ${cabecalho('Encerrar avaliação')}
     <div class="content-narrow">
     <div class="card review-card">
-      <div class="review-card__meta">${escapeHtml(atual.tema.nome)} · ${indice + 1} de ${sessao.itens.length}</div>
+      <div class="review-card__meta">${escapeHtml(nomeTemaExibicao(atual.tema.nome))} · ${indice + 1} de ${sessao.itens.length}</div>
       <div class="review-card__titulo">${atual.nota.favorito ? `${ICONS.star} ` : ''}${escapeHtml(atual.nota.titulo || '(sem título)')}</div>
       ${
         !revelado

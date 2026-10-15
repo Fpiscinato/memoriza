@@ -11,6 +11,7 @@ import {
   nomeCategoriaOuSemCategoria,
   numerarGrupos,
 } from '../../domain/pdf-estrutura';
+import { nomeTemaExibicao } from '../../domain/rotulos';
 import { navigate } from '../router';
 import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
@@ -144,7 +145,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
               <div class="pdf-tema__title">
                 <span class="pdf-num pdf-num--tema">${tema.numero}</span>
                 <span class="pdf-nivel">Tema</span>
-                ${tema.temaPdf.tema.favorito ? `${ICONS.star} ` : ''}<span class="pdf-tema__nome">${escapeHtml(tema.temaPdf.tema.nome)}</span>
+                ${tema.temaPdf.tema.favorito ? `${ICONS.star} ` : ''}<span class="pdf-tema__nome">${escapeHtml(nomeTemaExibicao(tema.temaPdf.tema.nome))}</span>
                 <span class="pdf-contagem">${plural(tema.notas.length, 'nota')}</span>
               </div>
               ${

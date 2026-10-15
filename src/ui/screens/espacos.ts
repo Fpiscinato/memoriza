@@ -7,6 +7,7 @@ import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
+import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 import type { Espaco } from '../../types';
@@ -33,13 +34,15 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
 
     <div id="form-novo-espaco" style="display:none" class="card">
       <div class="field">
-        <label class="field__label" for="input-nome-espaco">Nome do espaço</label>
-        <input class="input" id="input-nome-espaco" type="text" placeholder="Ex: Curso de Investimentos" maxlength="120" />
+        <label class="field__label" for="input-categoria-espaco">Categoria</label>
+        <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
+        <p class="field__error" role="alert"></p>
+        ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
       </div>
       <div class="field" style="margin-top: var(--space-3);">
-        <label class="field__label" for="input-categoria-espaco">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
-        ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
+        <label class="field__label" for="input-nome-espaco">Nome do espaço</label>
+        <input class="input" id="input-nome-espaco" type="text" placeholder="Ex: Curso de Investimentos" maxlength="120" />
+        <p class="field__error" role="alert"></p>
       </div>
       <div style="margin-top: var(--space-4);">
         ${renderEspacoVisualPicker({ prefix: 'novo-espaco' })}
@@ -127,19 +130,44 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const form = container.querySelector<HTMLElement>('#form-novo-espaco')!;
   const abrirFormEspaco = () => {
     form.style.display = 'block';
-    container.querySelector<HTMLInputElement>('#input-nome-espaco')?.focus();
+    container.querySelector<HTMLInputElement>('#input-categoria-espaco')?.focus();
   };
   container.querySelector('#btn-novo-espaco')?.addEventListener('click', abrirFormEspaco);
   container.querySelector('#btn-empty-novo-espaco')?.addEventListener('click', abrirFormEspaco);
   container.querySelector('#btn-cancelar-espaco')?.addEventListener('click', () => {
     form.style.display = 'none';
   });
+  for (const id of ['#input-nome-espaco', '#input-categoria-espaco']) {
+    container.querySelector<HTMLInputElement>(id)?.addEventListener('input', (e) => {
+      limparErroCampo(e.target as HTMLElement);
+    });
+  }
   container.querySelector('#btn-salvar-espaco')?.addEventListener('click', async () => {
     const input = container.querySelector<HTMLInputElement>('#input-nome-espaco')!;
     const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco')!;
     const nome = input.value.trim();
-    if (!nome) return;
-    const novo = await createEspaco(ctx.perfilId, nome, categoriaInput.value.trim(), lerEspacoVisual(container, 'novo-espaco'));
+    const categoria = categoriaInput.value.trim();
+    const nomeJaExiste = todos.some((e) => e.nome.trim().toLowerCase() === nome.toLowerCase());
+
+    if (
+      !validarCampos([
+        { input: categoriaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para o espaço.' },
+        {
+          input,
+          ok: nome.length > 0,
+          mensagem: 'Informe um nome para o espaço.',
+        },
+      ])
+    ) {
+      return;
+    }
+    if (nomeJaExiste) {
+      marcarErroCampo(input, 'Já existe um espaço com esse nome.');
+      input.focus();
+      return;
+    }
+
+    const novo = await createEspaco(ctx.perfilId, nome, categoria, lerEspacoVisual(container, 'novo-espaco'));
     navigate(`espacos/${novo.id}`);
   });
 

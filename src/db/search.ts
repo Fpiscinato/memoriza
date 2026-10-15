@@ -4,6 +4,7 @@
 import { getDB } from './schema';
 import type { Espaco, Tema } from '../types';
 import { compararTextos } from '../lib/ordem';
+import { nomeTemaExibicao } from '../domain/rotulos';
 
 export type ResultadoBusca =
   | { kind: 'espaco'; id: string; titulo: string; meta: string; snippet?: string }
@@ -87,7 +88,7 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
       resultados.push({
         kind: 'tema',
         id: tema.id,
-        titulo: tema.nome,
+        titulo: nomeTemaExibicao(tema.nome),
         meta: `Tema${espaco ? ` · ${espaco.nome}` : ''}`,
       });
       if (resultados.length >= LIMITE_TOTAL) return resultados;
@@ -100,7 +101,7 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
     const espaco = tema && espacoPorId.get(tema.espaco_id);
     const trilha = [
       ...(espaco ? [espaco.nome] : []),
-      ...(tema ? [tema.nome] : []),
+      ...(tema ? [nomeTemaExibicao(tema.nome)] : []),
     ].join(' · ');
     resultados.push({
       kind: 'nota',

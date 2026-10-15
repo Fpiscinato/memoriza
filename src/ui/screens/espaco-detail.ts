@@ -1,4 +1,4 @@
-import { countEspacoCascade, deleteEspacoCascade, getEspaco, listCategoriasEspacos, setEspacoArquivado, updateEspaco } from '../../db/espacos';
+import { countEspacoCascade, deleteEspacoCascade, getEspaco, listCategoriasEspacos, listEspacos, setEspacoArquivado, updateEspaco } from '../../db/espacos';
 import { createTema, listTemas } from '../../db/temas';
 import { listNotasPorEspaco } from '../../db/notas';
 import { getDB } from '../../db/schema';
@@ -14,6 +14,8 @@ import { iniciarAvaliacao, type AvaliacaoContexto } from '../components/avaliaca
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
+import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
+import { nomeTemaExibicao } from '../../domain/rotulos';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 
@@ -69,13 +71,15 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
 
     <div id="form-editar-espaco" style="display:none" class="card content-narrow">
       <div class="field">
-        <label class="field__label" for="input-nome-espaco-editar">Nome</label>
-        <input class="input" id="input-nome-espaco-editar" type="text" value="${escapeHtml(espaco.nome)}" maxlength="120" />
+        <label class="field__label" for="input-categoria-espaco-editar">Categoria</label>
+        <input class="input" id="input-categoria-espaco-editar" type="text" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
+        <p class="field__error" role="alert"></p>
+        ${renderCategoriaChips(categoriasEspaco, 'input-categoria-espaco-editar')}
       </div>
       <div class="field" style="margin-top: var(--space-3);">
-        <label class="field__label" for="input-categoria-espaco-editar">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-espaco-editar" type="text" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
-        ${renderCategoriaChips(categoriasEspaco, 'input-categoria-espaco-editar')}
+        <label class="field__label" for="input-nome-espaco-editar">Nome</label>
+        <input class="input" id="input-nome-espaco-editar" type="text" value="${escapeHtml(espaco.nome)}" maxlength="120" />
+        <p class="field__error" role="alert"></p>
       </div>
       <div style="margin-top: var(--space-4);">
         ${renderEspacoVisualPicker({ prefix: 'editar-espaco', icone: espaco.icone, cor: espaco.cor })}
@@ -96,17 +100,19 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       !espaco.arquivado
         ? `
     <div id="form-novo-tema" style="display:none" class="card content-narrow">
-      <p class="screen-hint" style="margin-top:0;">Um Tema é um assunto ou aula dentro deste Espaço — não precisa de categoria se não fizer sentido agrupar.</p>
+      <p class="screen-hint" style="margin-top:0;">Um Tema é um assunto ou aula dentro deste Espaço. A <strong>categoria</strong> agrupa os temas (ex: o módulo do curso) — preencha ela primeiro; o nome é opcional.</p>
       <div class="field">
-        <label class="field__label" for="input-nome-tema">Nome do tema</label>
-        <input class="input${nomeTemaSugerido ? ' input--sugerido' : ''}" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" value="${escapeHtml(nomeTemaSugerido ?? '')}" />
-        ${nomeTemaSugerido ? `<p class="field__sugestao-hint">↻ Nome do último tema criado aqui — edite antes de salvar</p>` : ''}
-      </div>
-      <div class="field" style="margin-top: var(--space-3);">
-        <label class="field__label" for="input-categoria-tema">Categoria (opcional)</label>
+        <label class="field__label" for="input-categoria-tema">Categoria</label>
         <input class="input${categoriaTemaSugerida ? ' input--sugerido' : ''}" id="input-categoria-tema" type="text" placeholder="Ex: nome do módulo" maxlength="80" value="${escapeHtml(categoriaTemaSugerida ?? '')}" />
+        <p class="field__error" role="alert"></p>
         ${categoriaTemaSugerida ? `<p class="field__sugestao-hint">↻ Categoria do último tema criado aqui — edite se for outro módulo</p>` : ''}
         ${renderCategoriaChips(categoriasTema, 'input-categoria-tema')}
+      </div>
+      <div class="field" style="margin-top: var(--space-3);">
+        <label class="field__label" for="input-nome-tema">Nome do tema (opcional)</label>
+        <input class="input${nomeTemaSugerido ? ' input--sugerido' : ''}" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" value="${escapeHtml(nomeTemaSugerido ?? '')}" />
+        <p class="field__error" role="alert"></p>
+        ${nomeTemaSugerido ? `<p class="field__sugestao-hint">↻ Nome do último tema criado aqui — edite antes de salvar</p>` : ''}
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar</button>
@@ -154,7 +160,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
               (t) => `
             <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${corCategoria}">
               <span class="item-row__main">
-                <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(t.nome)}</span>
+                <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(t.nome))}</span>
                 <span class="item-row__meta">${notaCounts.get(t.id) ?? 0} nota(s)</span>
               </span>
             </button>
@@ -203,17 +209,35 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   });
 
   const formEditar = container.querySelector<HTMLElement>('#form-editar-espaco')!;
+  const nomeEditarInput = container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')!;
+  const categoriaEditarInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco-editar')!;
   container.querySelector('#btn-editar')?.addEventListener('click', () => {
     formEditar.style.display = 'block';
-    container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')?.focus();
+    categoriaEditarInput.focus();
   });
   container.querySelector('#btn-cancelar-edicao')?.addEventListener('click', () => {
     formEditar.style.display = 'none';
   });
+  for (const input of [nomeEditarInput, categoriaEditarInput]) {
+    input.addEventListener('input', () => limparErroCampo(input));
+  }
   container.querySelector('#btn-salvar-edicao')?.addEventListener('click', async () => {
-    const nome = container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')!.value.trim();
-    const categoria = container.querySelector<HTMLInputElement>('#input-categoria-espaco-editar')!.value.trim();
-    if (!nome) return;
+    const nome = nomeEditarInput.value.trim();
+    const categoria = categoriaEditarInput.value.trim();
+    if (
+      !validarCampos([
+        { input: categoriaEditarInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para o espaço.' },
+        { input: nomeEditarInput, ok: nome.length > 0, mensagem: 'Informe um nome para o espaço.' },
+      ])
+    ) {
+      return;
+    }
+    const irmaos = await listEspacos(espaco.perfil_id);
+    if (irmaos.some((e) => e.id !== espaco.id && e.nome.trim().toLowerCase() === nome.toLowerCase())) {
+      marcarErroCampo(nomeEditarInput, 'Já existe um espaço com esse nome.');
+      nomeEditarInput.focus();
+      return;
+    }
     await updateEspaco(espaco.id, nome, categoria, lerEspacoVisual(container, 'editar-espaco'));
     renderEspacoDetail(container, espacoId);
   });
@@ -293,40 +317,52 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const formTema = container.querySelector<HTMLElement>('#form-novo-tema');
   const abrirFormTema = () => {
     if (formTema) formTema.style.display = 'block';
-    container.querySelector<HTMLInputElement>('#input-nome-tema')?.focus();
+    container.querySelector<HTMLInputElement>('#input-categoria-tema')?.focus();
   };
   container.querySelector('#btn-novo-tema')?.addEventListener('click', abrirFormTema);
   container.querySelector('#btn-empty-novo-tema')?.addEventListener('click', abrirFormTema);
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
     if (formTema) formTema.style.display = 'none';
   });
-  const nomeTemaInput = container.querySelector<HTMLInputElement>('#input-nome-tema');
-  if (nomeTemaSugerido && nomeTemaInput) {
+  const nomeTemaInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;
+  const categoriaTemaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema')!;
+  if (nomeTemaSugerido) {
     nomeTemaInput.addEventListener('input', () => clearInputSugestao(nomeTemaInput), { once: true });
   }
-  const categoriaTemaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema');
-  if (categoriaTemaSugerida && categoriaTemaInput) {
+  if (categoriaTemaSugerida) {
     categoriaTemaInput.addEventListener('input', () => clearInputSugestao(categoriaTemaInput), { once: true });
+  }
+  for (const input of [nomeTemaInput, categoriaTemaInput]) {
+    input.addEventListener('input', () => limparErroCampo(input));
   }
   container.querySelectorAll<HTMLButtonElement>('[data-novo-tema-categoria]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (formTema) formTema.style.display = 'block';
-      if (categoriaTemaInput) {
-        categoriaTemaInput.value = btn.dataset.novoTemaCategoria!;
-        clearInputSugestao(categoriaTemaInput);
-      }
-      container.querySelector<HTMLInputElement>('#input-nome-tema')?.focus();
+      categoriaTemaInput.value = btn.dataset.novoTemaCategoria!;
+      clearInputSugestao(categoriaTemaInput);
+      nomeTemaInput.focus();
       formTema?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
   container.querySelector('#btn-salvar-tema')?.addEventListener('click', async () => {
-    const nomeInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;
-    const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema')!;
-    const nome = nomeInput.value.trim();
-    if (!nome) return;
-    const novoTema = await createTema(espacoId, nome, categoriaInput.value.trim());
+    const nome = nomeTemaInput.value.trim();
+    const categoria = categoriaTemaInput.value.trim();
+    if (!validarCampos([{ input: categoriaTemaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para o tema.' }])) {
+      return;
+    }
+    // Categoria + Nome iguais no mesmo Espaço = Tema duplicado. Sem nome, não dá pra comparar.
+    const normalizado = (s: string) => s.trim().toLowerCase();
+    const duplicado = temas.some(
+      (t) => normalizado(t.categoria) === normalizado(categoria) && normalizado(t.nome) === normalizado(nome) && nome.length > 0,
+    );
+    if (duplicado) {
+      marcarErroCampo(nomeTemaInput, 'Já existe um tema com esse nome nesta categoria.');
+      nomeTemaInput.focus();
+      return;
+    }
+    const novoTema = await createTema(espacoId, nome, categoria);
     navigate(`temas/${novoTema.id}`);
   });
 

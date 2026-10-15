@@ -12,6 +12,8 @@ import { showInfo } from '../components/info-modal';
 import { iniciarAvaliacao, type AvaliacaoContexto } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
+import { nomeTemaExibicao } from '../../domain/rotulos';
+import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
 import { ICONS } from '../icons';
 
 export async function renderTemaDetail(container: HTMLElement, temaId: string): Promise<void> {
@@ -41,12 +43,12 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       ...(espaco?.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
       ...(espaco ? [{ label: espaco.nome, route: `espacos/${espaco.id}`, colorKey: espaco.id }] : []),
       ...(tema.categoria ? [{ label: tema.categoria, colorKey: tema.categoria.toLowerCase() }] : []),
-      { label: tema.nome },
+      { label: nomeTemaExibicao(tema.nome) },
     ])}
 
     <div class="section-header">
       <span class="section-header__title">
-        <span class="color-dot" style="--dot-color:${accentVar(temaAccentKey)}"></span>${tema.favorito ? `${ICONS.star} ` : ''}${escapeHtml(tema.nome)}
+        <span class="color-dot" style="--dot-color:${accentVar(temaAccentKey)}"></span>${tema.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(tema.nome))}
       </span>
       <div class="section-header__actions">
         <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
@@ -71,13 +73,15 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
 
     <div id="form-editar-tema" style="display:none" class="card">
       <div class="field">
-        <label class="field__label" for="input-nome-tema-editar">Nome</label>
-        <input class="input" id="input-nome-tema-editar" type="text" value="${escapeHtml(tema.nome)}" maxlength="120" />
+        <label class="field__label" for="input-categoria-tema-editar">Categoria</label>
+        <input class="input" id="input-categoria-tema-editar" type="text" value="${escapeHtml(tema.categoria)}" maxlength="80" />
+        <p class="field__error" role="alert"></p>
+        ${renderCategoriaChips(categoriasTema, 'input-categoria-tema-editar')}
       </div>
       <div class="field" style="margin-top: var(--space-3);">
-        <label class="field__label" for="input-categoria-tema-editar">Categoria (opcional)</label>
-        <input class="input" id="input-categoria-tema-editar" type="text" value="${escapeHtml(tema.categoria)}" maxlength="80" />
-        ${renderCategoriaChips(categoriasTema, 'input-categoria-tema-editar')}
+        <label class="field__label" for="input-nome-tema-editar">Nome (opcional)</label>
+        <input class="input" id="input-nome-tema-editar" type="text" value="${escapeHtml(tema.nome)}" maxlength="120" />
+        <p class="field__error" role="alert"></p>
       </div>
       <div class="form-actions" style="margin-top: var(--space-3);">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao-tema" type="button">Salvar</button>
@@ -139,7 +143,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     const dias = daysBetweenISODates(toLondonISODate(new Date(tema.criado_em)), toLondonISODate());
 
     showInfo({
-      title: tema.nome,
+      title: nomeTemaExibicao(tema.nome),
       bodyHtml: `
         <div class="stat-grid" style="margin-bottom: var(--space-3); grid-template-columns: repeat(2, 1fr);">
           <div class="stat-tile">
@@ -165,24 +169,44 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     const ctx: AvaliacaoContexto = {
       perfilId: espaco!.perfil_id,
       espacoId: tema.espaco_id,
-      nomeContexto: tema.nome,
+      nomeContexto: nomeTemaExibicao(tema.nome),
       tipo: 'tema',
     };
     iniciarAvaliacao(container, notasComTema, ctx, () => renderTemaDetail(container, temaId));
   });
 
   const formEditar = container.querySelector<HTMLElement>('#form-editar-tema')!;
+  const nomeEditarInput = container.querySelector<HTMLInputElement>('#input-nome-tema-editar')!;
+  const categoriaEditarInput = container.querySelector<HTMLInputElement>('#input-categoria-tema-editar')!;
   container.querySelector('#btn-editar-tema')?.addEventListener('click', () => {
     formEditar.style.display = 'block';
-    container.querySelector<HTMLInputElement>('#input-nome-tema-editar')?.focus();
+    categoriaEditarInput.focus();
   });
   container.querySelector('#btn-cancelar-edicao-tema')?.addEventListener('click', () => {
     formEditar.style.display = 'none';
   });
+  for (const input of [nomeEditarInput, categoriaEditarInput]) {
+    input.addEventListener('input', () => limparErroCampo(input));
+  }
   container.querySelector('#btn-salvar-edicao-tema')?.addEventListener('click', async () => {
-    const nome = container.querySelector<HTMLInputElement>('#input-nome-tema-editar')!.value.trim();
-    const categoria = container.querySelector<HTMLInputElement>('#input-categoria-tema-editar')!.value.trim();
-    if (!nome) return;
+    const nome = nomeEditarInput.value.trim();
+    const categoria = categoriaEditarInput.value.trim();
+    if (!validarCampos([{ input: categoriaEditarInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para o tema.' }])) {
+      return;
+    }
+    const normalizado = (s: string) => s.trim().toLowerCase();
+    const duplicado = temasDoEspaco.some(
+      (t) =>
+        t.id !== tema.id &&
+        normalizado(t.categoria) === normalizado(categoria) &&
+        normalizado(t.nome) === normalizado(nome) &&
+        nome.length > 0,
+    );
+    if (duplicado) {
+      marcarErroCampo(nomeEditarInput, 'Já existe um tema com esse nome nesta categoria.');
+      nomeEditarInput.focus();
+      return;
+    }
     await updateTema(tema.id, nome, categoria);
     renderTemaDetail(container, temaId);
   });
@@ -190,7 +214,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   container.querySelector('#btn-excluir-tema')?.addEventListener('click', async () => {
     const contagem = await countTemaCascade(tema.id);
     const ok = await confirmAction({
-      title: `Excluir "${tema.nome}"?`,
+      title: `Excluir "${nomeTemaExibicao(tema.nome)}"?`,
       message: `Isso manda pra Lixeira o tema com ${contagem.notas} nota(s).\nDá pra restaurar tudo em Configurações → Lixeira, por até 30 dias.`,
     });
     if (!ok) return;

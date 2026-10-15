@@ -1,6 +1,7 @@
 import { getDB } from './schema';
 import { addDaysToISODate, todayLondonISODate } from '../lib/time';
 import { computeStreak } from '../domain/stats';
+import { nomeTemaExibicao } from '../domain/rotulos';
 import type { ItemRevisao } from '../types';
 
 export interface TemaDificil {
@@ -117,7 +118,7 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
   const temas = await Promise.all(temaIdsRanking.map((id) => db.get('temas', id)));
   const rankingDificeis: TemaDificil[] = temas
     .filter((t): t is NonNullable<typeof t> => !!t)
-    .map((tema) => ({ temaId: tema.id, temaNome: tema.nome, count: contagemPorTema.get(tema.id)! }))
+    .map((tema) => ({ temaId: tema.id, temaNome: nomeTemaExibicao(tema.nome), count: contagemPorTema.get(tema.id)! }))
     .sort((a, b) => b.count - a.count)
     .slice(0, TOP_RANKING);
 

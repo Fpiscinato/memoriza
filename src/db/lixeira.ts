@@ -6,6 +6,7 @@
 
 import { getDB } from './schema';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
+import { nomeTemaExibicao } from '../domain/rotulos';
 
 export const EXCLUSAO_RETENCAO_DIAS = 30;
 
@@ -82,7 +83,7 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
     itens.push({
       tipo: 'tema',
       id: tema.id,
-      nome: tema.nome,
+      nome: nomeTemaExibicao(tema.nome),
       contexto: espaco.nome,
       excluido_em: tema.excluido_em,
       notas: todasNotas.filter((n) => n.tema_id === tema.id && n.excluido).length,
@@ -99,7 +100,7 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
       tipo: 'nota',
       id: nota.id,
       nome: nota.titulo || '(sem título)',
-      contexto: tema.nome,
+      contexto: nomeTemaExibicao(tema.nome),
       excluido_em: nota.excluido_em,
     });
   }

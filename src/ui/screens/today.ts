@@ -2,6 +2,7 @@ import { completeReview, countRevisoesHoje, getTodayQueue, type QueueEntry } fro
 import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { precisaAvisoDeValidade } from '../../domain/validade';
+import { nomeTemaExibicao } from '../../domain/rotulos';
 import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import type { Avaliacao } from '../../types';
@@ -114,7 +115,7 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
         <div class="queue-group">
           <div class="queue-group__title" style="--group-accent:${accentVar(tema.id)}">
             <span class="color-dot" style="--dot-color:${accentVar(tema.id)}"></span>
-            ${escapeHtml(tema.nome)}
+            ${escapeHtml(nomeTemaExibicao(tema.nome))}
             ${mostrarEspaco ? `<span class="queue-group__espaco"> · ${escapeHtml(espaco.nome)}</span>` : ''}
           </div>
           <div class="item-list">
@@ -172,7 +173,7 @@ function renderRevisao(
         <span class="review-progress__label">${feitasHoje} de ${totalHoje} revisadas hoje</span>
       </div>
       <div class="review-card__meta">
-        ${escapeHtml(entry.tema.nome)}${revelado && entry.nota.fonte ? ` · ${escapeHtml(entry.nota.fonte)}` : ''}
+        ${escapeHtml(nomeTemaExibicao(entry.tema.nome))}${revelado && entry.nota.fonte ? ` · ${escapeHtml(entry.nota.fonte)}` : ''}
       </div>
       <div class="review-card__titulo">
         ${entry.nota.favorito ? `${ICONS.star} ` : ''}${escapeHtml(entry.nota.titulo || '(sem título)')}

@@ -13,11 +13,11 @@ const EXEMPLO_CURSO = `Espaço: Curso de Investimentos (categoria: Cursos)
            Fonte: "Aula 6"`;
 
 const EXEMPLO_LIVRO = `Espaço: Livro: Quem Pensa Enriquece (categoria: Livros)
-  Tema: Desejo (sem categoria — livro não precisa de "módulo")
+  Tema: Desejo (categoria: Capítulos)
     Nota → Título: "Qual o primeiro passo pra transformar desejo em riqueza, segundo o livro?"
            Conteúdo: explicação/resumo do que o capítulo ensina
            Fonte: "Capítulo 1, página 20"
-  Tema: Persistência
+  Tema: Persistência (categoria: Capítulos)
     Nota → Título: "Por que persistência é descrita como um estado de espírito?"
            Conteúdo: explicação completa
            Fonte: "Capítulo 8"`;
@@ -59,10 +59,12 @@ const SECOES: Secao[] = [
       </ul>
       <p>Use a <strong>categoria</strong> do Espaço para agrupar por tipo — ex: categoria
       "Cursos" para o curso de investimentos, categoria "Livros" para os livros, categoria
-      "Bíblia" pra estudos bíblicos. Essas três já aparecem sugeridas na hora de criar um
-      Espaço novo, mesmo antes de você ter usado alguma — mas é só sugestão, digite o que
-      quiser. Assim que você tiver mais de um curso ou mais livros, a tela de Espaços continua
-      organizada em vez de virar uma lista solta.</p>
+      "Bíblia" pra estudos bíblicos. Ela é <strong>obrigatória</strong> e vem como o primeiro
+      campo ao criar um Espaço, porque é ela que aparece por primeiro na tela (os Espaços ficam
+      agrupados por categoria). Essas três já aparecem sugeridas na hora de criar um Espaço novo,
+      mesmo antes de você ter usado alguma — mas é só sugestão, digite o que quiser. Assim que
+      você tiver mais de um curso ou mais livros, a tela de Espaços continua organizada em vez de
+      virar uma lista solta.</p>
       <p>Cada Espaço também tem um <strong>ícone</strong> e uma <strong>cor</strong> — escolha na
       hora de criar (ou depois, em Editar). Conforme você digita o nome/categoria, o app sugere
       ícones prováveis (ex: "Bíblia" → igreja, "Curso" → capa de formatura, "Livro" → pilha de
@@ -74,11 +76,15 @@ const SECOES: Secao[] = [
       real: dentro do Espaço "Curso de Investimentos", os Temas "Riscos" e "Vieses" são
       aulas de um mesmo módulo. Use a <strong>categoria</strong> do Tema pra marcar o
       módulo — ex: categoria "Faixa Branca" nos dois, porque são do mesmo módulo do curso.
-      No dia seguinte, quando a aula for sobre outro assunto do mesmo módulo, crie um Tema
+      A categoria é <strong>obrigatória</strong> e vem como o primeiro campo ao criar um Tema,
+      porque é o módulo que aparece por primeiro na tela (os Temas ficam agrupados por
+      categoria). O <strong>nome</strong> do Tema é opcional — se você deixar em branco, ele
+      aparece como "Sem nome".</p>
+      <p>No dia seguinte, quando a aula for sobre outro assunto do mesmo módulo, crie um Tema
       novo com a mesma categoria. As categorias sugeridas aqui são só as já usadas <strong>
       neste mesmo Espaço</strong> — o "Faixa Branca" de um curso não aparece sugerido dentro
       de outro curso diferente, pra não misturar vocabulário de assuntos que não têm nada a
-      ver. Pra ajudar a lembrar como foi feito da última vez, os campos Nome e Categoria já
+      ver. Pra ajudar a lembrar como foi feito da última vez, os campos Categoria e Nome já
       vêm preenchidos com os do último Tema criado neste Espaço — aparecem em <strong>laranja
       </strong> pra deixar claro que é só uma sugestão a conferir, não um valor já
       confirmado.</p>
@@ -258,7 +264,8 @@ export function renderAjuda(container: HTMLElement): void {
           </div>
         </div>
         <p class="settings-row__desc" style="margin-bottom:0;">
-          Repare: <strong>um Tema não precisa ter categoria</strong>, e você escolhe o quão
+          Repare: <strong>a categoria é obrigatória</strong> (é o primeiro campo dos dois
+          formulários, porque é o que aparece por primeiro na tela), e você escolhe o quão
           "fino" cada nível fica. No Exemplo 1, um Tema é uma aula, e a categoria agrupa as
           aulas do mesmo módulo. No Exemplo 3, um Tema já <strong>é</strong> o módulo inteiro,
           categoria vira um jeito extra de agrupar módulos (ex: por dificuldade), e cada Nota
