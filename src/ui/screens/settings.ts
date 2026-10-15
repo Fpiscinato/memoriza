@@ -36,6 +36,7 @@ import {
   expurgarItem,
   listarLixeira,
   restaurarItem,
+  verificarConflitoRestauro,
   type LixeiraItem,
   type LixeiraTipo,
 } from '../../db/lixeira';
@@ -304,7 +305,8 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
           <p class="text-muted" style="margin:0;">
             Excluir um Espaço, Tema ou Nota manda pra cá em vez de apagar na hora. Dá pra
             restaurar a qualquer momento; depois de ${EXCLUSAO_RETENCAO_DIAS} dias o item é
-            removido de vez, sozinho.
+            removido de vez, sozinho. Se já existir algo com o mesmo nome, ao restaurar ele
+            ganha "(restaurado)" no nome, pra não duplicar.
           </p>
           ${
             lixeira.length === 0
@@ -319,7 +321,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
                         <p class="settings-row__desc">${escapeHtml(rotuloLixeira(item))}</p>
                       </div>
                       <div class="item-row__actions">
-                        <button class="btn btn--secondary btn--sm" data-restaurar="${escapeHtml(item.id)}" data-tipo="${item.tipo}" type="button">${ICONS.undo} Restaurar</button>
+                        <button class="btn btn--secondary btn--sm" data-restaurar="${escapeHtml(item.id)}" data-tipo="${item.tipo}" data-nome="${escapeHtml(item.nome)}" type="button">${ICONS.undo} Restaurar</button>
                         <button class="btn btn--secondary btn--sm" data-expurgar="${escapeHtml(item.id)}" data-tipo="${item.tipo}" data-nome="${escapeHtml(item.nome)}" type="button">Excluir de vez</button>
                       </div>
                     </div>
@@ -628,8 +630,20 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
 
   container.querySelectorAll<HTMLButtonElement>('[data-restaurar]').forEach((btn) => {
     btn.addEventListener('click', async () => {
+      const tipo = btn.dataset.tipo as LixeiraTipo;
+      const id = btn.dataset.restaurar!;
+      const conflito = await verificarConflitoRestauro(tipo, id);
+      let nome: string | undefined;
+      if (conflito.conflito) {
+        const ok = await confirmAction({
+          title: `Já existe "${btn.dataset.nome ?? ''}" aqui`,
+          message: `Pra não duplicar, o item será restaurado como "${conflito.nomeSugerido}". Continuar?`,
+        });
+        if (!ok) return;
+        nome = conflito.nomeSugerido;
+      }
       btn.disabled = true;
-      await restaurarItem(btn.dataset.tipo as LixeiraTipo, btn.dataset.restaurar!);
+      await restaurarItem(tipo, id, nome !== undefined ? { nome } : undefined);
       renderSettings(container, ctx);
     });
   });

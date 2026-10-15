@@ -7,6 +7,7 @@
 import { getDB } from './schema';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
 import { nomeTemaExibicao } from '../domain/rotulos';
+import { resolverConflito, type ConflitoRestauro } from '../domain/restauro-lixeira';
 
 export const EXCLUSAO_RETENCAO_DIAS = 30;
 
@@ -108,14 +109,65 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
   return itens.sort((a, b) => (b.excluido_em ?? '').localeCompare(a.excluido_em ?? ''));
 }
 
-/** Restaura um item da Lixeira junto com o que foi pra lá em cascata com ele. */
-export async function restaurarItem(tipo: LixeiraTipo, id: string): Promise<void> {
+/** Verifica se restaurar este item colidiria com algo ativo (mesmo nome no perfil, mesma
+ *  categoria+nome no Espaço, ou mesmo título no Tema). Se colidir, sugere um nome livre. */
+export async function verificarConflitoRestauro(
+  tipo: LixeiraTipo,
+  id: string,
+): Promise<ConflitoRestauro> {
+  const db = await getDB();
+
+  if (tipo === 'nota') {
+    const nota = await db.get('notas', id);
+    if (!nota) return { conflito: false, nomeSugerido: '' };
+    const ativas = (await db.getAllFromIndex('notas', 'tema_id', nota.tema_id)).filter(
+      (n) => !n.excluido,
+    );
+    return resolverConflito(
+      nota.titulo || '',
+      ativas.map((n) => ({ nome: n.titulo || '' })),
+    );
+  }
+
+  if (tipo === 'tema') {
+    const tema = await db.get('temas', id);
+    if (!tema) return { conflito: false, nomeSugerido: '' };
+    const ativos = (await db.getAllFromIndex('temas', 'espaco_id', tema.espaco_id)).filter(
+      (t) => !t.excluido,
+    );
+    return resolverConflito(
+      tema.nome || '',
+      ativos.map((t) => ({ nome: t.nome || '', categoria: t.categoria })),
+      tema.categoria,
+    );
+  }
+
+  const espaco = await db.get('espacos', id);
+  if (!espaco) return { conflito: false, nomeSugerido: '' };
+  const ativos = (await db.getAllFromIndex('espacos', 'perfil_id', espaco.perfil_id)).filter(
+    (e) => !e.excluido,
+  );
+  return resolverConflito(
+    espaco.nome,
+    ativos.map((e) => ({ nome: e.nome })),
+  );
+}
+
+/** Restaura um item da Lixeira junto com o que foi pra lá em cascata com ele. `opcoes.nome`
+ *  permite restaurar com um nome diferente (usado pra evitar duplicar — ver
+ *  `verificarConflitoRestauro`). */
+export async function restaurarItem(
+  tipo: LixeiraTipo,
+  id: string,
+  opcoes?: { nome?: string },
+): Promise<void> {
   const db = await getDB();
   const agora = nowISO();
 
   if (tipo === 'nota') {
     const nota = await db.get('notas', id);
     if (!nota) return;
+    if (opcoes?.nome !== undefined) nota.titulo = opcoes.nome;
     await db.put('notas', marcarRestaurado(nota, agora));
     return;
   }
@@ -123,6 +175,7 @@ export async function restaurarItem(tipo: LixeiraTipo, id: string): Promise<void
   if (tipo === 'tema') {
     const tema = await db.get('temas', id);
     if (!tema) return;
+    if (opcoes?.nome !== undefined) tema.nome = opcoes.nome;
     const notas = (await db.getAllFromIndex('notas', 'tema_id', id)).filter((n) => n.excluido);
     const tx = db.transaction(['temas', 'notas'], 'readwrite');
     await tx.objectStore('temas').put(marcarRestaurado(tema, agora));
@@ -133,6 +186,7 @@ export async function restaurarItem(tipo: LixeiraTipo, id: string): Promise<void
 
   const espaco = await db.get('espacos', id);
   if (!espaco) return;
+  if (opcoes?.nome !== undefined) espaco.nome = opcoes.nome;
   const temas = (await db.getAllFromIndex('temas', 'espaco_id', id)).filter((t) => t.excluido);
   const notas = (
     await Promise.all(temas.map((t) => db.getAllFromIndex('notas', 'tema_id', t.id)))

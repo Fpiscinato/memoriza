@@ -178,8 +178,15 @@ async function render(root: HTMLElement): Promise<void> {
   root.querySelectorAll<HTMLButtonElement>('[data-settings-secao]').forEach((btn) => {
     btn.addEventListener('click', () => {
       if (!canNavigateAway()) return;
-      agendarScrollSettings(btn.dataset.settingsSecao!);
-      navigate('config');
+      const secao = btn.dataset.settingsSecao!;
+      if (getCurrentRoute().name === 'config') {
+        document
+          .querySelector<HTMLElement>(`#${secao}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        agendarScrollSettings(secao);
+        navigate('config');
+      }
     });
   });
 

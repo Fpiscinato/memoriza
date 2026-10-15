@@ -96,7 +96,12 @@ export function montarStatusHeader(entrada: EntradaStatusHeader): StatusHeader {
 
   const lixeira: StatusItem =
     entrada.lixeiraContagem <= 0
-      ? { estado: 'ok', visivel: false, titulo: 'Lixeira vazia.' }
+      ? {
+          estado: 'off',
+          visivel: true,
+          contagem: 0,
+          titulo: 'Lixeira vazia. Toque pra abrir.',
+        }
       : {
           estado: 'atencao',
           visivel: true,

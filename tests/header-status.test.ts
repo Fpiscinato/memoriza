@@ -56,9 +56,11 @@ describe('montarStatusHeader', () => {
     expect(backup.estado).toBe('atencao');
   });
 
-  it('lixeira vazia fica invisível', () => {
+  it('lixeira vazia fica visível mas neutra (off)', () => {
     const { lixeira } = montarStatusHeader({ ...base, lixeiraContagem: 0 });
-    expect(lixeira.visivel).toBe(false);
+    expect(lixeira.visivel).toBe(true);
+    expect(lixeira.estado).toBe('off');
+    expect(lixeira.contagem).toBe(0);
   });
 
   it('lixeira com itens fica visível e em atenção', () => {
