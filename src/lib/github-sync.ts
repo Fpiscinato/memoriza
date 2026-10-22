@@ -5,6 +5,7 @@
 
 import { exportAll, importData, parseExportFile, type ImportSummary } from '../db/export-import';
 import { limparLixeiraAntiga } from '../db/lixeira';
+import type { ExportFile } from '../types';
 import {
   getGithubGistId,
   getGithubLastSyncAt,
@@ -61,16 +62,21 @@ async function createGist(api: (path: string, init?: RequestInit) => Promise<Res
   return gist.id;
 }
 
-async function readGistContent(
+/**
+ * Lê o conteúdo do arquivo de backup dentro do Gist.
+ *
+ * ATENÇÃO: Gists grandes (arquivo acima de ~1MB) vêm **truncados** na resposta da
+ * API — o campo `content` vem vazio e o conteúdo de verdade fica no `raw_url` (que
+ * exige o token, se o gist for privado). Sem tratar esse caso, o sync ENVIAVA o
+ * backup pro GitHub mas nunca recebia nada de volta — e ainda sobrescrevia o
+ * backup remoto com o estado local, perdendo o que estava lá.
+ */
+export async function lerConteudoGist(
   api: (path: string, init?: RequestInit) => Promise<Response>,
+  token: string,
   gistId: string,
 ): Promise<string | null> {
-  const res = await api(`/gists/${gistId}`);
-  if (!res.ok) return null;
-  const gist = (await res.json()) as {
-    files: Record<string, { content?: string } | undefined>;
-  };
-  return gist.files?.[GIST_FILENAME]?.content ?? null;
+  return extrairConteudoGist(api, token, `/gists/${gistId}`);
 }
 
 async function updateGist(
@@ -109,21 +115,26 @@ export async function syncWithGithub(token: string): Promise<GitHubSyncResult> {
   let merged: Awaited<ReturnType<typeof exportAll>> = await exportAll();
 
   if (gistId) {
-    const remoteContent = await readGistContent(api, gistId);
+    const remoteContent = await lerConteudoGist(api, token, gistId);
     if (remoteContent) {
+      let remoto: ExportFile;
       try {
-        const remoto = parseExportFile(remoteContent);
-        summary = await importData(remoto);
-        // O backup remoto pode trazer item de Lixeira que já passou da retenção (ou que
-        // foi expurgado antes de existir a lápide): expurga agora, senão ele voltaria
-        // a aparecer na Lixeira a cada sync.
-        await limparLixeiraAntiga();
-        merged = await exportAll();
-        mesclouRemoto = true;
+        remoto = parseExportFile(remoteContent);
       } catch {
-        // Backup remoto ilegível/inválido — não arrisca desperdiçar dados locais: apenas
-        // sobrescreve o Gist com o estado local na sequência.
+        // O backup remoto existe mas não pôde ser lido. NÃO sobrescreve nada: o
+        // conteúdo remoto pode ser a única cópia dos dados (ex: aparelho novo).
+        throw new Error(
+          'O backup no GitHub existe, mas o arquivo não pôde ser lido. Nada foi sobrescrito — ' +
+            'abra o Gist e confira o arquivo, ou restaure uma versão anterior pelo histórico.',
+        );
       }
+      summary = await importData(remoto);
+      // O backup remoto pode trazer item de Lixeira que já passou da retenção (ou que
+      // foi expurgado antes de existir a lápide): expurga agora, senão ele voltaria
+      // a aparecer na Lixeira a cada sync.
+      await limparLixeiraAntiga();
+      merged = await exportAll();
+      mesclouRemoto = true;
     }
   }
 
@@ -168,13 +179,14 @@ export async function listGistRevisions(token: string, limite = 30): Promise<Gis
   }));
 }
 
-async function readGistRevisionContent(
+/** Extrai o conteúdo do arquivo de backup de uma resposta da API do Gist — cuidando
+ *  do caso truncado (gist grande), em que o conteúdo vem no `raw_url`. */
+async function extrairConteudoGist(
   api: (path: string, init?: RequestInit) => Promise<Response>,
   token: string,
-  gistId: string,
-  version: string,
+  caminho: string,
 ): Promise<string | null> {
-  const res = await api(`/gists/${gistId}/${version}`);
+  const res = await api(caminho);
   if (!res.ok) return null;
   const gist = (await res.json()) as {
     files?: Record<string, { content?: string; truncated?: boolean; raw_url?: string } | undefined>;
@@ -188,6 +200,15 @@ async function readGistRevisionContent(
     return raw.text();
   }
   return file.content ?? null;
+}
+
+async function readGistRevisionContent(
+  api: (path: string, init?: RequestInit) => Promise<Response>,
+  token: string,
+  gistId: string,
+  version: string,
+): Promise<string | null> {
+  return extrairConteudoGist(api, token, `/gists/${gistId}/${version}`);
 }
 
 /** Restaura uma revisão antiga do backup remoto (mesclando com o local) e regrava o Gist. */

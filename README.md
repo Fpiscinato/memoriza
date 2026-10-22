@@ -305,6 +305,8 @@ tests/
                            "Excluir de vez" -> sync (com fake-indexeddb)
   guard-navegacao.test.ts  testes da guarda de "alterações não salvas" e da navegação
                            central (nenhum caminho de saída perde a edição)
+  gist-leitura.test.ts     testes da leitura do backup no Gist (inclusive o caso
+                           "gist grande", que vem truncado)
   algorithm.test.ts    testes da tabela de transição do algoritmo de repetição
   stats.test.ts             testes de computeStreak, isNotaFraca, agruparPorCategoria
   ordem.test.ts             testes da ordenação (meses, números, casos mistos)
@@ -604,6 +606,44 @@ Em Configurações → Dados:
 
   Depois de importar, a tela mostra quantos registros foram criados,
   atualizados e mantidos como estavam.
+
+## Nova versão do app (PWA)
+
+O Memoriza é um PWA: o service worker guarda a versão instalada em cache. Quando
+publica uma versão nova, ela **não se aplica sozinha** — o app mostra um aviso
+no topo da tela:
+
+> **Nova versão do Memoriza disponível.**  [Atualizar agora] [Depois]
+
+- **Atualizar agora** ativa a nova versão e recarrega a página. Se houver uma
+  edição de nota **não salva**, o app pergunta antes (a recarga levaria a
+  edição junto).
+- **Depois** dispensa o aviso — a nova versão entra na próxima vez que o app for
+  aberto.
+
+Isso é o `registerType: 'prompt'` do `vite-plugin-pwa` (antes era
+`'autoUpdate'`, que recarregava a página no susto, sem avisar e no meio de uma
+edição). O aviso é o componente `src/ui/components/toast.ts`.
+
+## Sincronização em nuvem (Gist do GitHub)
+
+O backup fica num **Gist privado** da conta do usuário (o app não tem servidor
+próprio): um *Personal Access Token* com permissão `gist` é guardado **só
+neste navegador** e nunca é enviado a mais ninguém.
+
+O sync é uma **mesclagem** nos dois sentidos: registros mais novos vencem,
+nada local é apagado, e o que está só no Gist é trazido pra baixo (e vice-versa).
+
+- **Gists grandes** (o arquivo de backup acima de ~1MB) vêm **truncados** na
+  resposta da API — o conteúdo de verdade vem no `raw_url`. O app trata isso
+  (`lerConteudoGist`, `src/lib/github-sync.ts`): sem esse cuidado, o app
+  **enviava** o backup mas **não recebia** nada de volta, e ainda sobrescrevia
+  o backup remoto com o estado local (perdendo o que estava lá).
+- **Backup remoto ilegível não é sobrescrito**: se o arquivo do Gist não puder
+  ser lido, o sync avisa e não mexe em nada — o conteúdo remoto pode ser a
+  única cópia (ex: aparelho novo).
+- **Histórico do backup**: toda edição do Gist fica no histórico do GitHub, e
+  o app lista as versões pra restaurar uma antiga.
 
 ## Backup
 
