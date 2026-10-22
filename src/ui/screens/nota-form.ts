@@ -4,6 +4,7 @@ import { getEspaco } from '../../db/espacos';
 import { stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
+import { validarCampos } from '../../lib/form-validacao';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { buildNotaPlainText } from '../../lib/pdf-text';
 import { nomeTemaExibicao } from '../../domain/rotulos';
@@ -12,6 +13,7 @@ import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderFieldHint } from '../components/field-hint';
+import { ativarRovingTabindex } from '../components/roving-tabindex';
 import { clearFormDirty, setFormDirty, setFormDirtyPrompt, canNavigateAway } from '../../lib/form-guard';
 import { ICONS } from '../icons';
 
@@ -109,7 +111,13 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           </details>
         </div>
       `
-          : ''
+          : `
+        <div class="section-header__actions">
+          <button class="btn btn--secondary btn--sm" id="btn-favoritar-nota" type="button" title="A nota vai direto pra sua lista de Favoritos, separada da fila Hoje">
+            ☆ Favoritar
+          </button>
+        </div>
+      `
       }
     </div>
 
@@ -157,8 +165,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
             ).join('')}
             <button type="button" class="editor-toolbar__btn" data-cor-limpar title="Remover cor" aria-label="Remover cor">✕</button>
           </div>
-        </div>
-        <div
+        </div>        <div
           class="markdown-preview editor-conteudo"
           id="input-conteudo"
           contenteditable="true"
@@ -181,9 +188,9 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         </div>
       </div>
 
-      <div class="field" id="wrapper-validade" style="display:${nota?.pode_desatualizar ? 'flex' : 'none'};">
+      <div class="field ${nota?.pode_desatualizar ? '' : 'is-hidden'}" id="wrapper-validade">
         <label class="field__label" for="input-validade">Válido até</label>
-        <input class="input" id="input-validade" type="date" value="${escapeHtml(nota?.validade_ate ?? '')}" style="max-width: 200px;" />
+        <input class="input input--curto" id="input-validade" type="date" value="${escapeHtml(nota?.validade_ate ?? '')}" />
       </div>
 
       <div class="form-actions">
@@ -195,7 +202,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     ${
       params.mode === 'editar' && nota
         ? `
-      <div class="card stack" style="margin-top: var(--space-5);" id="card-revisao">
+      <div class="card stack card--separado" id="card-revisao">
         <div class="settings-row__label">Revisão</div>
         ${
           temItemPendente
@@ -215,6 +222,9 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   `;
 
   const backRoute = `temas/${temaId}`;
+  // "Favorito" da nota: no modo editar o estado já está salvo (a mudança vai pro banco
+  // na hora); no modo "nova nota" é só a marca pra nota nascer como favorita.
+  let favoritado = params.mode === 'editar' ? (nota?.favorito ?? false) : false;
   bindBreadcrumb(container);
   container.querySelector('#btn-cancelar')?.addEventListener('click', () => {
     if (!canNavigateAway()) return;
@@ -411,8 +421,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   // Botões de formatação perdem o foco/seleção do editor ao serem clicados — preventDefault
   // no mousedown evita isso, então o comando age sobre o texto selecionado, não sobre o botão.
-  container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]').forEach((btn) => {
-    btn.addEventListener('mousedown', (e) => e.preventDefault());
+  container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]').forEach((btn) => {    btn.addEventListener('mousedown', (e) => e.preventDefault());
     btn.addEventListener('click', () => {
       assentarQuebraPendente();
       const cmd = btn.dataset.cmd!;
@@ -503,8 +512,18 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   const wrapperValidade = container.querySelector<HTMLElement>('#wrapper-validade')!;
   checkboxDesatualizar.addEventListener('change', () => {
-    wrapperValidade.style.display = checkboxDesatualizar.checked ? 'flex' : 'none';
+    wrapperValidade.classList.toggle('is-hidden', !checkboxDesatualizar.checked);
   });
+
+  // Roving tabindex na toolbar: 17 botões viram DUAS paradas de Tab (comandos e
+  // cores) em vez de 17 — as setas movem entre eles. Sem isso, quem navegava por
+  // teclado tinha que apertar Tab 17 vezes pra chegar no campo de conteúdo.
+  const botoesComando = [
+    ...container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]'),
+  ];
+  const botoesCor = [...container.querySelectorAll<HTMLButtonElement>('.color-picker button')];
+  ativarRovingTabindex(botoesComando, { orientacao: 'horizontal' });
+  ativarRovingTabindex(botoesCor, { orientacao: 'horizontal' });
 
   function atualizarToolbarState(): void {
     const buttons = container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]');
@@ -583,38 +602,22 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   container.querySelector('#btn-salvar')?.addEventListener('click', async () => {
     const titulo = tituloInput.value.trim();
     const conteudo = htmlToStoredText(conteudoInput).trim();
-    let primeiroErro: HTMLElement | null = null;
 
-    const marcarErro = (el: HTMLElement, msg: string) => {
-      el.classList.add('input--error');
-      el.setAttribute('aria-invalid', 'true');
-      const hint = el.closest('.field')?.querySelector<HTMLElement>('.field__error');
-      if (hint) {
-        hint.textContent = msg;
-        hint.style.display = 'block';
-      }
-      if (!primeiroErro) primeiroErro = el;
-    };
-    const limparErro = (el: HTMLElement) => {
-      el.classList.remove('input--error');
-      el.removeAttribute('aria-invalid');
-    };
-
-    if (!titulo) marcarErro(tituloInput, 'Informe um título para a nota.');
-    if (!conteudo) marcarErro(conteudoInput, 'Informe o conteúdo da nota.');
-    if (primeiroErro) {
-      (primeiroErro as HTMLElement).focus();
-      return;
-    }
-    limparErro(tituloInput);
-    limparErro(conteudoInput);
+    // Mesma validação das outras telas (src/lib/form-validacao.ts) — antes o editor
+    // tinha uma cópia própria do "marcar erro", que não limpava a mensagem do campo.
+    const valido = validarCampos([
+      { input: tituloInput, ok: titulo.length > 0, mensagem: 'Informe um título para a nota.' },
+      { input: conteudoInput, ok: conteudo.length > 0, mensagem: 'Informe o conteúdo da nota.' },
+    ]);
+    if (!valido) return;
 
     const input = {
       titulo,
       conteudo,
-      fonte: container.querySelector<HTMLInputElement>('#input-fonte')!.value.trim(),
+      fonte: fonteInput.value.trim(),
       pode_desatualizar: checkboxDesatualizar.checked,
-      validade_ate: container.querySelector<HTMLInputElement>('#input-validade')!.value || undefined,
+      validade_ate: validadeInput.value || undefined,
+      favorito: favoritado,
     };
 
     if (params.mode === 'nova') {
@@ -626,20 +629,25 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     navigate(backRoute);
   });
 
-  if (params.mode === 'editar' && nota) {
-    container.querySelector('#btn-favoritar-nota')?.addEventListener('click', async (e) => {
-      const btn = e.currentTarget as HTMLButtonElement;
-      btn.disabled = true;
-      try {
-        const favoritou = await toggleNotaFavorito(nota.id);
-        nota.favorito = favoritou;
-        // Atualiza só o botão — re-renderizar a tela inteira apagaria o título e o
-        // conteúdo que o usuário tinha digitado (o "dirty" continuava ligado, ainda por cima).
-        btn.textContent = favoritou ? '★ Favorito' : '☆ Favoritar';
-      } finally {
-        btn.disabled = false;
+  // Favoritar — funciona nos dois modos (editar e nova nota). Atualiza só o botão:
+  // re-renderizar a tela inteira apagaria o título e o conteúdo que o usuário digitou.
+  container.querySelector('#btn-favoritar-nota')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.disabled = true;
+    try {
+      if (params.mode === 'editar' && nota) {
+        favoritado = await toggleNotaFavorito(nota.id);
+        nota.favorito = favoritado;
+      } else {
+        favoritado = !favoritado;
       }
-    });
+      btn.textContent = favoritado ? '★ Favorito' : '☆ Favoritar';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  if (params.mode === 'editar' && nota) {
     container.querySelector('#btn-parar-revisar')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
       btn.disabled = true;

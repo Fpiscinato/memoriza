@@ -39,12 +39,12 @@ export async function renderProfileSelect(
       `
           : ''
       }
-      <div id="form-novo-perfil-picker" class="card content-narrow" style="text-align:left; width:100%; ${semPerfis ? '' : 'display:none;'}">
+      <div id="form-novo-perfil-picker" class="card content-narrow ${semPerfis ? '' : 'is-hidden'}" style="text-align:left; width:100%;"">
         <div class="field">
           <label class="field__label" for="input-novo-perfil-picker">${semPerfis ? 'Seu nome' : 'Nome do novo perfil'}</label>
           <input class="input" id="input-novo-perfil-picker" type="text" maxlength="60" />
         </div>
-        <div class="form-actions" style="margin-top: var(--space-3);">
+        <div class="form-actions com-margem">
           <button class="btn btn--primary btn--sm" id="btn-salvar-perfil-picker" type="button">Criar perfil</button>
           ${!semPerfis ? '<button class="btn btn--secondary btn--sm" id="btn-cancelar-perfil-picker" type="button">Cancelar</button>' : ''}
         </div>
@@ -66,11 +66,11 @@ export async function renderProfileSelect(
   if (semPerfis) input.focus();
 
   container.querySelector('#btn-novo-perfil-picker')?.addEventListener('click', () => {
-    form.style.display = 'block';
+    form.classList.remove('is-hidden');
     input.focus();
   });
   container.querySelector('#btn-cancelar-perfil-picker')?.addEventListener('click', () => {
-    form.style.display = 'none';
+    form.classList.add('is-hidden');
   });
 
   const salvar = async () => {

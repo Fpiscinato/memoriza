@@ -71,19 +71,19 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       </div>
     </div>
 
-    <div id="form-editar-tema" style="display:none" class="card">
+    <div id="form-editar-tema" class="card is-hidden">
       <div class="field">
         <label class="field__label" for="input-categoria-tema-editar">Categoria</label>
         <input class="input" id="input-categoria-tema-editar" type="text" value="${escapeHtml(tema.categoria)}" maxlength="80" />
         <p class="field__error" role="alert"></p>
         ${renderCategoriaChips(categoriasTema, 'input-categoria-tema-editar')}
       </div>
-      <div class="field" style="margin-top: var(--space-3);">
+      <div class="field com-margem">
         <label class="field__label" for="input-nome-tema-editar">Nome (opcional)</label>
         <input class="input" id="input-nome-tema-editar" type="text" value="${escapeHtml(tema.nome)}" maxlength="120" />
         <p class="field__error" role="alert"></p>
       </div>
-      <div class="form-actions" style="margin-top: var(--space-3);">
+      <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao-tema" type="button">Salvar</button>
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-edicao-tema" type="button">Cancelar</button>
       </div>
@@ -151,7 +151,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
             <div class="stat-tile__label">Notas</div>
           </div>
           <div class="stat-tile">
-            <div class="stat-tile__value" style="font-size: var(--font-size-md);">${formatDuracao(tempoTotalSegundos)}</div>
+            <div class="stat-tile__value stat-tile__value--compacto">${formatDuracao(tempoTotalSegundos)}</div>
             <div class="stat-tile__label">Tempo revisando</div>
           </div>
           <div class="stat-tile">
@@ -159,7 +159,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
             <div class="stat-tile__label">${dias === 1 ? 'Dia ativo' : 'Dias ativo'}</div>
           </div>
         </div>
-        <p class="text-muted" style="margin:0;">Criado em ${formatDateBR(tema.criado_em)}</p>
+        <p class="text-muted sem-margem">Criado em ${formatDateBR(tema.criado_em)}</p>
       `,
     });
   });
@@ -179,11 +179,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const nomeEditarInput = container.querySelector<HTMLInputElement>('#input-nome-tema-editar')!;
   const categoriaEditarInput = container.querySelector<HTMLInputElement>('#input-categoria-tema-editar')!;
   container.querySelector('#btn-editar-tema')?.addEventListener('click', () => {
-    formEditar.style.display = 'block';
+    formEditar.classList.remove('is-hidden');
     categoriaEditarInput.focus();
   });
   container.querySelector('#btn-cancelar-edicao-tema')?.addEventListener('click', () => {
-    formEditar.style.display = 'none';
+    formEditar.classList.add('is-hidden');
   });
   for (const input of [nomeEditarInput, categoriaEditarInput]) {
     input.addEventListener('input', () => limparErroCampo(input));

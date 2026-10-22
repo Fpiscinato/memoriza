@@ -176,6 +176,14 @@ multiusuário público).
   sobre a superfície). No tema escuro só o segundo muda de valor (azul claro)
   — com um só token, o item ativo da navegação ficava azul-escuro sobre
   fundo escuro (2,6:1, ilegível).
+- **A paleta escura existe em UM lugar só.** O app resolve a preferência
+  ("system"/"light"/"dark") em JS e sempre escreve o **tema efetivo** no
+  atributo `data-theme` (`src/lib/theme.ts`) — por isso o CSS tem só o bloco
+  `:root[data-theme='dark']`, sem repetir os mesmos 20 valores numa media
+  query (as duas listas já tinham começado a divergir). Um script inline no
+  `<head>` (`index.html`) escreve o tema antes do CSS aplicar, pra não piscar
+  claro na abertura; e o app acompanha a mudança de tema do sistema em
+  tempo real.
 - **Contraste verificado contra WCAG AA**: `--color-text-faint` (metadados,
   legendas) é `#6b7280` no claro e `#8b91a4` no escuro (4,5:1+); o anel de
   foco é `#2563eb` no claro (antes era `#93b4fb`, 2:1 — indicador de foco
@@ -183,6 +191,10 @@ multiusuário público).
   (`#c2410c` → `#a16207`) pra o texto branco passar de 4,5:1.
 - **Botão desabilitado tem estado visual** (`:disabled`): antes um botão
   desabilitado durante um sync continuava com cara de clicável.
+- **Poucos `style=""` nos templates**: o que era repetido virou classe
+  (`.sem-margem`, `.sem-margem-topo`, `.sem-margem-baixo`, `.com-margem`,
+  `.card--separado`, `.input--curto`, `.stat-tile__value--compacto`,
+  `.is-hidden`), então o valor do espaçamento vive uma vez no CSS.
 - **`.app-main` ganhou um teto de largura bem mais generoso (1100px) e as
   listas (`.item-list`) viram grid multi-coluna a partir de 720px** — o
   problema apontado foi a interface parecer "mobile esticado" em telas
@@ -275,6 +287,8 @@ src/
     global-search.ts      busca global em overlay (Ctrl+K)
     components/
       confirm-modal.ts    modal de confirmação genérico (usado antes de excluir)
+      modal-foco.ts       foco dos modais (entra, fica preso dentro e volta ao fechar)
+      roving-tabindex.ts  roving tabindex (toolbar do editor e abas do Painel)
     screens/                 profile-select, today, espacos, espaco-detail, espaco-pdf,
                               tema-detail, nota-form, painel, favoritos, ajuda, settings
   styles/
@@ -488,6 +502,26 @@ cuidado:
   anuncia a navegação pelas setas. Ao fechar, o foco volta pro botão da busca.
 - **Ctrl+K não abre a busca dentro do editor**: lá o atalho cria link (senão o
   usuário ganhava o prompt de URL e a paleta de busca ao mesmo tempo).
+
+## Teclado: menos paradas de Tab
+
+O padrão de "roving tabindex" (ARIA APG) vale tanto pra toolbar quanto pra
+tablist (`src/ui/components/roving-tabindex.ts`): só o item selecionado fica
+no tab order, e as **setas** movem o foco entre eles.
+
+- **Toolbar do editor**: eram **18 paradas de Tab** entre o campo "Fonte" e o
+  campo de conteúdo. Agora são **2** (um grupo pra comandos de formatação, um
+  pras cores) — as setas percorrem os botões.
+- **Abas do Painel**: as 4 abas eram 4 paradas de Tab; agora é **1**, com as
+  setas trocando de aba. As abas também ganharam a semântica completa
+  (`aria-controls`, `aria-labelledby` no painel, `tabindex` no painel).
+
+## Favoritar nota nova
+
+O botão "Favoritar" existia só na edição da nota — não dava pra criar uma nota
+já marcada como favorita. Agora o botão aparece nos dois modos: na criação ele
+marca a nota pra nascer como favorita, na edição ele alterna o favorito já
+salvo.
 
 ## Lixeira (exclusão suave)
 

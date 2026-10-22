@@ -89,8 +89,8 @@ function renderEscolhaEscopo(
     <div class="content-narrow">
       <div class="card stack" style="text-align:center;">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.dice}</div>
-        <h2 style="margin:0;">Avaliação — ${escapeHtml(ctx.nomeContexto)}</h2>
-        <p class="text-muted" style="margin:0;">O que você quer avaliar?</p>
+        <h2 class="sem-margem">Avaliação — ${escapeHtml(ctx.nomeContexto)}</h2>
+        <p class="text-muted sem-margem">O que você quer avaliar?</p>
         <div class="stack">
           ${escopos
             .map(
@@ -132,8 +132,8 @@ function renderEscolhaTamanho(
     <div class="content-narrow">
       <div class="card stack" style="text-align:center;">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.dice}</div>
-        <h2 style="margin:0;">Avaliação — ${escapeHtml(escopo.rotulo)}</h2>
-        <p class="text-muted" style="margin:0;">
+        <h2 class="sem-margem">Avaliação — ${escapeHtml(escopo.rotulo)}</h2>
+        <p class="text-muted sem-margem">
           Repasse com notas aleatórias e marque Fácil, Médio ou Difícil em cada uma. Isso não
           afeta sua fila de revisão. ${escopo.itens.length} nota(s) — escolha quantas:
         </p>
@@ -258,8 +258,8 @@ function renderFim(
     <div class="content-narrow">
     <div class="card stack" style="text-align:center;">
       <div class="empty-state__icon" aria-hidden="true">${ICONS.confete}</div>
-      <h2 style="margin:0;">Avaliação concluída</h2>
-      <p class="text-muted" style="margin:0;">
+      <h2 class="sem-margem">Avaliação concluída</h2>
+      <p class="text-muted sem-margem">
         Você avaliou ${sessao.itens.length} nota(s) de ${escapeHtml(ctx.nomeContexto)}. Isso não mudou nada na sua fila de revisão.
       </p>
       <div class="retention-legend" style="justify-content:center;">

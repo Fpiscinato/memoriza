@@ -45,6 +45,8 @@ export interface NotaInput {
   fonte: string;
   pode_desatualizar: boolean;
   validade_ate?: string;
+  /** Marca a nota como favorita já na criação (o botão "Favoritar" do editor de nota). */
+  favorito?: boolean;
 }
 
 /** Cria a Nota e já gera o primeiro Item de Revisão (estágio 1, agendado para amanhã). */
@@ -64,7 +66,7 @@ export async function createNota(temaId: string, input: NotaInput): Promise<Nota
     fonte: input.fonte,
     pode_desatualizar: input.pode_desatualizar,
     validade_ate: input.pode_desatualizar ? input.validade_ate : undefined,
-    favorito: false,
+    favorito: input.favorito ?? false,
     titulo_revisado: true,
     criado_em: now,
     atualizado_em: now,

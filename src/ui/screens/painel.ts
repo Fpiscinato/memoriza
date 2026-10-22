@@ -3,8 +3,9 @@ import { getActivitySummary, getHeatmapData } from '../../db/activity';
 import { resumoAvaliacoes } from '../../db/avaliacoes';
 import { escapeHtml } from '../../lib/dom';
 import { formatDateTimeBR, formatDuracao } from '../../lib/time';
-import { ICONS } from '../icons';
+import { ativarRovingTabindex } from '../components/roving-tabindex';
 import { renderHeatmap } from '../components/heatmap';
+import { ICONS } from '../icons';
 
 export interface PainelContext {
   perfilId: string;
@@ -62,14 +63,14 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
 
   container.innerHTML = `
     <div class="tabs" role="tablist" aria-label="Painel">
-      <button class="tabs__tab" role="tab" aria-selected="true" data-tab="visao">Visão geral</button>
-      <button class="tabs__tab" role="tab" aria-selected="false" data-tab="revisao">Revisão</button>
-      <button class="tabs__tab" role="tab" aria-selected="false" data-tab="avaliacoes">Avaliações</button>
-      <button class="tabs__tab" role="tab" aria-selected="false" data-tab="evolucao">Evolução</button>
+      <button class="tabs__tab" role="tab" id="tab-btn-visao" aria-controls="tab-visao" aria-selected="true" data-tab="visao">Visão geral</button>
+      <button class="tabs__tab" role="tab" id="tab-btn-revisao" aria-controls="tab-revisao" aria-selected="false" data-tab="revisao">Revisão</button>
+      <button class="tabs__tab" role="tab" id="tab-btn-avaliacoes" aria-controls="tab-avaliacoes" aria-selected="false" data-tab="avaliacoes">Avaliações</button>
+      <button class="tabs__tab" role="tab" id="tab-btn-evolucao" aria-controls="tab-evolucao" aria-selected="false" data-tab="evolucao">Evolução</button>
     </div>
 
-    <div id="tab-visao" role="tabpanel">
-      <p class="screen-hint" style="margin-top:0;">Sua sequência de dias estudando e os números gerais: quantas revisões fez, quanto tempo passou e o tamanho da sua coleção.</p>
+    <div id="tab-visao" role="tabpanel" aria-labelledby="tab-btn-visao" tabindex="0">
+      <p class="screen-hint sem-margem-topo">Sua sequência de dias estudando e os números gerais: quantas revisões fez, quanto tempo passou e o tamanho da sua coleção.</p>
 
       <div class="streak-hero">
         <div class="streak-hero__flame" aria-hidden="true">${ICONS.flame}</div>
@@ -96,7 +97,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
           <div class="stat-tile__label">Revisões hoje</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-tile__value" style="font-size: var(--font-size-md);">${formatDuracao(stats.tempoHojeSegundos)}</div>
+          <div class="stat-tile__value stat-tile__value--compacto">${formatDuracao(stats.tempoHojeSegundos)}</div>
           <div class="stat-tile__label">Tempo hoje</div>
         </div>
         <div class="stat-tile">
@@ -126,13 +127,13 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       </div>
     </div>
 
-    <div id="tab-revisao" role="tabpanel" style="display:none;">
-      <p class="screen-hint" style="margin-top:0;">Como a revisão espaçada está indo: onde suas notas estão na escada, a carga dos próximos dias, sua retenção recente e os Temas onde você mais marca "Difícil" — os pontos fracos reais.</p>
+    <div id="tab-revisao" role="tabpanel" aria-labelledby="tab-btn-revisao" tabindex="0" style="display:none;">
+      <p class="screen-hint sem-margem-topo">Como a revisão espaçada está indo: onde suas notas estão na escada, a carga dos próximos dias, sua retenção recente e os Temas onde você mais marca "Difícil" — os pontos fracos reais.</p>
 
       <div class="section-header">
         <span class="section-header__title" style="font-size: var(--font-size-base);">Onde suas notas estão na escada</span>
       </div>
-      <p class="screen-hint" style="margin-top:0;">Quantas notas pendentes estão hoje em cada estágio — quanto mais em 30/180 dias, melhor sua retenção.</p>
+      <p class="screen-hint sem-margem-topo">Quantas notas pendentes estão hoje em cada estágio — quanto mais em 30/180 dias, melhor sua retenção.</p>
       <div class="stage-grid">
         ${stats.porEstagio
           .map(
@@ -149,7 +150,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       <div class="section-header">
         <span class="section-header__title" style="font-size: var(--font-size-base);">Próximos 7 dias${ICONS.chart}</span>
       </div>
-      <p class="screen-hint" style="margin-top:0;">Revisões pendentes agendadas por dia — amanhã primeiro.</p>
+      <p class="screen-hint sem-margem-topo">Revisões pendentes agendadas por dia — amanhã primeiro.</p>
       <div class="load-chart" role="img" aria-label="Carga de revisões dos próximos 7 dias: ${stats.cargaProximos7
         .map((d) => `${d.count} em ${formatCarga(d.data)}`)
         .join(', ')}">
@@ -172,7 +173,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       <div class="section-header">
         <span class="section-header__title" style="font-size: var(--font-size-base);">Retenção · últimos 30 dias</span>
       </div>
-      <p class="screen-hint" style="margin-top:0;">% de Fácil, Médio e Difícil nas revisões feitas — o quanto você realmente está lembrando.</p>
+      <p class="screen-hint sem-margem-topo">% de Fácil, Médio e Difícil nas revisões feitas — o quanto você realmente está lembrando.</p>
       ${
         stats.retencao30.total === 0
           ? `<p class="text-muted">Ainda não há avaliações em 30 dias.</p>`
@@ -214,8 +215,8 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       }
     </div>
 
-    <div id="tab-avaliacoes" role="tabpanel" style="display:none;">
-      <p class="screen-hint" style="margin-top:0;">Seu autoteste com Fácil, Médio e Difícil — à parte da fila de revisão espaçada. Vem do botão "Avaliar" num Espaço ou Tema.</p>
+    <div id="tab-avaliacoes" role="tabpanel" aria-labelledby="tab-btn-avaliacoes" tabindex="0" style="display:none;">
+      <p class="screen-hint sem-margem-topo">Seu autoteste com Fácil, Médio e Difícil — à parte da fila de revisão espaçada. Vem do botão "Avaliar" num Espaço ou Tema.</p>
 
       ${
         avaliacoes.total === 0
@@ -275,8 +276,8 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       }
     </div>
 
-    <div id="tab-evolucao" role="tabpanel" style="display:none;">
-      <p class="screen-hint" style="margin-top:0;">Quanto você estuda (revisões) e o ritmo de inclusão de notas ao longo do tempo.</p>
+    <div id="tab-evolucao" role="tabpanel" aria-labelledby="tab-btn-evolucao" tabindex="0" style="display:none;">
+      <p class="screen-hint sem-margem-topo">Quanto você estuda (revisões) e o ritmo de inclusão de notas ao longo do tempo.</p>
 
       <div class="stat-grid">
         <div class="stat-tile">
@@ -313,15 +314,28 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
   `;
 
   const ABAS = ['visao', 'revisao', 'avaliacoes', 'evolucao'];
-  container.querySelectorAll<HTMLButtonElement>('.tabs__tab').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      container.querySelectorAll<HTMLButtonElement>('.tabs__tab').forEach((b) => {
-        b.setAttribute('aria-selected', String(b === btn));
-      });
-      for (const aba of ABAS) {
-        const painel = container.querySelector<HTMLElement>(`#tab-${aba}`);
-        if (painel) painel.style.display = btn.dataset.tab === aba ? 'block' : 'none';
-      }
-    });
+  const botoes = [...container.querySelectorAll<HTMLButtonElement>('.tabs__tab')];
+
+  function mostrarAba(aba: string): void {
+    for (const item of ABAS) {
+      const painel = container.querySelector<HTMLElement>(`#tab-${item}`);
+      if (painel) painel.style.display = item === aba ? 'block' : 'none';
+    }
+    for (const btn of botoes) {
+      const ativo = btn.dataset.tab === aba;
+      btn.setAttribute('aria-selected', String(ativo));
+      btn.setAttribute('tabindex', ativo ? '0' : '-1');
+    }
+  }
+
+  botoes.forEach((btn) => {
+    btn.addEventListener('click', () => mostrarAba(btn.dataset.tab!));
+  });
+
+  // Setas movem entre as abas (padrão de tablist do ARIA) e só a aba escolhida fica
+  // no tab order — assim as 4 abas viram UMA parada de Tab, não quatro.
+  ativarRovingTabindex(botoes, {
+    orientacao: 'horizontal',
+    aoMudar: (item) => mostrarAba(item.dataset.tab!),
   });
 }

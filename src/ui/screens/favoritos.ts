@@ -57,7 +57,7 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
   };
 
   container.innerHTML = `
-    <p class="screen-hint" style="margin-top:0;">Temas e Notas que você marcou pra achar rápido, sem navegar pelos Espaços.</p>
+    <p class="screen-hint sem-margem-topo">Temas e Notas que você marcou pra achar rápido, sem navegar pelos Espaços.</p>
 
     ${
       temas.length > 0

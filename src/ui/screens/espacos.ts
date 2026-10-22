@@ -28,18 +28,18 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
 
   container.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-4);">
-      <p class="screen-hint" style="margin:0;">Cada Espaço é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
+      <p class="screen-hint sem-margem">Cada Espaço é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
       <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Novo espaço</button>
     </div>
 
-    <div id="form-novo-espaco" style="display:none" class="card">
+    <div id="form-novo-espaco" class="card is-hidden">
       <div class="field">
         <label class="field__label" for="input-categoria-espaco">Categoria</label>
         <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
         <p class="field__error" role="alert"></p>
         ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
       </div>
-      <div class="field" style="margin-top: var(--space-3);">
+      <div class="field com-margem">
         <label class="field__label" for="input-nome-espaco">Nome do espaço</label>
         <input class="input" id="input-nome-espaco" type="text" placeholder="Ex: Curso de Investimentos" maxlength="120" />
         <p class="field__error" role="alert"></p>
@@ -47,7 +47,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       <div style="margin-top: var(--space-4);">
         ${renderEspacoVisualPicker({ prefix: 'novo-espaco' })}
       </div>
-      <div class="form-actions" style="margin-top: var(--space-3);">
+      <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-espaco" type="button">Criar</button>
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-espaco" type="button">Cancelar</button>
       </div>
@@ -92,7 +92,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         ? `
       <details style="margin-top: var(--space-6);">
         <summary class="text-muted" style="cursor:pointer;">Arquivados (${arquivados.length})</summary>
-        <div class="item-list" style="margin-top: var(--space-3);">
+        <div class="item-list com-margem">
           ${arquivados
             .map(
               (e) => `
@@ -129,13 +129,13 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
 
   const form = container.querySelector<HTMLElement>('#form-novo-espaco')!;
   const abrirFormEspaco = () => {
-    form.style.display = 'block';
+    form.classList.remove('is-hidden');
     container.querySelector<HTMLInputElement>('#input-categoria-espaco')?.focus();
   };
   container.querySelector('#btn-novo-espaco')?.addEventListener('click', abrirFormEspaco);
   container.querySelector('#btn-empty-novo-espaco')?.addEventListener('click', abrirFormEspaco);
   container.querySelector('#btn-cancelar-espaco')?.addEventListener('click', () => {
-    form.style.display = 'none';
+    form.classList.add('is-hidden');
   });
   for (const id of ['#input-nome-espaco', '#input-categoria-espaco']) {
     container.querySelector<HTMLInputElement>(id)?.addEventListener('input', (e) => {

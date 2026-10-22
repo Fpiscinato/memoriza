@@ -69,14 +69,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       </div>
     </div>
 
-    <div id="form-editar-espaco" style="display:none" class="card content-narrow">
+    <div id="form-editar-espaco" class="card content-narrow is-hidden">
       <div class="field">
         <label class="field__label" for="input-categoria-espaco-editar">Categoria</label>
         <input class="input" id="input-categoria-espaco-editar" type="text" value="${escapeHtml(espaco.categoria)}" maxlength="80" />
         <p class="field__error" role="alert"></p>
         ${renderCategoriaChips(categoriasEspaco, 'input-categoria-espaco-editar')}
       </div>
-      <div class="field" style="margin-top: var(--space-3);">
+      <div class="field com-margem">
         <label class="field__label" for="input-nome-espaco-editar">Nome</label>
         <input class="input" id="input-nome-espaco-editar" type="text" value="${escapeHtml(espaco.nome)}" maxlength="120" />
         <p class="field__error" role="alert"></p>
@@ -84,7 +84,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       <div style="margin-top: var(--space-4);">
         ${renderEspacoVisualPicker({ prefix: 'editar-espaco', icone: espaco.icone, cor: espaco.cor })}
       </div>
-      <div class="form-actions" style="margin-top: var(--space-3);">
+      <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-edicao" type="button">Salvar</button>
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-edicao" type="button">Cancelar</button>
       </div>
@@ -99,8 +99,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     ${
       !espaco.arquivado
         ? `
-    <div id="form-novo-tema" style="display:none" class="card content-narrow">
-      <p class="screen-hint" style="margin-top:0;">Um Tema é um assunto ou aula dentro deste Espaço. A <strong>categoria</strong> agrupa os temas (ex: o módulo do curso) — preencha ela primeiro; o nome é opcional.</p>
+    <div id="form-novo-tema" class="card content-narrow is-hidden">
+      <p class="screen-hint sem-margem-topo">Um Tema é um assunto ou aula dentro deste Espaço. A <strong>categoria</strong> agrupa os temas (ex: o módulo do curso) — preencha ela primeiro; o nome é opcional.</p>
       <div class="field">
         <label class="field__label" for="input-categoria-tema">Categoria</label>
         <input class="input${categoriaTemaSugerida ? ' input--sugerido' : ''}" id="input-categoria-tema" type="text" placeholder="Ex: nome do módulo" maxlength="80" value="${escapeHtml(categoriaTemaSugerida ?? '')}" />
@@ -108,13 +108,13 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         ${categoriaTemaSugerida ? `<p class="field__sugestao-hint">↻ Categoria do último tema criado aqui — edite se for outro módulo</p>` : ''}
         ${renderCategoriaChips(categoriasTema, 'input-categoria-tema')}
       </div>
-      <div class="field" style="margin-top: var(--space-3);">
+      <div class="field com-margem">
         <label class="field__label" for="input-nome-tema">Nome do tema (opcional)</label>
         <input class="input${nomeTemaSugerido ? ' input--sugerido' : ''}" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" value="${escapeHtml(nomeTemaSugerido ?? '')}" />
         <p class="field__error" role="alert"></p>
         ${nomeTemaSugerido ? `<p class="field__sugestao-hint">↻ Nome do último tema criado aqui — edite antes de salvar</p>` : ''}
       </div>
-      <div class="form-actions" style="margin-top: var(--space-3);">
+      <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar</button>
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-tema" type="button">Cancelar</button>
       </div>
@@ -212,11 +212,11 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const nomeEditarInput = container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')!;
   const categoriaEditarInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco-editar')!;
   container.querySelector('#btn-editar')?.addEventListener('click', () => {
-    formEditar.style.display = 'block';
+    formEditar.classList.remove('is-hidden');
     categoriaEditarInput.focus();
   });
   container.querySelector('#btn-cancelar-edicao')?.addEventListener('click', () => {
-    formEditar.style.display = 'none';
+    formEditar.classList.add('is-hidden');
   });
   for (const input of [nomeEditarInput, categoriaEditarInput]) {
     input.addEventListener('input', () => limparErroCampo(input));
@@ -279,7 +279,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
             <div class="stat-tile__label">Notas</div>
           </div>
           <div class="stat-tile">
-            <div class="stat-tile__value" style="font-size: var(--font-size-md);">${formatDuracao(tempoTotalSegundos)}</div>
+            <div class="stat-tile__value stat-tile__value--compacto">${formatDuracao(tempoTotalSegundos)}</div>
             <div class="stat-tile__label">Tempo revisando</div>
           </div>
           <div class="stat-tile">
@@ -287,7 +287,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
             <div class="stat-tile__label">${diasLabel}</div>
           </div>
         </div>
-        <p class="text-muted" style="margin:0;">${statusCaption} · ${espaco.arquivado ? 'Arquivado' : 'Ativo'}</p>
+        <p class="text-muted sem-margem">${statusCaption} · ${espaco.arquivado ? 'Arquivado' : 'Ativo'}</p>
       `,
     });
   });
@@ -316,13 +316,13 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
 
   const formTema = container.querySelector<HTMLElement>('#form-novo-tema');
   const abrirFormTema = () => {
-    if (formTema) formTema.style.display = 'block';
+    if (formTema) formTema.classList.remove('is-hidden');
     container.querySelector<HTMLInputElement>('#input-categoria-tema')?.focus();
   };
   container.querySelector('#btn-novo-tema')?.addEventListener('click', abrirFormTema);
   container.querySelector('#btn-empty-novo-tema')?.addEventListener('click', abrirFormTema);
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
-    if (formTema) formTema.style.display = 'none';
+    if (formTema) formTema.classList.add('is-hidden');
   });
   const nomeTemaInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;
   const categoriaTemaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema')!;
@@ -339,7 +339,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (formTema) formTema.style.display = 'block';
+      if (formTema) formTema.classList.remove('is-hidden');
       categoriaTemaInput.value = btn.dataset.novoTemaCategoria!;
       clearInputSugestao(categoriaTemaInput);
       nomeTemaInput.focus();

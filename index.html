@@ -8,6 +8,23 @@
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>Memoriza</title>
+    <script>
+      // Marca o tema efetivo antes do CSS aplicar (evita o "flash" de tema claro ao
+      // abrir o app com o sistema em dark). O app inteiro passa a usar data-theme
+      // sempre preenchido — a paleta escura vive só em `:root[data-theme='dark']`.
+      (function () {
+        try {
+          var pref = localStorage.getItem('memoriza:theme');
+          var escuro =
+            pref === 'dark' ||
+            (pref !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
+          document.documentElement.style.colorScheme = escuro ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

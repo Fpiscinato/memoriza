@@ -131,6 +131,44 @@
   text-align: center;
 }
 
+/* --- Utilitários pequenos -------------------------------------------------
+   Evitam `style="..."` espalhado pelos templates: o valor fica uma vez no CSS
+   (e some do HTML gerado, que é mais fácil de ler). */
+
+.sem-margem {
+  margin: 0;
+}
+
+.sem-margem-topo {
+  margin-top: 0;
+}
+
+.sem-margem-baixo {
+  margin-bottom: 0;
+}
+
+/* Espaço antes de um bloco dentro de um formulário (campo depois de outro). */
+.com-margem {
+  margin-top: var(--space-3);
+}
+
+.card--separado {
+  margin-top: var(--space-5);
+}
+
+.input--curto {
+  max-width: 200px;
+}
+
+.stat-tile__value--compacto {
+  font-size: var(--font-size-md);
+}
+
+/* Esconde um bloco (formulário fechado, por exemplo). */
+.is-hidden {
+  display: none !important;
+}
+
 .app-main {
   flex: 1;
   width: 100%;

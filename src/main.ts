@@ -5,7 +5,7 @@ import './styles/components.css';
 
 import { registerSW } from 'virtual:pwa-register';
 
-import { applyTheme } from './lib/theme';
+import { applyTheme, watchSystemTheme } from './lib/theme';
 import { requestPersistentStorageOnce } from './lib/storage-persist';
 import { ensureDefaultProfiles } from './db/profiles';
 import { migrateNotasSemTitulo } from './db/notas';
@@ -18,6 +18,7 @@ import * as formGuard from './lib/form-guard';
 console.info(`%c${APP_VERSION_LABEL}%c rodando`, 'font-weight:bold;', '');
 
 applyTheme();
+watchSystemTheme();
 registerSW({ immediate: true });
 
 async function bootstrap() {

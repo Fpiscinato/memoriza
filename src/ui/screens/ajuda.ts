@@ -249,7 +249,7 @@ export function renderAjuda(container: HTMLElement): void {
   container.innerHTML = `
     <div class="content-narrow content-wide">
       <div class="card" style="margin-bottom: var(--space-6);">
-        <p class="settings-row__desc" style="margin-top:0;">
+        <p class="settings-row__desc sem-margem-topo">
           Dois exemplos completos, de ponta a ponta, pra deixar a estrutura
           <strong>Espaço → Tema → Nota</strong> clara antes de qualquer outra explicação.
         </p>
@@ -267,7 +267,7 @@ export function renderAjuda(container: HTMLElement): void {
             <pre class="help-tree">${EXEMPLO_MODULOS}</pre>
           </div>
         </div>
-        <p class="settings-row__desc" style="margin-bottom:0;">
+        <p class="settings-row__desc sem-margem-baixo">
           Repare: <strong>a categoria é obrigatória</strong> (é o primeiro campo dos dois
           formulários, porque é o que aparece por primeiro na tela), e você escolhe o quão
           "fino" cada nível fica. No Exemplo 1, um Tema é uma aula, e a categoria agrupa as

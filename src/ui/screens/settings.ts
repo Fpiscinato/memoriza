@@ -181,7 +181,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
               <label class="field__label" for="input-novo-perfil">Nome do novo perfil</label>
               <input class="input" id="input-novo-perfil" type="text" maxlength="60" />
             </div>
-            <div class="form-actions" style="margin-top: var(--space-3);">
+            <div class="form-actions com-margem">
               <button class="btn btn--primary btn--sm" id="btn-salvar-perfil" type="button">Adicionar</button>
               <button class="btn btn--secondary btn--sm" id="btn-cancelar-perfil" type="button">Cancelar</button>
             </div>
@@ -280,7 +280,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       <section class="settings-section" id="section-snapshots">
         <div class="settings-section__title">${ICONS.clock} Snapshots locais</div>
         <div class="card stack">
-          <p class="text-muted" style="margin:0;">
+          <p class="text-muted sem-margem">
             Cópias de segurança guardadas neste aparelho, sem depender da nuvem. Uma é criada
             sozinha ao abrir o app (uma por dia) e fica disponível por aqui. Restaurar
             <b>mescla</b> com os dados atuais — nunca apaga nada.
@@ -291,7 +291,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
           <div id="snapshot-status" role="status"></div>
           ${
             snapshots.length === 0
-              ? `<p class="text-muted" style="margin:0;">Nenhum snapshot ainda.</p>`
+              ? `<p class="text-muted sem-margem">Nenhum snapshot ainda.</p>`
               : `<div>
                   ${snapshots
                     .map(
@@ -316,7 +316,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       <section class="settings-section" id="section-lixeira">
         <div class="settings-section__title">${ICONS.trash} Lixeira</div>
         <div class="card stack">
-          <p class="text-muted" style="margin:0;">
+          <p class="text-muted sem-margem">
             Excluir um Espaço, Tema ou Nota manda pra cá em vez de apagar na hora. Dá pra
             restaurar a qualquer momento; depois de ${EXCLUSAO_RETENCAO_DIAS} dias o item é
             removido de vez, sozinho. Se já existir algo com o mesmo nome, ao restaurar ele
@@ -325,7 +325,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
           </p>
           ${
             lixeira.length === 0
-              ? `<p class="text-muted" style="margin:0;">A lixeira está vazia.</p>`
+              ? `<p class="text-muted sem-margem">A lixeira está vazia.</p>`
               : `<div>
                   <div class="settings-list-row">
                     <div>
@@ -359,7 +359,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       <section class="settings-section" id="section-sync">
         <div class="settings-section__title">${ICONS.sync} Sincronização em nuvem</div>
         <div class="card stack">
-          <p class="text-muted" style="margin:0;">
+          <p class="text-muted sem-margem">
             Um canto seguro do GitHub só seu (Gist privado) guarda uma cópia sincronizada do
             app — sem servidores intermediários, direto do seu navegador. O backup é mesclado:
             dados mais novos vencem e nada local é apagado.
@@ -390,17 +390,17 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
           <div id="sync-status" role="status">
             ${
               lastSyncAt
-                ? `<div class="banner banner--success" style="margin-bottom:0;">${ICONS.check} Última sincronização: ${escapeHtml(formatDateTimeBR(lastSyncAt))}${gistId ? '.' : ''}</div>`
+                ? `<div class="banner banner--success sem-margem-baixo">${ICONS.check} Última sincronização: ${escapeHtml(formatDateTimeBR(lastSyncAt))}${gistId ? '.' : ''}</div>`
                 : token
-                  ? `<div class="banner banner--muted" style="margin-bottom:0;">Token salvo — ainda não sincronizou neste aparelho.</div>`
+                  ? `<div class="banner banner--muted sem-margem-baixo">Token salvo — ainda não sincronizou neste aparelho.</div>`
                   : ''
             }
           </div>
 
           <details id="gist-historico">
             <summary class="settings-row__label" style="cursor:pointer;">Histórico do backup na nuvem</summary>
-            <div class="stack" style="margin-top: var(--space-3);">
-              <p class="settings-row__desc" style="margin:0;">
+            <div class="stack com-margem">
+              <p class="settings-row__desc sem-margem">
                 O GitHub guarda todas as versões já gravadas no Gist. Dá pra trazer uma antiga
                 de volta — a restauração <b>mescla</b> com o que já existe local.
               </p>
@@ -424,7 +424,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       <section class="settings-section">
         <div class="settings-section__title">${ICONS.clock} Lembretes</div>
         <div class="card stack">
-          <p class="text-muted" style="margin:0;">
+          <p class="text-muted sem-margem">
             O Memoriza não envia notificações. Escolha um horário e baixe um lembrete diário
             para o app de Calendário/Lembretes do seu celular.
           </p>
@@ -435,7 +435,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
           <button class="btn btn--primary btn--sm" id="btn-baixar-lembrete" type="button" style="align-self:flex-start;">
             Baixar lembrete para o celular
           </button>
-          <p class="settings-row__desc" style="margin:0;">
+          <p class="settings-row__desc sem-margem">
             Depois de adicionado, esse lembrete passa a ser gerenciado direto no app de
             Calendário/Lembretes do celular — editar horário ou cancelar se faz por lá, sem
             conexão contínua com o Memoriza. Se trocar o horário aqui depois, baixe um novo
@@ -521,11 +521,11 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
 
   const formNovoPerfil = container.querySelector<HTMLElement>('#form-novo-perfil')!;
   container.querySelector('#btn-novo-perfil')?.addEventListener('click', () => {
-    formNovoPerfil.style.display = 'block';
+    formNovoPerfil.classList.remove('is-hidden');
     container.querySelector<HTMLInputElement>('#input-novo-perfil')?.focus();
   });
   container.querySelector('#btn-cancelar-perfil')?.addEventListener('click', () => {
-    formNovoPerfil.style.display = 'none';
+    formNovoPerfil.classList.add('is-hidden');
   });
   container.querySelector('#btn-salvar-perfil')?.addEventListener('click', async () => {
     const input = container.querySelector<HTMLInputElement>('#input-novo-perfil')!;

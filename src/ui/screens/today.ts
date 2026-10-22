@@ -102,7 +102,7 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
 
   const hint = `
     <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap;">
-      <p class="screen-hint" style="margin:0;">Tente lembrar pelo Título antes de revelar a resposta.</p>
+      <p class="screen-hint sem-margem">Tente lembrar pelo Título antes de revelar a resposta.</p>
       ${contador}
     </div>
   `;
@@ -180,7 +180,7 @@ function renderRevisao(
         ${badgeAtraso(entry.item)}
       </div>
 
-      ${avisoValidade ? `<div class="banner banner--warning" style="margin-bottom:0;"><span>Isso pode estar desatualizado — confirme antes de confiar.</span></div>` : ''}
+      ${avisoValidade ? `<div class="banner banner--warning sem-margem-baixo"><span>Isso pode estar desatualizado — confirme antes de confiar.</span></div>` : ''}
 
       ${
         !revelado
@@ -231,7 +231,7 @@ function renderRevisao(
 function renderAposentado(container: HTMLElement, ctx: TodayContext, novaFila: QueueEntry[]): void {
   container.innerHTML = `
     <div class="card stack">
-      <div class="banner banner--success" style="margin-bottom:0;">
+      <div class="banner banner--success sem-margem-baixo">
         <span>${ICONS.confete} Duas fáceis seguidas — essa nota foi aposentada da fila de revisão. Ela continua acessível normalmente pelo Tema.</span>
       </div>
       <button class="btn btn--primary" id="btn-continuar" type="button">Continuar</button>
