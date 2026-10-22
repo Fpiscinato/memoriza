@@ -1,5 +1,14 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { AvaliacaoRegistro, Espaco, ItemRevisao, Nota, Perfil, Snapshot, Tema } from '../types';
+import type {
+  AvaliacaoRegistro,
+  Espaco,
+  ItemRevisao,
+  Nota,
+  Perfil,
+  Purga,
+  Snapshot,
+  Tema,
+} from '../types';
 
 interface MemorizaDB extends DBSchema {
   perfis: {
@@ -35,10 +44,16 @@ interface MemorizaDB extends DBSchema {
     value: AvaliacaoRegistro;
     indexes: { perfil_id: string; nota_id: string; sessao_id: string };
   };
+  /** Lápides das exclusões definitivas — o que impede um item da Lixeira de "voltar". */
+  purgas: {
+    key: string;
+    value: Purga;
+    indexes: { loja_alvo: string[] };
+  };
 }
 
 const DB_NAME = 'memoriza';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 let dbPromise: Promise<IDBPDatabase<MemorizaDB>> | undefined;
 
@@ -80,6 +95,10 @@ export function getDB(): Promise<IDBPDatabase<MemorizaDB>> {
           store.createIndex('perfil_id', 'perfil_id');
           store.createIndex('nota_id', 'nota_id');
           store.createIndex('sessao_id', 'sessao_id');
+        }
+        if (!db.objectStoreNames.contains('purgas')) {
+          const store = db.createObjectStore('purgas', { keyPath: 'id' });
+          store.createIndex('loja_alvo', ['loja', 'alvo_id']);
         }
       },
     });

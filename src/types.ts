@@ -103,7 +103,42 @@ export interface AvaliacaoRegistro {
   atualizado_em: string;
 }
 
-export const STORE_NAMES = ['perfis', 'espacos', 'temas', 'notas', 'itens_revisao', 'avaliacoes'] as const;
+/** Lojas que podem ser "expurgadas" (apagadas de vez) e portanto gerar um "lápide". */
+export const PURGAVEIS = [
+  'perfis',
+  'espacos',
+  'temas',
+  'notas',
+  'itens_revisao',
+  'avaliacoes',
+] as const;
+export type LojaPurgavel = (typeof PURGAVEIS)[number];
+
+/**
+ * Lápide de uma exclusão definitiva ("Excluir de vez" na Lixeira). Sem ela, o registro
+ * apagado localmente voltaria no próximo sync/importar — porque a mesclagem nunca apaga
+ * o que existe local, e o backup remoto ainda tinha o registro. A lápide viaja no
+ * export/sync e vence qualquer cópia mais antiga do registro (ver src/domain/purga.ts).
+ */
+export interface Purga {
+  id: string;
+  /** Loja do registro apagado ("espacos", "notas", ...). */
+  loja: LojaPurgavel;
+  /** Id do registro apagado. */
+  alvo_id: string;
+  /** Quando a exclusão definitiva aconteceu (timestamp ISO). */
+  purgado_em: string;
+}
+
+export const STORE_NAMES = [
+  'perfis',
+  'espacos',
+  'temas',
+  'notas',
+  'itens_revisao',
+  'avaliacoes',
+  'purgas',
+] as const;
 export type StoreName = (typeof STORE_NAMES)[number];
 
 /** Cópia de segurança local (IndexedDB), fora do export/sync. `conteudo` é o ExportFile
@@ -125,6 +160,8 @@ export interface MemorizaData {
   notas: Nota[];
   itens_revisao: ItemRevisao[];
   avaliacoes: AvaliacaoRegistro[];
+  /** Lápides das exclusões definitivas — impedem que o registro "ressuscite" no sync. */
+  purgas: Purga[];
 }
 
 /** Envelope do arquivo exportado (.json). */

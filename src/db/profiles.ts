@@ -2,6 +2,7 @@ import { getDB } from './schema';
 import type { Perfil } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
+import { gravarPurgas } from './purgas';
 
 /**
  * ID fixo (não gerado por uuid()) do primeiro perfil já criado neste aparelho — de propósito:
@@ -69,7 +70,11 @@ export async function countProfileCascade(perfilId: string): Promise<ProfileCasc
   return { espacos: espacos.length, temas, notas };
 }
 
-/** Apaga o Perfil e, em cascata, todos os seus Espaços, Temas, Notas e Itens de Revisão. */
+/** Apaga o Perfil e, em cascata, todos os seus Espaços, Temas, Notas e Itens de Revisão.
+ *
+ *  Cada registro apgado deixa uma "lápide" (store `purgas`): sem ela, o Perfil inteiro
+ *  voltaria no próximo sync/importar, porque a mesclagem nunca apaga o que existe local
+ *  e o backup remoto ainda tinha a cópia (ver src/domain/purga.ts). */
 export async function deleteProfileCascade(perfilId: string): Promise<void> {
   const db = await getDB();
   const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
@@ -89,11 +94,30 @@ export async function deleteProfileCascade(perfilId: string): Promise<void> {
   );
   const itens = itensPorNota.flat();
 
-  const tx = db.transaction(['perfis', 'espacos', 'temas', 'notas', 'itens_revisao'], 'readwrite');
+  const avaliacoes = await db.getAllFromIndex('avaliacoes', 'perfil_id', perfilId);
+
+  const tx = db.transaction(
+    ['perfis', 'espacos', 'temas', 'notas', 'itens_revisao', 'avaliacoes', 'purgas'],
+    'readwrite',
+  );
   await tx.objectStore('perfis').delete(perfilId);
   for (const espaco of espacos) await tx.objectStore('espacos').delete(espaco.id);
   for (const tema of temas) await tx.objectStore('temas').delete(tema.id);
   for (const nota of notas) await tx.objectStore('notas').delete(nota.id);
   for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+  for (const aval of avaliacoes) await tx.objectStore('avaliacoes').delete(aval.id);
+
+  await gravarPurgas(
+    tx,
+    [
+      { loja: 'perfis', alvo: perfilId },
+      ...espacos.map((e) => ({ loja: 'espacos' as const, alvo: e.id })),
+      ...temas.map((t) => ({ loja: 'temas' as const, alvo: t.id })),
+      ...notas.map((n) => ({ loja: 'notas' as const, alvo: n.id })),
+      ...itens.map((i) => ({ loja: 'itens_revisao' as const, alvo: i.id })),
+      ...avaliacoes.map((a) => ({ loja: 'avaliacoes' as const, alvo: a.id })),
+    ],
+    nowISO(),
+  );
   await tx.done;
 }

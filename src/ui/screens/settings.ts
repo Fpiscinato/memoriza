@@ -33,6 +33,7 @@ import {
 } from '../../db/snapshots';
 import {
   EXCLUSAO_RETENCAO_DIAS,
+  esvaziarLixeira,
   expurgarItem,
   listarLixeira,
   restaurarItem,
@@ -79,6 +80,19 @@ function rotuloLixeira(item: LixeiraItem): string {
   if (item.notas) partes.push(`${item.notas} nota(s)`);
   if (item.excluido_em) partes.push(`excluído em ${formatDateTimeBR(item.excluido_em)}`);
   return partes.join(' · ');
+}
+
+/** Mostra o erro de uma ação da Lixeira no lugar certo (sem recarregar a tela, pra não
+ *  perder a lista) — antes o botão ficava desabilitado em silêncio e o usuário achava
+ *  que "não aconteceu nada". */
+function mostrarErroLixeira(err: unknown): void {
+  const status = document.querySelector('#lixeira-status');
+  if (!status) {
+    console.error(err);
+    return;
+  }
+  const mensagem = err instanceof Error ? err.message : 'Não foi possível concluir a operação.';
+  status.innerHTML = `<div class="banner banner--warning" role="alert">${escapeHtml(mensagem)}</div>`;
 }
 
 function formatBytes(bytes: number): string {
@@ -306,12 +320,20 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
             Excluir um Espaço, Tema ou Nota manda pra cá em vez de apagar na hora. Dá pra
             restaurar a qualquer momento; depois de ${EXCLUSAO_RETENCAO_DIAS} dias o item é
             removido de vez, sozinho. Se já existir algo com o mesmo nome, ao restaurar ele
-            ganha "(restaurado)" no nome, pra não duplicar.
+            ganha "(restaurado)" no nome, pra não duplicar. "Excluir de vez" é definitivo:
+            o item some daqui e do backup sincronizado, e não volta mais.
           </p>
           ${
             lixeira.length === 0
               ? `<p class="text-muted" style="margin:0;">A lixeira está vazia.</p>`
               : `<div>
+                  <div class="settings-list-row">
+                    <div>
+                      <div class="settings-row__label">${lixeira.length} item(ns) na lixeira</div>
+                      <p class="settings-row__desc">Restaurar um por um ou esvaziar tudo de uma vez</p>
+                    </div>
+                    <button class="btn btn--secondary btn--sm" id="btn-esvaziar-lixeira" type="button">Esvaziar lixeira</button>
+                  </div>
                   ${lixeira
                     .map(
                       (item) => `
@@ -330,6 +352,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
                     .join('')}
                 </div>`
           }
+          <div id="lixeira-status" role="status"></div>
         </div>
       </section>
 
@@ -643,7 +666,13 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         nome = conflito.nomeSugerido;
       }
       btn.disabled = true;
-      await restaurarItem(tipo, id, nome !== undefined ? { nome } : undefined);
+      try {
+        await restaurarItem(tipo, id, nome !== undefined ? { nome } : undefined);
+      } catch (err) {
+        mostrarErroLixeira(err);
+        btn.disabled = false;
+        return;
+      }
       renderSettings(container, ctx);
     });
   });
@@ -654,13 +683,41 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       const ok = await confirmAction({
         title: `Excluir "${nome}" de vez?`,
         message:
-          'O item e tudo que foi junto com ele (temas e notas) serão apagados deste aparelho, sem volta. Um eventual backup no GitHub ainda guarda uma cópia.',
+          'O item e tudo que foi junto com ele (temas e notas) serão apagados deste aparelho e do backup sincronizado, sem volta.',
       });
       if (!ok) return;
       btn.disabled = true;
-      await expurgarItem(btn.dataset.tipo as LixeiraTipo, btn.dataset.expurgar!);
+      try {
+        await expurgarItem(btn.dataset.tipo as LixeiraTipo, btn.dataset.expurgar!);
+      } catch (err) {
+        mostrarErroLixeira(err);
+        btn.disabled = false;
+        return;
+      }
       renderSettings(container, ctx);
     });
+  });
+
+  container.querySelector('#btn-esvaziar-lixeira')?.addEventListener('click', async () => {
+    const ok = await confirmAction({
+      title: 'Esvaziar a lixeira?',
+      message:
+        'Todos os itens da lixeira (e o que foi junto com eles) serão apagados de vez, deste aparelho e do backup sincronizado. Não tem volta.',
+    });
+    if (!ok) return;
+    const btn = container.querySelector<HTMLButtonElement>('#btn-esvaziar-lixeira')!;
+    btn.disabled = true;
+    try {
+      const quantos = await esvaziarLixeira(ctx.perfil.id);
+      renderSettings(container, ctx);
+      const status = container.querySelector('#lixeira-status');
+      if (status) {
+        status.innerHTML = `<div class="banner banner--success" role="status">${ICONS.check} ${quantos} item(ns) excluídos de vez.</div>`;
+      }
+    } catch (err) {
+      mostrarErroLixeira(err);
+      btn.disabled = false;
+    }
   });
 
   container.querySelector('#btn-snapshot-criar')?.addEventListener('click', async () => {

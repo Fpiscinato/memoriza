@@ -4,6 +4,7 @@
 // (db/merge.ts): registros mais novos vencem e nada local é apagado.
 
 import { exportAll, importData, parseExportFile, type ImportSummary } from '../db/export-import';
+import { limparLixeiraAntiga } from '../db/lixeira';
 import {
   getGithubGistId,
   getGithubLastSyncAt,
@@ -113,6 +114,10 @@ export async function syncWithGithub(token: string): Promise<GitHubSyncResult> {
       try {
         const remoto = parseExportFile(remoteContent);
         summary = await importData(remoto);
+        // O backup remoto pode trazer item de Lixeira que já passou da retenção (ou que
+        // foi expurgado antes de existir a lápide): expurga agora, senão ele voltaria
+        // a aparecer na Lixeira a cada sync.
+        await limparLixeiraAntiga();
         merged = await exportAll();
         mesclouRemoto = true;
       } catch {
@@ -212,6 +217,8 @@ function createEmptyPorLoja(): Record<string, { criados: number; atualizados: nu
     temas: inicial,
     notas: inicial,
     itens_revisao: inicial,
+    avaliacoes: inicial,
+    purgas: inicial,
   };
 }
 

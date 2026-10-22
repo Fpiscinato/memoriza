@@ -8,6 +8,8 @@ import { getDB } from './schema';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
 import { nomeTemaExibicao } from '../domain/rotulos';
 import { resolverConflito, type ConflitoRestauro } from '../domain/restauro-lixeira';
+import { gravarPurgas } from './purgas';
+import type { LojaPurgavel, Nota, Tema } from '../types';
 
 export const EXCLUSAO_RETENCAO_DIAS = 30;
 
@@ -60,12 +62,29 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
     await Promise.all(todosTemas.map((t) => db.getAllFromIndex('notas', 'tema_id', t.id)))
   ).flat();
 
+  // Índices uma vez só — antes a contagem era refeita dentro de laços (quadrático).
+  const temasPorEspaco = new Map<string, Tema[]>();
+  for (const tema of todosTemas) {
+    const lista = temasPorEspaco.get(tema.espaco_id);
+    if (lista) lista.push(tema);
+    else temasPorEspaco.set(tema.espaco_id, [tema]);
+  }
+  const notasPorTema = new Map<string, Nota[]>();
+  for (const nota of todasNotas) {
+    const lista = notasPorTema.get(nota.tema_id);
+    if (lista) lista.push(nota);
+    else notasPorTema.set(nota.tema_id, [nota]);
+  }
+
   const itens: LixeiraItem[] = [];
 
   for (const espaco of espacos) {
     if (!espaco.excluido) continue;
-    const temasDoEspaco = todosTemas.filter((t) => t.espaco_id === espaco.id);
-    const temaIds = new Set(temasDoEspaco.map((t) => t.id));
+    const temasDoEspaco = temasPorEspaco.get(espaco.id) ?? [];
+    let notasExcluidas = 0;
+    for (const tema of temasDoEspaco) {
+      notasExcluidas += (notasPorTema.get(tema.id) ?? []).filter((n) => n.excluido).length;
+    }
     itens.push({
       tipo: 'espaco',
       id: espaco.id,
@@ -73,7 +92,7 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
       contexto: espaco.categoria || 'Sem categoria',
       excluido_em: espaco.excluido_em,
       temas: temasDoEspaco.filter((t) => t.excluido).length,
-      notas: todasNotas.filter((n) => temaIds.has(n.tema_id) && n.excluido).length,
+      notas: notasExcluidas,
     });
   }
 
@@ -87,7 +106,7 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
       nome: nomeTemaExibicao(tema.nome),
       contexto: espaco.nome,
       excluido_em: tema.excluido_em,
-      notas: todasNotas.filter((n) => n.tema_id === tema.id && n.excluido).length,
+      notas: (notasPorTema.get(tema.id) ?? []).filter((n) => n.excluido).length,
     });
   }
 
@@ -201,42 +220,85 @@ export async function restaurarItem(
   await tx.done;
 }
 
-/** Apaga de vez (com Itens de Revisão) — não tem volta. */
+/** Apaga de vez (com Itens de Revisão) — não tem volta.
+ *
+ *  Cada registro apagado deixa uma "lápide" (store `purgas`) com o horário da exclusão.
+ *  Sem a lápide, o registro voltaria no próximo sync/importar: a mesclagem nunca apaga o
+ *  que existe local, e o backup remoto ainda tinha a cópia antiga — o item reaparecia na
+ *  Lixeira como se o "Excluir de vez" não tivesse acontecido. A lápide viaja no
+ *  export/sync e vence qualquer cópia mais antiga do registro (ver src/domain/purga.ts). */
 export async function expurgarItem(tipo: LixeiraTipo, id: string): Promise<void> {
   const db = await getDB();
+  const agora = nowISO();
 
   if (tipo === 'nota') {
     const itens = await db.getAllFromIndex('itens_revisao', 'nota_id', id);
-    const tx = db.transaction(['notas', 'itens_revisao'], 'readwrite');
+    const avaliacoes = await db.getAllFromIndex('avaliacoes', 'nota_id', id);
+    const tx = db.transaction(['notas', 'itens_revisao', 'avaliacoes', 'purgas'], 'readwrite');
     await tx.objectStore('notas').delete(id);
     for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+    for (const aval of avaliacoes) await tx.objectStore('avaliacoes').delete(aval.id);
+    await gravarPurgas(tx, [
+      { loja: 'notas', alvo: id },
+      ...itens.map((item) => ({ loja: 'itens_revisao' as const, alvo: item.id })),
+      ...avaliacoes.map((aval) => ({ loja: 'avaliacoes' as const, alvo: aval.id })),
+    ], agora);
     await tx.done;
     return;
   }
 
-  let notas: { id: string }[];
-  if (tipo === 'tema') {
-    notas = await db.getAllFromIndex('notas', 'tema_id', id);
-  } else {
-    const temas = await db.getAllFromIndex('temas', 'espaco_id', id);
-    notas = (await Promise.all(temas.map((t) => db.getAllFromIndex('notas', 'tema_id', t.id)))).flat();
-  }
+  // Tudo é lido ANTES de abrir a transação: um `await` de uma leitura que não pertence
+  // à transação deixa a transação inativa (regra do IndexedDB) e o "Excluir de vez"
+  // falharia no meio do caminho, deixando o item na Lixeira.
+  const temasDoEspaco =
+    tipo === 'tema' ? [] : await db.getAllFromIndex('temas', 'espaco_id', id);
+
+  const notas = tipo === 'tema'
+    ? await db.getAllFromIndex('notas', 'tema_id', id)
+    : (await Promise.all(temasDoEspaco.map((t) => db.getAllFromIndex('notas', 'tema_id', t.id)))).flat();
 
   const itens = (
     await Promise.all(notas.map((n) => db.getAllFromIndex('itens_revisao', 'nota_id', n.id)))
   ).flat();
+  const avaliacoes = (
+    await Promise.all(notas.map((n) => db.getAllFromIndex('avaliacoes', 'nota_id', n.id)))
+  ).flat();
 
-  const tx = db.transaction(['espacos', 'temas', 'notas', 'itens_revisao'], 'readwrite');
+  const tx = db.transaction(
+    ['espacos', 'temas', 'notas', 'itens_revisao', 'avaliacoes', 'purgas'],
+    'readwrite',
+  );
+  const purgas: { loja: LojaPurgavel; alvo: string }[] = [];
   if (tipo === 'tema') {
     await tx.objectStore('temas').delete(id);
+    purgas.push({ loja: 'temas', alvo: id });
   } else {
-    const temas = await db.getAllFromIndex('temas', 'espaco_id', id);
     await tx.objectStore('espacos').delete(id);
-    for (const tema of temas) await tx.objectStore('temas').delete(tema.id);
+    for (const tema of temasDoEspaco) {
+      await tx.objectStore('temas').delete(tema.id);
+      purgas.push({ loja: 'temas', alvo: tema.id });
+    }
+    purgas.push({ loja: 'espacos', alvo: id });
   }
   for (const nota of notas) await tx.objectStore('notas').delete(nota.id);
   for (const item of itens) await tx.objectStore('itens_revisao').delete(item.id);
+  for (const aval of avaliacoes) await tx.objectStore('avaliacoes').delete(aval.id);
+
+  purgas.push(...notas.map((n) => ({ loja: 'notas' as const, alvo: n.id })));
+  purgas.push(...itens.map((i) => ({ loja: 'itens_revisao' as const, alvo: i.id })));
+  purgas.push(...avaliacoes.map((a) => ({ loja: 'avaliacoes' as const, alvo: a.id })));
+  await gravarPurgas(tx, purgas, agora);
   await tx.done;
+}
+
+/** Expurgo em lote: apaga de vez tudo que está na Lixeira do perfil (cada item com sua
+ *  cascata). Devolve quantos itens foram expurgados. */
+export async function esvaziarLixeira(perfilId: string): Promise<number> {
+  const itens = await listarLixeira(perfilId);
+  for (const item of itens) {
+    await expurgarItem(item.tipo, item.id);
+  }
+  return itens.length;
 }
 
 /** Expurgo automático: remove definitivamente o que está na Lixeira há mais de

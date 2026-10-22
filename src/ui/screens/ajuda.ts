@@ -211,7 +211,11 @@ const SECOES: Secao[] = [
     corpoHtml: `<p>Quando você exclui um Espaço, Tema ou Nota, ele não some de vez: vai pra
       Lixeira, em Configurações. Lá dá pra <b>restaurar</b> a qualquer momento — se excluiu o
       Espaço, volta com os Temas e Notas junto. Depois de 30 dias o item é apagado sozinho,
-      ou você pode <b>Excluir de vez</b> na hora, se quiser.</p>`,
+      ou você pode <b>Excluir de vez</b> na hora, se quiser (dá pra esvaziar tudo de uma vez
+      também).</p><p>Enquanto está na Lixeira, o item não aparece em nenhuma tela — nem na
+      busca, nem na fila de revisão, nem no Painel. E <b>Excluir de vez</b> é definitivo de
+      verdade: o item também some do backup sincronizado, então ele não volta em nenhum
+      aparelho.</p>`,
   },
   {
     titulo: 'Snapshots locais',

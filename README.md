@@ -223,6 +223,7 @@ src/
     algorithm.ts          computeNextReview — algoritmo híbrido, função pura
     validade.ts             precisaAvisoDeValidade (nota "pode desatualizar")
     stats.ts                  computeStreak e isNotaFraca — cálculos puros do Painel/PDF
+    purga.ts                  lápides de exclusão definitiva (funções puras, testadas)
   db/
     schema.ts            abertura do IndexedDB e definição das object stores/índices
     profiles.ts           perfis: padrão, listar, criar, renomear, excluir em cascata
@@ -236,6 +237,8 @@ src/
     dashboard.ts          agrega os números do Painel (getDashboardStats)
     pdf-data.ts             monta os dados agrupados pro export em PDF
     favorites.ts             Temas/Notas favoritados do perfil, com Espaço/Tema pai
+    lixeira.ts               exclusão suave, listagem da Lixeira, restaurar e expurgar
+    purgas.ts                grava as lápides de exclusão definitiva (na mesma transação)
     merge.ts               lógica pura de mesclagem (testada em tests/merge.test.ts)
     export-import.ts    monta o .json de export, dispara download, aplica import
   lib/
@@ -271,6 +274,9 @@ scripts/
   generate-icons.mjs   gera os ícones PNG do PWA (sem dependências externas)
 tests/
   merge.test.ts           testes da lógica de mesclagem do importar
+  purga.test.ts           testes das lápides de exclusão definitiva
+  lixeira-sync.test.ts    teste de integração (IndexedDB) do ciclo excluir -> Lixeira ->
+                           "Excluir de vez" -> sync (com fake-indexeddb)
   algorithm.test.ts    testes da tabela de transição do algoritmo de repetição
   stats.test.ts             testes de computeStreak, isNotaFraca, agruparPorCategoria
   ordem.test.ts             testes da ordenação (meses, números, casos mistos)
@@ -346,6 +352,12 @@ mesclagem no importar/exportar.
 - `temas`: `{ id, espaco_id, nome, categoria, favorito, criado_em, atualizado_em }`
 - `notas`: `{ id, tema_id, titulo, conteudo, fonte, pode_desatualizar, validade_ate?, favorito, titulo_revisado, criado_em, atualizado_em }`
 - `itens_revisao`: `{ id, nota_id, perfil_id, estagio, data_agendada, data_concluida?, status, avaliacao?, streak_facil, criado_em, atualizado_em }`
+- `avaliacoes`: `{ id, perfil_id, espaco_id, tema_id, nota_id, avaliacao, escopo, categoria?, sessao_id, criado_em, atualizado_em }`
+- `purgas`: `{ id, loja, alvo_id, purgado_em }` — lápides das exclusões definitivas (ver "Lixeira")
+- `snapshots`: backups locais (fora do export/sync)
+
+Espaço, Tema e Nota também carregam `excluido?` / `excluido_em?` — a marca da
+Lixeira (ver abaixo).
 
 `pode_desatualizar` substitui o campo `tipo` do desenho original da Fase 1a
 (`'conceito' | 'formula' | 'fato_com_validade'`) — na prática só a distinção
@@ -423,6 +435,45 @@ Editar o conteúdo de uma Nota nunca mexe no Item de Revisão em andamento —
 só atualiza os campos da própria Nota. O agendamento (estágio, próxima
 data) continua exatamente onde estava.
 
+## Lixeira (exclusão suave)
+
+"Excluir" **não apaga na hora**: marca o registro com `excluido: true` +
+`excluido_em` e o item some das telas (listas, fila de revisão, busca global,
+estatísticas, PDF). Ele fica recuperável em **Configurações → Lixeira** por
+até **30 dias** (`EXCLUSAO_RETENCAO_DIAS`); depois disso o expurgo automático
+(apertado ao abrir o app e depois de cada sync) apaga de vez.
+
+- **Restaurar** traz o item de volta. Se já existir algo com o mesmo nome no
+  mesmo lugar, o item restaurado ganha "(restaurado)" no nome, pra não
+  duplicar (`src/domain/restauro-lixeira.ts`).
+- **Excluir de vez** (ou **Esvaziar lixeira**) apaga o item e tudo que foi
+  junto com ele em cascata, sem volta.
+
+### A lápide de exclusão (`purgas`)
+
+Sem mais nada, "Excluir de vez" era desfeito pelo próximo sync: a mesclagem
+do importar/sync **nunca apaga o que existe local**, e o backup remoto ainda
+tinha a cópia antiga do item — então o item era "recriado" (com `excluido:
+true`) e voltava a aparecer na Lixeira, como se o botão não tivesse
+funcionado.
+
+A correção é a store `purgas` (`src/domain/purga.ts`): cada exclusão
+definitiva grava uma **lápide** `{ id, loja, alvo_id, purgado_em }`. A lápide
+viaja no export/sync e vale mais do que qualquer cópia do registro anterior a
+ela:
+
+- registro **local** coberto por lápide → é **apagado** localmente;
+- registro **do arquivo** coberto por lápide → é **ignorado** (não entra);
+- registro mexido **depois** da lápide → volta a valer (a regra geral continua
+  sendo "mais recente vence");
+- o export **não leva** o registro coberto — o backup em nuvem perde o item
+  de vez também.
+
+Como a lápide é mais recente que o registro, ela também sobrevive a
+"restaurar + editar" (nesse caso o registro fica mais novo e volta a valer).
+Excluir um Perfil inteiro segue a mesma regra — sem isso, o perfil inteiro
+voltaria no próximo sync.
+
 ## Painel
 
 Números simples pro perfil atual, sem gráfico:
@@ -459,7 +510,9 @@ Em Configurações → Dados:
   - só existe no arquivo → cria;
   - existe nos dois e o do arquivo é mais recente → substitui;
   - existe nos dois e o local é mais recente (ou igual) → mantém o local;
-  - só existe localmente → nunca é apagado.
+  - só existe localmente → nunca é apagado;
+  - **exceção**: o que tem lápide de exclusão definitiva é apagado localmente
+    e ignorado quando vem no arquivo (ver "Lixeira").
 
   Depois de importar, a tela mostra quantos registros foram criados,
   atualizados e mantidos como estavam.
@@ -532,6 +585,15 @@ automatizado — foram validadas manualmente, ponta a ponta, num navegador
 real (Chromium via Playwright), incluindo injetar um registro no formato
 pré-Fase-1d direto no IndexedDB e recarregar o app pra confirmar a
 migração (`migrateNotasSemTitulo`) rodando de verdade no bootstrap.
+
+A exceção é o ciclo da Lixeira: `tests/lixeira-sync.test.ts` roda contra um
+IndexedDB de verdade (`fake-indexeddb`) e cobre o caminho completo —
+excluir (vai pra Lixeira) → sync → "Excluir de vez" → sync de novo —
+garantindo que o item **não volta** (era o bug do "eu limpo e ele sempre
+volta"), que a cascata some junto, que o item expurgado em outro aparelho
+é apagado localmente e que o item na Lixeira não aparece na busca global.
+As lápides em si (`src/domain/purga.ts`) têm testes puros em
+`tests/purga.test.ts`.
 
 Também cobre, das fases anteriores: criar/editar/excluir em cascata com
 contagem correta no modal, Painel refletindo os dados certos antes e

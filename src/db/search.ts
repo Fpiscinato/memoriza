@@ -51,20 +51,21 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
   if (!q) return [];
 
   const db = await getDB();
+  // Item na Lixeira (excluído) não aparece na busca — nem ele, nem o que está dentro dele.
   const espacos = (await db.getAllFromIndex('espacos', 'perfil_id', perfilId)).filter(
-    (e) => !e.arquivado,
+    (e) => !e.arquivado && !e.excluido,
   );
 
   const temasPorEspaco = await Promise.all(
     espacos.map((e) => db.getAllFromIndex('temas', 'espaco_id', e.id)),
   );
-  const temas = temasPorEspaco.flat();
+  const temas = temasPorEspaco.flat().filter((t) => !t.excluido);
 
   const espacoPorId = new Map(espacos.map((e: Espaco) => [e.id, e]));
   const notasPorTema = await Promise.all(
     temas.map((t) => db.getAllFromIndex('notas', 'tema_id', t.id)),
   );
-  const notas = notasPorTema.flat();
+  const notas = notasPorTema.flat().filter((n) => !n.excluido);
 
   const resultados: ResultadoBusca[] = [];
 

@@ -5,6 +5,13 @@
 // - existe nos dois e o do arquivo é mais recente (atualizado_em) -> substitui
 // - existe nos dois e o local é mais recente ou igual -> mantém o local
 // - só existe localmente -> nunca é apagado (nem é tocado)
+//
+// Exceção (a que faltava e fazia o item da Lixeira "voltar"): o que tem lápide de
+// exclusão definitiva (src/domain/purga.ts) é apagado localmente e ignorado quando vem
+// no arquivo — a exclusão definitiva tem que ser definitiva, também depois de um sync.
+
+import { purgaCobre } from '../domain/purga';
+import type { Purga } from '../types';
 
 export interface ComMetadados {
   id: string;
@@ -50,6 +57,48 @@ export interface MergeSummary {
   criados: number;
   atualizados: number;
   mantidos: number;
+}
+
+export interface MergeComPurgaResult<T extends ComMetadados> extends MergeResult<T> {
+  /** Ids que existiam localmente e foram removidos por terem sido purgados (exclusão definitiva). */
+  apagados: string[];
+  /** Ids do arquivo que foram ignorados por estarem cobertos por uma lápide. */
+  ignorados: string[];
+}
+
+/**
+ * Mesclagem com regra da lápide: registros purgados (exclusão definitiva) não voltam
+ * nem ficam no aparelho — a lápide sempre vence a cópia mais antiga do registro.
+ */
+export function mergeRecordsComPurga<T extends ComMetadados>(
+  local: T[],
+  incoming: T[],
+  purgas: Purga[],
+  loja: string,
+): MergeComPurgaResult<T> {
+  const apagados: string[] = [];
+  const ignorados: string[] = [];
+
+  const localVivo: T[] = [];
+  for (const registro of local) {
+    if (purgaCobre(purgas, loja, registro.id, registro.atualizado_em)) {
+      apagados.push(registro.id);
+    } else {
+      localVivo.push(registro);
+    }
+  }
+
+  const incomingAceito: T[] = [];
+  for (const registro of incoming) {
+    if (purgaCobre(purgas, loja, registro.id, registro.atualizado_em)) {
+      ignorados.push(registro.id);
+    } else {
+      incomingAceito.push(registro);
+    }
+  }
+
+  const base = mergeRecords(localVivo, incomingAceito);
+  return { ...base, apagados, ignorados };
 }
 
 export function combineSummaries(summaries: MergeSummary[]): MergeSummary {

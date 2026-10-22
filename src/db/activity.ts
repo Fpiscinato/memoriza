@@ -21,15 +21,18 @@ export async function getActivitySummary(perfilId: string): Promise<ActivitySumm
   const [feitas, notas] = await Promise.all([
     db.getAllFromIndex('itens_revisao', 'perfil_status', IDBKeyRange.only([perfilId, 'feita'])),
     (async () => {
-      const espacos = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
+      // Item na Lixeira não conta como atividade (mesma regra das estatísticas).
+      const espacos = (await db.getAllFromIndex('espacos', 'perfil_id', perfilId)).filter(
+        (e) => !e.excluido,
+      );
       const temasPorEspaco = await Promise.all(
         espacos.map((e) => db.getAllFromIndex('temas', 'espaco_id', e.id)),
       );
-      const todosTemas = temasPorEspaco.flat();
+      const todosTemas = temasPorEspaco.flat().filter((t) => !t.excluido);
       const notasPorTema = await Promise.all(
         todosTemas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),
       );
-      return notasPorTema.flat();
+      return notasPorTema.flat().filter((n) => !n.excluido);
     })(),
   ]);
 
