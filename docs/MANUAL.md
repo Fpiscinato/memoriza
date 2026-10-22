@@ -8,6 +8,7 @@ O Memoriza é um app de repetição espaçada simples, 100% local (IndexedDB), c
 - Organização: Espaços → Temas → Notas.
 - Lixeira: excluir é reversível por 30 dias ("Excluir de vez" é definitivo, e vale também pro backup na nuvem).
 - PWA: funciona offline, pode ser instalado no celular.
+- Atualização: quando sai uma versão nova, aparece um aviso no topo da tela ("Nova versão do Memoriza disponível") — é só tocar em **Atualizar agora**. Se você estiver com uma nota em edição sem salvar, o app pergunta antes de recarregar.
 - Sincronização: exporta/importa todos os perfis via GitHub Gist (merge por `id` + `atualizado_em`).
 
 ## Telas principais

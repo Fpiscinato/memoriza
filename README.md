@@ -340,6 +340,10 @@ ativado no servidor de desenvolvimento.
 
 ## Deploy (Cloudflare Workers, assets estáticos)
 
+> **No dia a dia o deploy é automático: basta `git push` em `main`.** A Cloudflare
+> builda e publica sozinha (em ~1 minuto). Não é preciso rodar `wrangler deploy`,
+> nem configurar nada no GitHub.
+
 O projeto é 100% estático (`dist/`) — sem D1, sem função de backend, sem
 código de servidor nenhum. A hospedagem usa **Cloudflare Workers com Static
 Assets** (`wrangler.jsonc`, sem `main` script) em vez de Cloudflare Pages: o
@@ -347,13 +351,27 @@ dashboard desta conta não oferece mais o botão de criar projeto Pages
 diretamente (só o fluxo de "Workers"), e a Cloudflare já trata Static Assets
 como o substituto oficial de Pages — para um site 100% estático como este,
 o resultado é o mesmo (nenhuma lógica de servidor roda, só arquivos
-servidos), só muda o domínio final: `https://memoriza.<sua-conta>.workers.dev`
+servidos), só muda o domínio final: `https://memoriza.f-piscinato.workers.dev`
 em vez de `memoriza.pages.dev`.
+
+### Como o automático funciona
 
 O deploy automático usa a **integração nativa de Git da Cloudflare**: o
 próprio Worker fica conectado ao repositório GitHub pelo GitHub App da
-Cloudflare (sem token nenhum guardado no lado do GitHub — a autenticação é
+Cloudflare (sem token nenhum guardado do lado do GitHub — a autenticação é
 toda do lado da Cloudflare).
+
+```
+git push origin main
+        │
+        └─> Cloudflare builda (npm run build) e publica no workers.dev
+```
+
+**Conferir se saiu:** o `sw.js` publicado tem que apontar pro bundle novo
+(`grep index- assets/index-*.js` no `sw.js` do site). Se o `sw.js` do site ainda
+tiver o hash antigo, o build não rodou.
+
+### Configuração (só na primeira vez, ou se a integração cair)
 
 1. No dashboard, abra **Workers & Pages → memoriza → Settings** e procure a
    seção de integração com Git (dependendo da conta aparece como **"Connect
@@ -362,15 +380,25 @@ toda do lado da Cloudflare).
 3. Build command: `npm run build`. Deploy command: deixe o padrão (a
    Cloudflare detecta o `wrangler.jsonc` do repo e roda `wrangler deploy`
    sozinha).
-4. Cada push em `main` builda e publica automaticamente em
-   `https://memoriza.<sua-conta>.workers.dev`.
 
-Deploy manual único, se precisar (roda localmente, com `wrangler login`):
+### Deploy manual (emergência)
+
+Se a integração com o Git não estiver disponível (ou quiser publicar sem
+esperar), roda localmente com `wrangler login`:
 
 ```bash
 npm run build
 npx wrangler deploy
 ```
+
+### Quem já tem o app instalado
+
+O `service worker` novo só substitui o antigo quando o navegador checa por
+atualização — isso acontece na navegação (ao abrir o app). Como a atualização é
+`registerType: 'prompt'`, quem já tinha o app aberto vê o aviso **"Nova versão
+do Memoriza disponível → Atualizar agora"** e escolhe quando recarregar (se
+houver edição não salva, o app pergunta antes). Quem não reabrir o app continua
+na versão antiga, funcionando offline, sem erro nenhum.
 
 ## Modelo de dados
 
