@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../lib/dom';
+import { gerenciarFocoModal } from './modal-foco';
 
 export interface InfoOptions {
   title: string;
@@ -22,6 +23,9 @@ export function showInfo(opts: InfoOptions): void {
   `;
   document.body.appendChild(overlay);
 
+  const dialog = overlay.querySelector<HTMLElement>('.modal')!;
+  const liberarFoco = gerenciarFocoModal(dialog);
+
   const onKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') cleanup();
   };
@@ -30,6 +34,7 @@ export function showInfo(opts: InfoOptions): void {
   function cleanup() {
     document.removeEventListener('keydown', onKeydown);
     overlay.remove();
+    liberarFoco();
   }
 
   overlay.querySelector('#info-modal-close')?.addEventListener('click', cleanup);

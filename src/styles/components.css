@@ -124,7 +124,7 @@
   padding: 0 3px;
   border-radius: 999px;
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-brand-contrast);
   font-size: 9px;
   font-weight: var(--font-weight-bold);
   line-height: 15px;
@@ -211,7 +211,7 @@
 }
 
 .app-nav__item[aria-current='page'] {
-  color: var(--color-brand);
+  color: var(--color-brand-strong);
   background: var(--color-brand-bg);
   font-weight: var(--font-weight-semibold);
   position: relative;
@@ -234,7 +234,7 @@
     width: 20px;
     height: 3px;
     border-radius: var(--radius-full);
-    background: var(--color-brand);
+    background: var(--color-brand-strong);
   }
 }
 
@@ -248,7 +248,7 @@
     width: 3px;
     height: 60%;
     border-radius: var(--radius-full);
-    background: var(--color-brand);
+    background: var(--color-brand-strong);
   }
 }
 
@@ -317,6 +317,27 @@
 
 .btn:active {
   transform: scale(0.98);
+}
+
+/* Botão desabilitado (ex: durante um sync) — precisa PARAR de parecer clicável.
+   Sem isso, o botão ficava com a cara de primário e o cursor de ponteiro, mas não
+   fazia nada ao ser tocado. */
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn:disabled:hover {
+  transform: none;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .btn--primary {
@@ -388,7 +409,7 @@
   height: 60px;
   border-radius: var(--radius-full);
   background: var(--color-brand-bg);
-  color: var(--color-brand);
+  color: var(--color-brand-strong);
 }
 
 .empty-state__icon .icon-inline {
@@ -461,7 +482,7 @@
 
 .profile-card:hover {
   transform: translateY(-2px);
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-strong);
 }
 
 .profile-avatar {
@@ -667,7 +688,7 @@
 
 .input:focus,
 .textarea:focus {
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-strong);
 }
 
 /* Campo pré-preenchido com o último valor usado (Tema/Nota) — cor diferente de propósito,
@@ -980,8 +1001,8 @@ button.item-row:hover {
 
 .espaco-icon-btn.is-selected {
   background: var(--color-brand-bg);
-  border-color: var(--color-brand);
-  color: var(--color-brand);
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
 }
 
 .espaco-visual__cores {
@@ -1190,7 +1211,7 @@ button.item-row:hover {
 }
 
 .editor-toolbar__btn:hover {
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-strong);
 }
 
 .editor-toolbar__sep {
@@ -1213,8 +1234,15 @@ button.item-row:hover {
   outline: none;
 }
 
+/* O `outline: none` acima cancelava o anel de foco global (base.css) — o editor ficava
+   sem indicação de foco visível pra quem navega por teclado. */
+.editor-conteudo:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .editor-conteudo:focus {
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-strong);
 }
 
 /* Não usa :empty porque o editor sempre tem pelo menos um <p><br></p> por dentro (ver
@@ -1588,7 +1616,7 @@ button.item-row:hover {
   padding: var(--space-6) var(--space-4);
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, var(--color-streak-a), var(--color-streak-b));
-  color: #fff;
+  color: var(--color-streak-contrast);
   text-align: center;
   box-shadow: var(--shadow-md);
   margin-bottom: var(--space-5);
@@ -1644,7 +1672,7 @@ button.item-row:hover {
 }
 
 .streak-hero__day--ativo {
-  background: #fff;
+  background: var(--color-streak-contrast);
 }
 
 .streak-hero__day-label {
@@ -1711,7 +1739,7 @@ button.item-row:hover {
 .stat-tile__value {
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
-  color: var(--color-brand);
+  color: var(--color-brand-strong);
 }
 
 .stat-tile__label {
@@ -1952,13 +1980,18 @@ button.item-row:hover {
     --color-border: #e2e5eb;
     --color-text: #12151c;
     --color-text-muted: #5b6270;
-    --color-text-faint: #8a90a0;
+    --color-text-faint: #6b7280;
     --color-success: #16a34a;
     --color-success-bg: #e9f9ef;
     --color-warning: #b45309;
     --color-warning-bg: #fef3e0;
     --color-danger: #dc2626;
     --color-danger-bg: #fdecec;
+    --color-brand: #2563eb;
+    --color-brand-strong: #2563eb;
+    --color-brand-bg: #e8eefd;
+    --color-streak-a: #c2410c;
+    --color-streak-b: #a16207;
     --accent-0: #2563eb;
     --accent-1: #15803d;
     --accent-2: #b45309;
@@ -2100,8 +2133,8 @@ button.item-row:hover {
 }
 
 .app-header__search:hover {
-  color: var(--color-brand);
-  border-color: var(--color-brand);
+  color: var(--color-brand-strong);
+  border-color: var(--color-brand-strong);
 }
 
 @media (max-width: 359px) {
@@ -2211,7 +2244,7 @@ button.item-row:hover {
 .search-result__icon {
   display: flex;
   margin-top: 2px;
-  color: var(--color-brand);
+  color: var(--color-brand-strong);
 }
 
 .search-result__icon .icon-inline {
@@ -2247,7 +2280,7 @@ button.item-row:hover {
 
 .search-result mark {
   background: var(--color-brand-bg);
-  color: var(--color-brand);
+  color: var(--color-brand-strong);
   border-radius: 2px;
   padding: 0 1px;
 }
@@ -2291,7 +2324,7 @@ button.item-row:hover {
 
 .toggle-checkbox:checked::after {
   transform: translateX(18px);
-  background: #fff;
+  background: var(--color-brand-contrast);
 }
 
 /* Carga dos próximos 7 dias — mini gráfico de barras no Painel */
@@ -2415,7 +2448,7 @@ button.item-row:hover {
   top: calc(100% + 6px);
   z-index: 5;
   width: 240px;
-  max-width: 70vw;
+  max-width: min(70vw, 260px);
   padding: var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -2426,6 +2459,16 @@ button.item-row:hover {
   color: var(--color-text-muted);
   text-transform: none;
   letter-spacing: normal;
+}
+
+/* Em tela estreita o balão abria pra direita e saía da viewport (o ⓘ fica no fim de um
+   rótulo longo) — a partir de 480px ele se alinha pela direita do ⓘ. */
+@media (max-width: 479px) {
+  .field-hint__panel {
+    left: auto;
+    right: 0;
+    max-width: 82vw;
+  }
 }
 
 /* Chips de categorias já existentes, embaixo do campo de texto livre — evita depender da seta
@@ -2451,7 +2494,7 @@ button.item-row:hover {
 }
 
 .chip:hover {
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-strong);
   color: var(--color-text);
 }
 
@@ -2535,22 +2578,22 @@ button.item-row:hover {
 }
 
 .heatmap__cell--1 {
-  background: rgba(16, 185, 129, 0.35);
-  border-color: rgba(16, 185, 129, 0.7);
+  background: color-mix(in srgb, var(--color-success) 35%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 70%, transparent);
 }
 
 .heatmap__cell--2 {
-  background: rgba(16, 185, 129, 0.55);
-  border-color: rgba(16, 185, 129, 0.8);
+  background: color-mix(in srgb, var(--color-success) 55%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 80%, transparent);
 }
 
 .heatmap__cell--3 {
-  background: rgba(16, 185, 129, 0.75);
-  border-color: rgba(16, 185, 129, 0.9);
+  background: color-mix(in srgb, var(--color-success) 75%, transparent);
+  border-color: color-mix(in srgb, var(--color-success) 90%, transparent);
 }
 
 .heatmap__cell--4 {
-  background: rgba(16, 185, 129, 0.95);
+  background: color-mix(in srgb, var(--color-success) 95%, transparent);
   border-color: var(--color-success);
 }
 

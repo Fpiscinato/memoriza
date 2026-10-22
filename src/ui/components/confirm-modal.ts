@@ -1,4 +1,5 @@
 import { escapeHtml } from '../../lib/dom';
+import { gerenciarFocoModal } from './modal-foco';
 
 export interface ConfirmOptions {
   title: string;
@@ -27,6 +28,12 @@ export function confirmAction(opts: ConfirmOptions): Promise<boolean> {
     `;
     document.body.appendChild(overlay);
 
+    const dialog = overlay.querySelector<HTMLElement>('.modal')!;
+    // O foco começa em "Cancelar": numa ação destrutiva, o Enter acidental não pode
+    // confirmar a exclusão.
+    const liberarFoco = gerenciarFocoModal(dialog);
+    dialog.querySelector<HTMLButtonElement>('#modal-cancel')?.focus();
+
     const onKeydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') cleanup(false);
     };
@@ -35,6 +42,7 @@ export function confirmAction(opts: ConfirmOptions): Promise<boolean> {
     function cleanup(result: boolean) {
       document.removeEventListener('keydown', onKeydown);
       overlay.remove();
+      liberarFoco();
       resolve(result);
     }
 

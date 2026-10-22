@@ -11,6 +11,10 @@
   --color-brand-hover: #1d4ed8;
   --color-brand-contrast: #ffffff;
   --color-brand-bg: #e8eefd;
+  /* Mesma marca, mas para uso como TEXTO/ícone sobre a superfície — no tema escuro o
+     azul de fundo (#2563eb) ficaria ilegível sobre o fundo escuro, então aqui entra
+     um azul claro (ver o bloco escuro). Botões continuam usando --color-brand. */
+  --color-brand-strong: #2563eb;
 
   /* Superfícies e texto — tema claro (padrão) */
   --color-bg: #f7f8fb;
@@ -19,7 +23,8 @@
   --color-border: #e2e5eb;
   --color-text: #12151c;
   --color-text-muted: #5b6270;
-  --color-text-faint: #8a90a0;
+  /* Texto "fraco" (metadados, legendas) — precisa de 4,5:1 no branco (WCAG AA). */
+  --color-text-faint: #6b7280;
 
   --color-success: #16a34a;
   --color-success-bg: #e9f9ef;
@@ -28,12 +33,15 @@
   --color-danger: #dc2626;
   --color-danger-bg: #fdecec;
 
-  --color-focus-ring: #93b4fb;
+  /* Anel de foco — 3:1 contra o branco (WCAG 2.2 SC 1.4.11, indicador de foco). */
+  --color-focus-ring: #2563eb;
 
   /* Gradiente do "streak" no Painel — de propósito uma cor viva e quente, fora da paleta
-     neutra do resto do app (só o Painel tem essa energia extra, o resto fica sóbrio). */
-  --color-streak-a: #f97316;
-  --color-streak-b: #f59e0b;
+     neutra do resto do app (só o Painel tem essa energia extra, o resto fica sóbrio).
+     Escuro o bastante pra o texto branco passar de 4,5:1 (WCAG AA). */
+  --color-streak-a: #c2410c;
+  --color-streak-b: #a16207;
+  --color-streak-contrast: #ffffff;
 
   /* Paleta de destaque (8 cores fixas, acessíveis) — usada por Espaço e por Categoria pra
      diferenciar visualmente sem depender de texto. Nunca gerada aleatoriamente, ver
@@ -105,7 +113,8 @@
     --color-border: #262c3b;
     --color-text: #eef1f7;
     --color-text-muted: #a6acbd;
-    --color-text-faint: #6d7386;
+    /* 5,7:1 sobre a superfície escura — legível como texto pequeno. */
+    --color-text-faint: #8b91a4;
 
     --color-success: #4ade80;
     --color-success-bg: #123321;
@@ -116,6 +125,9 @@
 
     --color-focus-ring: #3b5fc9;
     --color-brand-bg: rgba(96, 165, 250, 0.16);
+    /* Azul claro pro texto/ícone de marca (o --color-brand continua sendo o fundo dos
+       botões, que precisa contrastar com texto branco). */
+    --color-brand-strong: #93c5fd;
 
     --accent-0: #60a5fa;
     --accent-1: #4ade80;
@@ -142,7 +154,7 @@
   --color-border: #262c3b;
   --color-text: #eef1f7;
   --color-text-muted: #a6acbd;
-  --color-text-faint: #6d7386;
+  --color-text-faint: #8b91a4;
 
   --color-success: #4ade80;
   --color-success-bg: #123321;
@@ -152,6 +164,7 @@
   --color-danger-bg: #3a1414;
 
   --color-focus-ring: #3b5fc9;
+  --color-brand-strong: #93c5fd;
 
   --accent-0: #60a5fa;
   --accent-1: #4ade80;

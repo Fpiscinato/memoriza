@@ -1,3 +1,5 @@
+import { canNavigateAway, clearFormDirty } from '../lib/form-guard';
+
 export type Route =
   | { name: 'perfil' }
   | { name: 'hoje' }
@@ -81,7 +83,15 @@ export function topLevelFor(route: Route): TopLevelRoute {
   }
 }
 
+/**
+ * Toda navegação do app passa por aqui — inclusive o breadcrumb, os botões das telas e o
+ * resultado da busca. Por isso a checagem de "há alterações não salvas?" fica centralizada
+ * aqui: antes, só os botões da navegação principal perguntavam, e sair pelo breadcrumb
+ * (o caminho de volta mais natural) perdia o que o usuário tinha digitado, sem aviso.
+ */
 export function navigate(path: string): void {
+  if (!canNavigateAway()) return;
+  clearFormDirty();
   window.location.hash = path.startsWith('/') ? path : `/${path}`;
 }
 

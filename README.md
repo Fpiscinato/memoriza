@@ -171,6 +171,18 @@ multiusuário público).
   pra minúsculo/sem espaços) sempre cai na mesma cor, em qualquer tela. As
   8 cores têm variantes claro/escuro em `tokens.css`, igual todo o resto da
   paleta.
+- **A marca tem dois tokens**: `--color-brand` (fundo de botão, precisa
+  contrastar com texto branco) e `--color-brand-strong` (texto/ícone/borda
+  sobre a superfície). No tema escuro só o segundo muda de valor (azul claro)
+  — com um só token, o item ativo da navegação ficava azul-escuro sobre
+  fundo escuro (2,6:1, ilegível).
+- **Contraste verificado contra WCAG AA**: `--color-text-faint` (metadados,
+  legendas) é `#6b7280` no claro e `#8b91a4` no escuro (4,5:1+); o anel de
+  foco é `#2563eb` no claro (antes era `#93b4fb`, 2:1 — indicador de foco
+  precisa de 3:1); o gradiente do "streak" no Painel escureceu
+  (`#c2410c` → `#a16207`) pra o texto branco passar de 4,5:1.
+- **Botão desabilitado tem estado visual** (`:disabled`): antes um botão
+  desabilitado durante um sync continuava com cara de clicável.
 - **`.app-main` ganhou um teto de largura bem mais generoso (1100px) e as
   listas (`.item-list`) viram grid multi-coluna a partir de 720px** — o
   problema apontado foi a interface parecer "mobile esticado" em telas
@@ -277,6 +289,8 @@ tests/
   purga.test.ts           testes das lápides de exclusão definitiva
   lixeira-sync.test.ts    teste de integração (IndexedDB) do ciclo excluir -> Lixeira ->
                            "Excluir de vez" -> sync (com fake-indexeddb)
+  guard-navegacao.test.ts  testes da guarda de "alterações não salvas" e da navegação
+                           central (nenhum caminho de saída perde a edição)
   algorithm.test.ts    testes da tabela de transição do algoritmo de repetição
   stats.test.ts             testes de computeStreak, isNotaFraca, agruparPorCategoria
   ordem.test.ts             testes da ordenação (meses, números, casos mistos)
@@ -434,6 +448,46 @@ real do que vai sumir antes de executar.
 Editar o conteúdo de uma Nota nunca mexe no Item de Revisão em andamento —
 só atualiza os campos da própria Nota. O agendamento (estágio, próxima
 data) continua exatamente onde estava.
+
+## Editor de nota: não perde o que foi digitado
+
+O editor é o lugar onde mais se digita, então tudo que envolve "sair" foi
+cuidado:
+
+- **Toda navegação passa pela mesma guarda.** O "há alterações não salvas?"
+  mora no `navigate()` (`src/ui/router.ts`) — ou seja, vale pro breadcrumb,
+  pros botões, pra busca e pro menu. Antes a checagem ficava só nos botões da
+  navegação principal, e sair pelo breadcrumb (o caminho de volta mais natural)
+  perdia o texto digitado sem nenhum aviso.
+- **O estado "sujo" é global e some junto.** Sair do editor por qualquer
+  caminho (inclusive o botão "voltar" do navegador) limpa a guarda — senão a
+  navegação seguinte perguntava de novo sobre uma edição que já não estava na
+  tela.
+- **"Favoritar" e "Parar de revisar" não re-renderizam a tela.** Eles
+  atualizam só o botão/cartão afetado — recarregar a tela inteira apagaria o
+  título e o conteúdo que o usuário tinha digitado.
+- **Marcar "pode desatualizar" e a data "válido até" também marcam a tela como
+  alterada** (esses campos não disparam evento de `input`).
+- **Enter no Título/Fonte salva a nota** — o que se espera de um formulário, e
+  no celular é o botão "Ir" do teclado virtual.
+- **O editor de conteúdo é acessível**: `role="textbox"`,
+  `aria-multiline="true"` e `aria-labelledby` apontando pro rótulo — antes o
+  leitor de tela anunciava um grupo sem nome.
+- **O anel de foco do editor não é cancelado** (o `outline: none` do editor
+  vencia o anel global de `base.css`).
+
+## Acessibilidade dos modais e da busca
+
+- **Modais**: o foco entra no diálogo ao abrir (e começa em "Cancelar" nos de
+  confirmação, pra o Enter acidental não confirmar uma exclusão), fica preso
+  dentro dele (Tab/Shift+Tab não escorrem pra página de trás) e volta pro
+  elemento que estava focado quando fecha (`src/ui/components/modal-foco.ts`).
+- **Busca global**: o campo é um `combobox` e cada resultado é um `option` de
+  verdade (antes era `role="option"` num `<button>`, papel inválido), com
+  `aria-activedescendant` apontando pro item selecionado — o leitor de tela
+  anuncia a navegação pelas setas. Ao fechar, o foco volta pro botão da busca.
+- **Ctrl+K não abre a busca dentro do editor**: lá o atalho cria link (senão o
+  usuário ganhava o prompt de URL e a paleta de busca ao mesmo tempo).
 
 ## Lixeira (exclusão suave)
 
@@ -593,7 +647,8 @@ garantindo que o item **não volta** (era o bug do "eu limpo e ele sempre
 volta"), que a cascata some junto, que o item expurgado em outro aparelho
 é apagado localmente e que o item na Lixeira não aparece na busca global.
 As lápides em si (`src/domain/purga.ts`) têm testes puros em
-`tests/purga.test.ts`.
+`tests/purga.test.ts`, e a guarda de "alterações não salvas" +
+navegação central têm testes em `tests/guard-navegacao.test.ts`.
 
 Também cobre, das fases anteriores: criar/editar/excluir em cascata com
 contagem correta no modal, Painel refletindo os dados certos antes e

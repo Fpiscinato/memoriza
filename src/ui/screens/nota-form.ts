@@ -137,7 +137,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       </div>
 
       <div class="field">
-        <label class="field__label" for="input-conteudo">Conteúdo${renderFieldHint('Selecione um trecho de texto pra deixar em negrito, itálico ou colorido — igual num editor de texto comum. Enter simples só quebra a linha; Enter duas vezes cria um novo parágrafo. Numa lista, Tab indenta o item (Shift+Tab volta).')}</label>
+        <label class="field__label" for="input-conteudo" id="label-input-conteudo">Conteúdo${renderFieldHint('Selecione um trecho de texto pra deixar em negrito, itálico ou colorido — igual num editor de texto comum. Enter simples só quebra a linha; Enter duas vezes cria um novo parágrafo. Numa lista, Tab indenta o item (Shift+Tab volta).')}</label>
         <div class="editor-toolbar" role="toolbar" aria-label="Formatação do conteúdo">
           <button type="button" class="editor-toolbar__btn" data-cmd="bold" title="Negrito (Ctrl+B)" aria-label="Negrito"><strong>N</strong></button>
           <button type="button" class="editor-toolbar__btn" data-cmd="italic" title="Itálico (Ctrl+I)" aria-label="Itálico"><em>I</em></button>
@@ -162,6 +162,9 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           class="markdown-preview editor-conteudo"
           id="input-conteudo"
           contenteditable="true"
+          role="textbox"
+          aria-multiline="true"
+          aria-labelledby="label-input-conteudo"
           spellcheck="true"
           autocorrect="on"
           autocapitalize="sentences"
@@ -192,7 +195,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     ${
       params.mode === 'editar' && nota
         ? `
-      <div class="card stack" style="margin-top: var(--space-5);">
+      <div class="card stack" style="margin-top: var(--space-5);" id="card-revisao">
         <div class="settings-row__label">Revisão</div>
         ${
           temItemPendente
@@ -222,13 +225,28 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const conteudoInput = container.querySelector<HTMLElement>('#input-conteudo')!;
   const tituloInput = container.querySelector<HTMLInputElement>('#input-titulo')!;
   const fonteInput = container.querySelector<HTMLInputElement>('#input-fonte')!;
+  const checkboxDesatualizar = container.querySelector<HTMLInputElement>('#input-pode-desatualizar')!;
+  const validadeInput = container.querySelector<HTMLInputElement>('#input-validade')!;
 
-  // Marca o formulário como "sujado" quando o usuário edita qualquer campo.
+  // Marca o formulário como "sujado" quando o usuário edita qualquer campo — inclusive
+  // o checkbox "pode desatualizar" e a data "válido até" (que não disparam `input`).
   const onDirty = () => setFormDirty(true);
   tituloInput.addEventListener('input', onDirty);
   fonteInput.addEventListener('input', onDirty);
   conteudoInput.addEventListener('input', onDirty);
+  checkboxDesatualizar.addEventListener('change', onDirty);
+  validadeInput.addEventListener('change', onDirty);
   setFormDirtyPrompt(() => window.confirm('Há alterações não salvas nesta nota. Deseja sair mesmo assim?'));
+
+  // Enter no Título/Fonte salva a nota — é o que se espera de um formulário, e no celular
+  // é o botão "Enter"/"Ir" do teclado virtual.
+  const salvarComEnter = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    container.querySelector<HTMLButtonElement>('#btn-salvar')?.click();
+  };
+  tituloInput.addEventListener('keydown', salvarComEnter);
+  fonteInput.addEventListener('keydown', salvarComEnter);
 
   if (tituloSugerido) tituloInput.addEventListener('input', () => clearInputSugestao(tituloInput), { once: true });
   if (fonteSugerido) fonteInput.addEventListener('input', () => clearInputSugestao(fonteInput), { once: true });
@@ -483,7 +501,6 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     conteudoInput.focus();
   });
 
-  const checkboxDesatualizar = container.querySelector<HTMLInputElement>('#input-pode-desatualizar')!;
   const wrapperValidade = container.querySelector<HTMLElement>('#wrapper-validade')!;
   checkboxDesatualizar.addEventListener('change', () => {
     wrapperValidade.style.display = checkboxDesatualizar.checked ? 'flex' : 'none';
@@ -610,13 +627,36 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   });
 
   if (params.mode === 'editar' && nota) {
-    container.querySelector('#btn-favoritar-nota')?.addEventListener('click', async () => {
-      await toggleNotaFavorito(nota.id);
-      renderNotaForm(container, params);
+    container.querySelector('#btn-favoritar-nota')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      btn.disabled = true;
+      try {
+        const favoritou = await toggleNotaFavorito(nota.id);
+        nota.favorito = favoritou;
+        // Atualiza só o botão — re-renderizar a tela inteira apagaria o título e o
+        // conteúdo que o usuário tinha digitado (o "dirty" continuava ligado, ainda por cima).
+        btn.textContent = favoritou ? '★ Favorito' : '☆ Favoritar';
+      } finally {
+        btn.disabled = false;
+      }
     });
-    container.querySelector('#btn-parar-revisar')?.addEventListener('click', async () => {
-      await stopReviewing(nota.id);
-      renderNotaForm(container, params);
+    container.querySelector('#btn-parar-revisar')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      btn.disabled = true;
+      try {
+        await stopReviewing(nota.id);
+        // Mesmo cuidado do favoritar: só o cartão de "Revisão" é trocado, o resto do
+        // formulário (e o que foi digitado) fica intacto.
+        const cartao = container.querySelector('#card-revisao');
+        if (cartao) {
+          cartao.innerHTML = `
+            <div class="settings-row__label">Revisão</div>
+            <p class="text-muted">Essa nota não está mais na fila de revisão (estágio "consulta").</p>
+          `;
+        }
+      } finally {
+        btn.disabled = false;
+      }
     });
     const btnCompartilhar = container.querySelector<HTMLButtonElement>('#btn-compartilhar-nota');
     btnCompartilhar?.addEventListener('click', async () => {

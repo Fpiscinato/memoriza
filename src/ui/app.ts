@@ -21,7 +21,7 @@ import { listarLixeira } from '../db/lixeira';
 import { montarStatusHeader, type StatusHeader, type StatusItem } from '../domain/header-status';
 import { initWakeLock } from '../lib/wakelock';
 import { APP_VERSION, APP_VERSION_LABEL } from '../version';
-import { canNavigateAway } from '../lib/form-guard';
+import { canNavigateAway, clearFormDirty } from '../lib/form-guard';
 import { shouldAutoSync, syncWithGithub } from '../lib/github-sync';
 import { openGlobalSearch } from './global-search';
 import type { Perfil } from '../types';
@@ -55,14 +55,19 @@ export async function mount(root: HTMLElement): Promise<void> {
   void autoSyncIfEnabled();
 }
 
-/** Ctrl+K / ⌘K abre a busca global — padrão conhecido de desktop, seguro no mobile também. */
+/** Ctrl+K / ⌘K abre a busca global — padrão conhecido de desktop, seguro no mobile também.
+ *  Exceção: dentro do editor de nota o Ctrl+K cria link (ver nota-form.ts), então a busca
+ *  não abre de cima do editor — senão o usuário ganhava o prompt de URL e a paleta de
+ *  busca ao mesmo tempo. */
 function bindGlobalSearchShortcut(): void {
   document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      const perfilId = getSelectedProfileId();
-      if (perfilId) void openGlobalSearch(perfilId);
-    }
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'k') return;
+    if (e.defaultPrevented) return;
+    const alvo = e.target as HTMLElement | null;
+    if (alvo?.closest?.('.editor-conteudo, .editor-toolbar')) return;
+    e.preventDefault();
+    const perfilId = getSelectedProfileId();
+    if (perfilId) void openGlobalSearch(perfilId);
   });
 }
 
@@ -107,6 +112,11 @@ async function render(root: HTMLElement): Promise<void> {
 
   const route = getCurrentRoute();
   const topLevel = topLevelFor(route);
+  // A guarda de "alterações não salvas" só vale dentro do editor de nota. Sair dele por
+  // qualquer caminho (inclusive o "voltar" do navegador) limpa o estado — senão a
+  // próxima navegação de qualquer tela perguntaria de novo sobre uma edição que já
+  // não está mais na tela.
+  if (route.name !== 'nota' && route.name !== 'nota-nova') clearFormDirty();
   const status = await getStatusHeader(perfil);
 
   root.innerHTML = `
@@ -159,25 +169,25 @@ async function render(root: HTMLElement): Promise<void> {
 
   root.querySelectorAll<HTMLButtonElement>('.app-nav__item').forEach((btn) => {
     btn.addEventListener('click', () => {
-      if (!canNavigateAway()) return;
       navigateTop(btn.dataset.route as TopLevelRoute);
     });
   });
   root.querySelector('#btn-ajuda')?.addEventListener('click', () => {
-    if (!canNavigateAway()) return;
     if (location.hash === '#/ajuda') {
+      // Sai pelo histórico do navegador — não passa pelo navigate(), então a guarda
+      // de "alterações não salvas" é checada aqui.
+      if (!canNavigateAway()) return;
+      clearFormDirty();
       history.back();
     } else {
       navigate('ajuda');
     }
   });
   root.querySelector('#btn-busca')?.addEventListener('click', () => {
-    if (!canNavigateAway()) return;
     void openGlobalSearch(perfil.id);
   });
   root.querySelectorAll<HTMLButtonElement>('[data-settings-secao]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      if (!canNavigateAway()) return;
       const secao = btn.dataset.settingsSecao!;
       if (getCurrentRoute().name === 'config') {
         document

@@ -44,10 +44,14 @@ export async function openGlobalSearch(perfilId: string): Promise<void> {
           spellcheck="false"
           placeholder="Buscar espaços, temas e notas…"
           aria-label="Buscar"
+          role="combobox"
+          aria-expanded="true"
+          aria-controls="search-results"
+          aria-autocomplete="list"
         />
         <kbd class="search-kbd">esc</kbd>
       </div>
-      <div class="search-results" role="listbox" aria-label="Resultados"></div>
+      <div class="search-results" id="search-results" role="listbox" aria-label="Resultados"></div>
     </div>
   `;
 
@@ -60,12 +64,15 @@ export async function openGlobalSearch(perfilId: string): Promise<void> {
   let indiceAtivo = -1;
   let debounce: ReturnType<typeof setTimeout> | undefined;
   let fechado = false;
+  // De onde o foco veio — devolve pra lá quando a busca fecha.
+  const focoAnterior = document.activeElement as HTMLElement | null;
 
   function fechar(): void {
     if (fechado) return;
     fechado = true;
     overlay.remove();
     document.removeEventListener('keydown', onGlobalKey);
+    if (focoAnterior?.isConnected) focoAnterior.focus();
   }
 
   function mover(deslocamento: number): void {
@@ -77,6 +84,10 @@ export async function openGlobalSearch(perfilId: string): Promise<void> {
       item.el.setAttribute('aria-selected', String(ativo));
       if (ativo) item.el.scrollIntoView({ block: 'nearest' });
     });
+    // O foco fica no campo (é o que o usuário está usando) — quem precisa saber qual
+    // resultado está selecionado é o leitor de tela, que lê `aria-activedescendant`.
+    const ativo = itensAtuais[indiceAtivo]?.el;
+    if (ativo) input.setAttribute('aria-activedescendant', ativo.id);
   }
 
   function abrirResultado(el: HTMLElement): void {
@@ -100,11 +111,15 @@ export async function openGlobalSearch(perfilId: string): Promise<void> {
       }
       resultsEl.innerHTML = '';
       for (const r of resultados) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `search-result search-result--${r.kind}`;
-        btn.setAttribute('role', 'option');
-        btn.innerHTML = `
+        // O item da lista é um <div role="option"> (num <button>, o papel seria inválido).
+        // O foco continua no campo — quem navega com as setas é o `aria-activedescendant`.
+        const item = document.createElement('div');
+        item.className = `search-result search-result--${r.kind}`;
+        item.id = `search-result-${r.kind}-${r.id}`;
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', 'false');
+        item.tabIndex = -1;
+        item.innerHTML = `
           <span class="search-result__icon" aria-hidden="true">${
             r.kind === 'espaco' ? ICONS.folder : r.kind === 'tema' ? ICONS.bookOpen : ICONS.pen
           }</span>
@@ -118,10 +133,11 @@ export async function openGlobalSearch(perfilId: string): Promise<void> {
             }
           </span>
         `;
-        btn.addEventListener('click', () => abrirResultado(btn));
-        resultsEl.appendChild(btn);
-        itensAtuais.push({ el: btn, resultado: r });
+        item.addEventListener('click', () => abrirResultado(item));
+        resultsEl.appendChild(item);
+        itensAtuais.push({ el: item, resultado: r });
       }
+      input.removeAttribute('aria-activedescendant');
     });
   }
 
