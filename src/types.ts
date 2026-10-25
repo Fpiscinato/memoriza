@@ -11,8 +11,10 @@ export interface Perfil {
 export interface Espaco {
   id: string;
   perfil_id: string;
+  /** Nome da pasta principal (ex: "Bíblia", "Livros", "Cursos"). */
   nome: string;
-  /** Texto livre (ex: "Cursos", "Livros") — agrupa os Espaços na listagem, igual Tema.categoria. */
+  /** @deprecated O nome já é o grupo principal. Mantido só para compatibilidade com
+   *  dados/sincronização antigos; a interface não usa mais este campo. */
   categoria: string;
   criado_em: string;
   atualizado_em: string;
@@ -33,7 +35,15 @@ export interface Tema {
   id: string;
   espaco_id: string;
   nome: string;
+  /** @deprecated As pastas agora são organizadas por `pai_id`; este campo fica só para
+   *  compatibilidade com dados antigos e não aparece mais na interface. */
   categoria: string;
+  /** Pasta pai (outro Tema). Ausente = subpasta direta do Espaço (raiz do espaço). */
+  pai_id?: string;
+  /** Chave de um ícone do conjunto curado (src/ui/espaco-icons.ts). Ausente = sugestão automática. */
+  icone?: string;
+  /** Índice da paleta de acento (0..ACCENT_COUNT-1). Ausente = cor automática (sem repetir). */
+  cor?: number;
   favorito: boolean;
   criado_em: string;
   atualizado_em: string;

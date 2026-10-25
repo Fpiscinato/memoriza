@@ -1,39 +1,38 @@
 // Tela de ajuda estática — texto fixo, sem consulta ao banco. Os exemplos usados aqui são
 // reais (do próprio usuário), de propósito: exemplo genérico não deixa claro o suficiente
-// a diferença entre Título/Fonte, quando usar categoria, etc.
+// a diferença entre Título/Fonte, como aninhar pastas, etc.
 
-const EXEMPLO_CURSO = `Espaço: Curso de Investimentos (categoria: Cursos)
-  Tema: Riscos (categoria: Faixa Branca)
-    Nota → Título: "O que é Value at Risk?"
-           Conteúdo: explicação completa
-           Fonte: "Aula 5, slide 20"
-  Tema: Vieses (categoria: Faixa Branca)
-    Nota → Título: "O que é viés de confirmação?"
-           Conteúdo: explicação completa
-           Fonte: "Aula 6"`;
+const EXEMPLO_CURSO = `Pasta principal: Cursos
+  Subpasta: Curso de Investimentos
+    Subpasta: Faixa Branca
+      Nota → Título: "O que é Value at Risk?"
+             Conteúdo: explicação completa
+             Fonte: "Aula 5, slide 20"
+      Nota → Título: "O que é viés de confirmação?"
+             Conteúdo: explicação completa
+             Fonte: "Aula 6"`;
 
-const EXEMPLO_LIVRO = `Espaço: Livro: Quem Pensa Enriquece (categoria: Livros)
-  Tema: Desejo (categoria: Capítulos)
-    Nota → Título: "Qual o primeiro passo pra transformar desejo em riqueza, segundo o livro?"
-           Conteúdo: explicação/resumo do que o capítulo ensina
-           Fonte: "Capítulo 1, página 20"
-  Tema: Persistência (categoria: Capítulos)
-    Nota → Título: "Por que persistência é descrita como um estado de espírito?"
-           Conteúdo: explicação completa
-           Fonte: "Capítulo 8"`;
+const EXEMPLO_LIVRO = `Pasta principal: Livros
+  Subpasta: Quem Pensa Enriquece
+    Subpasta: Capítulo 1 — Desejo
+      Nota → Título: "Qual o primeiro passo pra transformar desejo em riqueza?"
+             Conteúdo: explicação/resumo do que o capítulo ensina
+             Fonte: "Capítulo 1, página 20"
+    Subpasta: Capítulo 8 — Persistência
+      Nota → Título: "Por que persistência é descrita como um estado de espírito?"
+             Conteúdo: explicação completa
+             Fonte: "Capítulo 8"`;
 
-const EXEMPLO_MODULOS = `Espaço: MGD9 (categoria: Cursos)
-  Tema: Módulo 1 — Fundamentos (categoria: Fundamentos)
-    Nota → Título: "O que a aula 1 explica sobre X?"
-           Conteúdo: resumo da aula 1
-           Fonte: "Aula 1"
-    Nota → Título: "O que a aula 2 explica sobre Y?"
-           Conteúdo: resumo da aula 2
-           Fonte: "Aula 2"
-  Tema: Módulo 2 — Avançado (categoria: Avançado)
-    Nota → Título: "O que a aula 1 do módulo 2 explica?"
-           Conteúdo: resumo da aula
-           Fonte: "Aula 1"`;
+const EXEMPLO_MODULOS = `Pasta principal: Bíblia
+  Subpasta: Antigo Testamento
+    Subpasta: Gênesis
+      Nota → Título: "Quem Deus chamou em Gênesis 12?"
+             Conteúdo: Abraão, e a promessa de uma grande nação
+             Fonte: "Gênesis 12:1-3"
+    Subpasta: Êxodo
+      Nota → Título: "Qual é o significado da Páscoa em Êxodo 12?"
+             Conteúdo: resumo do capítulo
+             Fonte: "Êxodo 12"`;
 
 interface Secao {
   titulo: string;
@@ -49,49 +48,35 @@ const SECOES: Secao[] = [
       existe o próprio perfil.</p>`,
   },
   {
-    titulo: 'Espaços — a "gaveta" de cada assunto grande',
-    corpoHtml: `<p>Um Espaço é a categoria mais ampla de tudo que você quer aprender: um curso,
-      um livro, um estudo contínuo. Exemplos reais:</p>
+    titulo: 'Pastas principais — o grupo grande',
+    corpoHtml: `<p>Na raiz ficam as <strong>pastas principais</strong>: o agrupamento mais amplo
+      de tudo que você quer aprender. Exemplos reais:</p>
       <ul>
-        <li>"Curso de Investimentos" — um curso com começo, meio e fim.</li>
-        <li>"Livro: Quem Pensa Enriquece" — um livro que você está lendo, também vai terminar.</li>
-        <li>"Bíblia" — um estudo que nunca termina, sempre vai existir.</li>
+        <li><strong>Cursos</strong> — tudo que vem de um curso.</li>
+        <li><strong>Livros</strong> — tudo que vem de leituras.</li>
+        <li><strong>Bíblia</strong> — um estudo que nunca termina, sempre vai existir.</li>
       </ul>
-      <p>Use a <strong>categoria</strong> do Espaço para agrupar por tipo — ex: categoria
-      "Cursos" para o curso de investimentos, categoria "Livros" para os livros, categoria
-      "Bíblia" pra estudos bíblicos. Ela é <strong>obrigatória</strong> e vem como o primeiro
-      campo ao criar um Espaço, porque é ela que aparece por primeiro na tela (os Espaços ficam
-      agrupados por categoria). Essas três já aparecem sugeridas na hora de criar um Espaço novo,
-      mesmo antes de você ter usado alguma — mas é só sugestão, digite o que quiser. Assim que
-      você tiver mais de um curso ou mais livros, a tela de Espaços continua organizada em vez de
-      virar uma lista solta.</p>
-      <p>Cada Espaço também tem um <strong>ícone</strong> e uma <strong>cor</strong> — escolha na
-      hora de criar (ou depois, em Editar). Conforme você digita o nome/categoria, o app sugere
+      <p>Pra criar, você digita só o <strong>nome</strong> da pasta e, se quiser, escolhe um
+      <strong>ícone</strong> e uma <strong>cor</strong>. Conforme digita o nome, o app sugere
       ícones prováveis (ex: "Bíblia" → igreja, "Curso" → capa de formatura, "Livro" → pilha de
-      livros). A cor ajuda a bater o olho e achar cada Espaço mais rápido.</p>`,
+      livros). Não existe mais um campo separado de categoria: o nome da pasta já é o grupo.</p>`,
   },
   {
-    titulo: 'Temas — os assuntos/aulas dentro de um Espaço',
-    corpoHtml: `<p>Dentro de um Espaço, um Tema é um assunto específico ou uma aula. Exemplo
-      real: dentro do Espaço "Curso de Investimentos", os Temas "Riscos" e "Vieses" são
-      aulas de um mesmo módulo. Use a <strong>categoria</strong> do Tema pra marcar o
-      módulo — ex: categoria "Faixa Branca" nos dois, porque são do mesmo módulo do curso.
-      A categoria é <strong>obrigatória</strong> e vem como o primeiro campo ao criar um Tema,
-      porque é o módulo que aparece por primeiro na tela (os Temas ficam agrupados por
-      categoria). O <strong>nome</strong> do Tema é opcional — se você deixar em branco, ele
-      aparece como "Sem nome".</p>
-      <p>No dia seguinte, quando a aula for sobre outro assunto do mesmo módulo, crie um Tema
-      novo com a mesma categoria. As categorias sugeridas aqui são só as já usadas <strong>
-      neste mesmo Espaço</strong> — o "Faixa Branca" de um curso não aparece sugerido dentro
-      de outro curso diferente, pra não misturar vocabulário de assuntos que não têm nada a
-      ver. Pra ajudar a lembrar como foi feito da última vez, os campos Categoria e Nome já
-      vêm preenchidos com os do último Tema criado neste Espaço — aparecem em <strong>laranja
-      </strong> pra deixar claro que é só uma sugestão a conferir, não um valor já
-      confirmado.</p>
-      <p>No menu "⋯" de um Tema tem os mesmos dois atalhos que existem no nível do Espaço:
-      <strong>Detalhes</strong> (quantas notas, tempo total revisando e há quantos dias esse
-      Tema existe) e <strong>Avaliar notas</strong> (repasse rápido só com as notas
-      deste Tema, sem afetar a fila de revisão).</p>`,
+    titulo: 'Subpastas — organizando dentro da pasta',
+    corpoHtml: `<p>Dentro de uma pasta principal você cria <strong>subpastas</strong> — e dentro
+      delas pode criar outras subpastas, quantas quiser, como pastas no computador. É assim que
+      você chega do grupo grande até o assunto específico:</p>
+      <ul>
+        <li><strong>Cursos</strong> → "Curso de Investimentos" → "Faixa Branca".</li>
+        <li><strong>Livros</strong> → "Quem Pensa Enriquece" → "Capítulo 1 — Desejo".</li>
+        <li><strong>Bíblia</strong> → "Antigo Testamento" → "Gênesis".</li>
+      </ul>
+      <p>Cada subpasta também tem nome, ícone e cor (opcionais). Pra criar outra pasta dentro da
+      atual, use <strong>+ Subpasta</strong>. O caminho aparece no topo da tela (breadcrumb), então
+      dá pra voltar pra qualquer nível com um clique.</p>
+      <p><strong>As notas ficam dentro das subpastas.</strong> Abra a pasta onde o assunto se
+      encaixa e use <strong>+ Nova nota</strong>. Se ainda não existir uma subpasta pro assunto,
+      crie uma na hora — ou continue aninhando até o nível que fizer sentido pra você.</p>`,
   },
   {
     titulo: 'Notas — o que você anota',
@@ -109,7 +94,7 @@ const SECOES: Secao[] = [
         ou "Livro, página 87". Aparece junto com o conteúdo, não antes.</li>
       </ul>
       <p>Ao criar uma Nota nova, Título e Fonte já vêm preenchidos (em <strong>laranja</strong>)
-      com o que foi usado na última Nota deste mesmo Tema — útil quando o padrão se repete,
+      com o que foi usado na última Nota desta mesma pasta — útil quando o padrão se repete,
       tipo "Aula 1", "Aula 2"... Edite antes de salvar; assim que você digitar algo, a cor
       laranja some.</p>
       <p>O campo <strong>Conteúdo</strong> é um editor de texto simples: selecione um trecho
@@ -141,36 +126,36 @@ const SECOES: Secao[] = [
       nota volta mais cedo pra reforçar).</p>
       <p>Enquanto você revisa, o app mede quanto tempo a tela ficou em foco em cada nota (pausa
       se você trocar de aba/app no meio) — isso alimenta o "Tempo hoje" no Painel e o "Tempo
-      revisando" nos Detalhes de cada Espaço. Não precisa fazer nada pra isso funcionar.</p>`,
+      revisando" nos Detalhes de cada pasta principal. Não precisa fazer nada pra isso funcionar.</p>`,
   },
   {
     titulo: 'Favoritos',
-    corpoHtml: `<p>Marque como favorito um Tema ou uma Nota que for especialmente importante
-      pra você — algo que quer conseguir achar rápido sem precisar navegar pelos Espaços.
-      Exemplo: a fórmula de Yield to Maturity que você usa toda hora, ou o Tema inteiro
+    corpoHtml: `<p>Marque como favorita uma Pasta ou uma Nota que for especialmente importante
+      pra você — algo que quer conseguir achar rápido sem precisar navegar pelas pastas.
+      Exemplo: a fórmula de Yield to Maturity que você usa toda hora, ou a pasta inteira
       sobre "Vieses" porque foi o que mais te marcou no curso.</p>`,
   },
   {
-    titulo: 'Arquivar × Excluir um Espaço',
+    titulo: 'Arquivar × Excluir uma pasta',
     corpoHtml: `<p><strong>Arquivar</strong> é para quando você termina um curso ou um livro,
       mas ainda quer ser cobrado a revisar o que aprendeu no longo prazo (D+180 continua
-      funcionando) — só some da lista principal e não permite criar nota nova ali. Pede
-      confirmação antes, pra evitar clique sem querer, mas dá pra reativar quando quiser.
-      <strong>Excluir</strong> é definitivo, apaga tudo (Temas, Notas, histórico de
-      revisão) — use só se criou algo por engano.</p>
-      <p>O botão <strong>Detalhes</strong> (no menu "⋯" do Espaço) mostra um resumo:
-      quantos Temas e Notas, quanto tempo total você já passou revisando notas daquele
-      Espaço, e há quantos dias ele está ativo (ou quanto tempo levou até ser arquivado).</p>`,
+      funcionando) — só some da lista principal e não permite criar subpastas ou notas novas
+      ali. Pede confirmação antes, pra evitar clique sem querer, mas dá pra reativar quando
+      quiser. <strong>Excluir</strong> manda a pasta (com tudo que está dentro dela) pra
+      Lixeira por 30 dias; depois disso é apagada de vez.</p>
+      <p>O botão <strong>Detalhes</strong> (no menu "⋯") mostra um resumo: quantas notas e
+      subpastas, quanto tempo total você já passou revisando notas daquela pasta, e há quantos
+      dias ela está ativa (ou quanto tempo levou até ser arquivada).</p>`,
   },
   {
     titulo: 'Painel',
     corpoHtml: `<p>O Painel é dividido em quatro abas:</p>
       <ul>
         <li><strong>Visão geral</strong>: sua sequência de dias estudando (streak), quanto tempo
-        você estudou hoje e o tamanho da coleção (Espaços, Temas, Notas).</li>
+        você estudou hoje e o tamanho da coleção (pastas principais, subpastas e notas).</li>
         <li><strong>Revisão</strong>: como a revisão espaçada está indo — quantas notas estão
         em cada estágio da escada (1/7/30/180 dias; quanto mais em 30/180, melhor sua retenção),
-        a carga dos próximos 7 dias e o ranking dos Temas onde você mais marcou "Difícil" —
+        a carga dos próximos 7 dias e o ranking das pastas onde você mais marcou "Difícil" —
         geralmente esses são os pontos fracos reais, que a sensação de "acho que já sei" não
         mostra sozinha.</li>
         <li><strong>Avaliações</strong>: o resultado dos seus autotestes (Fácil/Médio/Difícil),
@@ -183,13 +168,16 @@ const SECOES: Secao[] = [
     titulo: 'Exportar em PDF',
     corpoHtml: `<p>Bom momento pra usar: quando terminar um módulo do curso, terminar o
       livro, ou só quiser um resumo pra imprimir/consultar sem abrir o app. Gera um
-      documento organizado por módulo (categoria) e Tema, na ordem que você aprendeu.</p>
-      <p>Cada nível tem seu <strong>número</strong> — Categoria <code>1</code>, Tema
-      <code>1.1</code>, Nota <code>1.1.1</code> — e cada Categoria tem uma <strong>cor</strong>
-      própria (a mesma nos Temas e Notas dela), então dá pra "bater o olho" e saber onde você
-      está. No começo sai um <strong>índice</strong> com tudo e quantas notas cada parte tem.</p>
+      documento organizado por pasta principal → subpastas → notas, na ordem que você
+      aprendeu. Cada subpasta mostra o caminho completo (ex: "Curso de Investimentos ›
+      Faixa Branca") pra hierarquia continuar legível.</p>
+      <p>Cada nível tem seu <strong>número</strong> — Pasta <code>1</code>, Subpasta
+      <code>1.1</code>, Nota <code>1.1.1</code> — e cada pasta principal tem uma
+      <strong>cor</strong> própria (a mesma nas subpastas e notas dela), então dá pra "bater
+      o olho" e saber onde você está. No começo sai um <strong>índice</strong> com tudo e
+      quantas notas cada parte tem.</p>
       <p>Na barra de ferramentas dá pra ligar/desligar o <strong>Índice</strong> e o
-      <strong>Nova página por Categoria</strong> (útil pra imprimir um módulo por folha). O app
+      <strong>Nova página por pasta</strong> (útil pra imprimir um módulo por folha). O app
       lembra da sua escolha. No celular, o caminho é o mesmo: "Imprimir" e depois "Salvar como
       PDF".</p>`,
   },
@@ -208,14 +196,14 @@ const SECOES: Secao[] = [
   },
   {
     titulo: 'Lixeira',
-    corpoHtml: `<p>Quando você exclui um Espaço, Tema ou Nota, ele não some de vez: vai pra
-      Lixeira, em Configurações. Lá dá pra <b>restaurar</b> a qualquer momento — se excluiu o
-      Espaço, volta com os Temas e Notas junto. Depois de 30 dias o item é apagado sozinho,
-      ou você pode <b>Excluir de vez</b> na hora, se quiser (dá pra esvaziar tudo de uma vez
-      também).</p><p>Enquanto está na Lixeira, o item não aparece em nenhuma tela — nem na
-      busca, nem na fila de revisão, nem no Painel. E <b>Excluir de vez</b> é definitivo de
-      verdade: o item também some do backup sincronizado, então ele não volta em nenhum
-      aparelho.</p>`,
+    corpoHtml: `<p>Quando você exclui uma pasta principal, uma subpasta ou uma Nota, ela não
+      some de vez: vai pra Lixeira, em Configurações. Lá dá pra <b>restaurar</b> a qualquer
+      momento — se excluiu uma pasta, volta com as subpastas e notas junto. Depois de 30 dias
+      o item é apagado sozinho, ou você pode <b>Excluir de vez</b> na hora, se quiser (dá pra
+      esvaziar tudo de uma vez também).</p><p>Enquanto está na Lixeira, o item não aparece em
+      nenhuma tela — nem na busca, nem na fila de revisão, nem no Painel. E <b>Excluir de
+      vez</b> é definitivo de verdade: o item também some do backup sincronizado, então ele
+      não volta em nenhum aparelho.</p>`,
   },
   {
     titulo: 'Snapshots locais',
@@ -233,10 +221,10 @@ const SECOES: Secao[] = [
   },
   {
     titulo: 'Avaliar notas (Fácil / Médio / Difícil)',
-    corpoHtml: `<p>No menu "⋯" de um Espaço ou Tema, toque em <b>Avaliar notas</b> para fazer um
-      autoteste. Num Espaço com vários Temas você escolhe o <b>escopo</b>: avaliar
-      <b>todo o Espaço</b> ou só um <b>Tema específico</b>. Depois escolhe quantas notas
-      (Básico, Médio ou Longo).</p>
+    corpoHtml: `<p>No menu "⋯" de uma pasta principal ou de uma subpasta, toque em <b>Avaliar
+      notas</b> para fazer um autoteste. Numa pasta principal, o autoteste usa todas as notas
+      dela (incluindo as das subpastas); numa subpasta, usa as notas daquela pasta e das que
+      estão dentro dela. Depois escolhe quantas notas (Básico, Médio ou Longo).</p>
       <p>Em cada nota: tente lembrar, revele a resposta e marque <b>Fácil</b>, <b>Médio</b> ou
       <b>Difícil</b>. Tudo fica registrado no app — diferente da revisão espaçada, nada aqui
       muda sua fila nem os seus prazos.</p>
@@ -250,8 +238,9 @@ export function renderAjuda(container: HTMLElement): void {
     <div class="content-narrow content-wide">
       <div class="card" style="margin-bottom: var(--space-6);">
         <p class="settings-row__desc sem-margem-topo">
-          Dois exemplos completos, de ponta a ponta, pra deixar a estrutura
-          <strong>Espaço → Tema → Nota</strong> clara antes de qualquer outra explicação.
+          Três exemplos completos, de ponta a ponta, pra deixar a estrutura
+          <strong>Pasta principal → subpastas → Nota</strong> clara antes de qualquer outra
+          explicação. As subpastas podem ter quantos níveis você quiser.
         </p>
         <div class="help-tree-grid">
           <div>
@@ -263,18 +252,14 @@ export function renderAjuda(container: HTMLElement): void {
             <pre class="help-tree">${EXEMPLO_LIVRO}</pre>
           </div>
           <div>
-            <div class="settings-row__label" style="margin-bottom: var(--space-2);">Exemplo 3 — curso com módulos e aulas</div>
+            <div class="settings-row__label" style="margin-bottom: var(--space-2);">Exemplo 3 — estudo contínuo</div>
             <pre class="help-tree">${EXEMPLO_MODULOS}</pre>
           </div>
         </div>
         <p class="settings-row__desc sem-margem-baixo">
-          Repare: <strong>a categoria é obrigatória</strong> (é o primeiro campo dos dois
-          formulários, porque é o que aparece por primeiro na tela), e você escolhe o quão
-          "fino" cada nível fica. No Exemplo 1, um Tema é uma aula, e a categoria agrupa as
-          aulas do mesmo módulo. No Exemplo 3, um Tema já <strong>é</strong> o módulo inteiro,
-          categoria vira um jeito extra de agrupar módulos (ex: por dificuldade), e cada Nota
-          é uma aula daquele módulo. Nenhum dos dois está certo ou errado — use o que fizer
-          mais sentido pra como você quer revisar depois.
+          Repare: na raiz ficam só as pastas principais (Cursos, Livros, Bíblia). Cada uma pode
+          ter várias subpastas, e cada subpasta pode ter outras dentro. A nota fica sempre na
+          subpasta onde o assunto se encaixa, e o caminho completo aparece no topo da tela.
         </p>
       </div>
 

@@ -32,6 +32,13 @@ interface — reduz a confusão que apareceu nos testes reais da Fase 1d
 (ex: Título × Fonte). Ainda não há nada relacionado à Fase 2 (Google Drive,
 multiusuário público).
 
+**v1.20** troca a organização por "Espaço + categoria / Tema + categoria" por
+um sistema de pastas: pastas principais na raiz e subpastas aninhadas dentro
+delas, com nome, ícone e cor. As notas ficam dentro das subpastas; dá pra
+continuar criando subpastas quantos níveis quiser. Os campos `categoria`
+antigos continuam no modelo só pra compatibilidade com dados e backups
+existentes, mas não aparecem mais na interface.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado
@@ -406,8 +413,9 @@ Todo registro tem `id` (UUID) e `atualizado_em` (timestamp ISO) — é a base da
 mesclagem no importar/exportar.
 
 - `perfis`: `{ id, nome, criado_em, atualizado_em }`
-- `espacos`: `{ id, perfil_id, nome, categoria, criado_em, atualizado_em, arquivado }`
-- `temas`: `{ id, espaco_id, nome, categoria, favorito, criado_em, atualizado_em }`
+- `espacos`: `{ id, perfil_id, nome, categoria (legado), criado_em, atualizado_em, arquivado, icone?, cor? }` (pasta principal)
+- `temas`: `{ id, espaco_id, nome, categoria (legado), pai_id?, favorito, criado_em, atualizado_em, icone?, cor? }`
+  (`pai_id` ausente = subpasta direta do Espaço; presente = subpasta de outra pasta)
 - `notas`: `{ id, tema_id, titulo, conteudo, fonte, pode_desatualizar, validade_ate?, favorito, titulo_revisado, criado_em, atualizado_em }`
 - `itens_revisao`: `{ id, nota_id, perfil_id, estagio, data_agendada, data_concluida?, status, avaliacao?, streak_facil, criado_em, atualizado_em }`
 - `avaliacoes`: `{ id, perfil_id, espaco_id, tema_id, nota_id, avaliacao, escopo, categoria?, sessao_id, criado_em, atualizado_em }`
@@ -455,13 +463,13 @@ estágio:
 ## Fila de "Hoje"
 
 Lista os Itens de Revisão do perfil atual com `status = 'pendente'` e
-`data_agendada <= hoje`, agrupados por Tema (com o Espaço como cabeçalho só
-quando a fila tem mais de um Espaço ativo misturado). Itens atrasados
-aparecem misturados normalmente — sem badge de "atrasado" — de propósito,
-pra não criar uma sensação de dívida acumulada.
+`data_agendada <= hoje`, agrupados por pasta principal/subpasta (com o nome da
+pasta principal como cabeçalho só quando a fila tem mais de uma pasta ativa
+misturada). Itens atrasados aparecem misturados normalmente — sem badge de
+"atrasado" — de propósito, pra não criar uma sensação de dívida acumulada.
 
-Abrir um item mostra primeiro só o Tema/fonte (recall ativo — tentar lembrar
-antes de ver a resposta); só depois de "Mostrar resposta" o conteúdo
+Abrir um item mostra primeiro só o Título/fonte da nota (recall ativo — tentar
+lembrar antes de ver a resposta); só depois de "Mostrar resposta" o conteúdo
 completo e os botões Fácil/Médio/Difícil aparecem. Notas com
 `pode_desatualizar` e `validade_ate` vencida (ou a menos de 30 dias de
 vencer) mostram o aviso "isso pode estar desatualizado" antes de revelar.
@@ -482,12 +490,12 @@ Calendário.
 
 ## Editar e excluir
 
-Espaço, Tema e Nota têm "Editar" visível (nome/categoria, ou conteúdo/fonte/
-validade no caso da Nota) e "Excluir" atrás de um menu "⋯" — de propósito
-mais escondido que "Arquivar", pra reduzir o risco de apagar algo sem
-querer. Exclusão é sempre em cascata (Espaço → Temas → Notas → Itens de
-Revisão) e sempre passa por um modal de confirmação que mostra a contagem
-real do que vai sumir antes de executar.
+Pasta principal, subpasta e Nota têm "Editar" visível (nome/ícone/cor, ou
+conteúdo/fonte/validade no caso da Nota) e "Excluir" atrás de um menu "⋯" — de
+propósito mais escondido que "Arquivar", pra reduzir o risco de apagar algo sem
+querer. Exclusão é sempre em cascata (pasta principal → subpastas → Notas →
+Itens de Revisão) e sempre passa por um modal de confirmação que mostra a
+contagem real do que vai sumir antes de executar.
 
 Editar o conteúdo de uma Nota nunca mexe no Item de Revisão em andamento —
 só atualiza os campos da própria Nota. O agendamento (estágio, próxima
@@ -598,17 +606,18 @@ Números simples pro perfil atual, sem gráfico:
 
 - Revisões feitas nos últimos 7 dias, e a sequência de dias seguidos com
   pelo menos uma revisão feita (streak).
-- Ranking dos Temas com mais avaliações "Difícil" no histórico — os pontos
-  fracos reais, agregados por Tema a partir dos Itens de Revisão.
-- Contagem de Espaços ativos, Temas, Notas, e Itens de Revisão em
-  `'consulta'` (aposentados).
+- Ranking das pastas com mais avaliações "Difícil" no histórico — os pontos
+  fracos reais, agregados por pasta a partir dos Itens de Revisão.
+- Contagem de pastas principais ativas, subpastas, Notas, e Itens de Revisão
+  em `'consulta'` (aposentados).
 
 ## Exportar como PDF
 
-Em cada Espaço, o botão "PDF" abre uma tela de impressão
-(`#/espacos/:id/pdf`) com o conteúdo agrupado por categoria → Tema → Notas
-(ordem cronológica de criação). Cada nota cujo histórico de avaliações tem
-mais "Difícil" do que "Fácil" ganha um indicador "⚠️ Reforçar". O botão
+Em cada pasta principal, o botão "PDF" abre uma tela de impressão
+(`#/espacos/:id/pdf`) com o conteúdo agrupado por pasta principal → subpastas
+(mostrando o caminho, ex: "Curso › Módulo 1") → Notas (ordem cronológica de
+criação). Cada nota cujo histórico de avaliações tem mais "Difícil" do que
+"Fácil" ganha um indicador "⚠️ Reforçar". O botão
 "Imprimir / Salvar como PDF" chama `window.print()` — sem biblioteca de PDF,
 sem chamada de rede; a folha de estilo (`@media print` em
 `components.css`) esconde a navegação e ajusta o layout só na hora de

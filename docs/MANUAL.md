@@ -5,7 +5,7 @@ O Memoriza é um app de repetição espaçada simples, 100% local (IndexedDB), c
 ## Visão geral
 
 - Repetição espaçada (SM-2 simplificado): notas vão de "Hoje" para revisões posteriores conforme avaliação (Difícil/Médio/Fácil).
-- Organização: Espaços → Temas → Notas.
+- Organização: pastas principais → subpastas → notas. As subpastas podem ser aninhadas (subpasta dentro de subpasta).
 - Lixeira: excluir é reversível por 30 dias ("Excluir de vez" é definitivo, e vale também pro backup na nuvem).
 - PWA: funciona offline, pode ser instalado no celular.
 - Atualização: quando sai uma versão nova, aparece um aviso no topo da tela ("Nova versão do Memoriza disponível") — é só tocar em **Atualizar agora**. Se você estiver com uma nota em edição sem salvar, o app pergunta antes de recarregar.
@@ -14,16 +14,16 @@ O Memoriza é um app de repetição espaçada simples, 100% local (IndexedDB), c
 ## Telas principais
 
 ### Hoje
-Lista de itens agendados para revisar hoje, agrupados por Espaço/Tema. Clique num item para iniciar a revisão (mostra pergunta, revela resposta).
+Lista de itens agendados para revisar hoje, agrupados por pasta principal/subpasta. Clique num item para iniciar a revisão (mostra pergunta, revela resposta).
 
-### Espaços
-Lista espaços. Cada espaço tem cor. Permite criar/editar/excluir e organizar temas dentro.
+### Pastas
+Lista as pastas principais (ex: Bíblia, Livros, Cursos). Cada uma tem nome, ícone e cor. Abra uma pasta para criar subpastas e, dentro delas, as notas. Você pode criar subpastas dentro de subpastas para organizar como pastas no computador.
 
 ### Configurações
 Perfis, aparência (claro/escuro/sistema), ordenação de listas, backup local, lixeira, sincronização GitHub Gist, atividade, exportar/importar JSON, zera dados.
 
 ### Lixeira
-Excluir um Espaço, Tema ou Nota **não apaga na hora**: o item vai pra Lixeira (Configurações → Lixeira) e some de todas as telas (listas, "Hoje", busca, painel, PDF). Dá pra restaurar a qualquer momento durante 30 dias; depois disso ele é apagado sozinho ao abrir o app.
+Excluir uma pasta principal, subpasta ou Nota **não apaga na hora**: o item vai pra Lixeira (Configurações → Lixeira) e some de todas as telas (listas, "Hoje", busca, painel, PDF). Dá pra restaurar a qualquer momento durante 30 dias; depois disso ele é apagado sozinho ao abrir o app.
 
 - **Restaurar** — devolve o item. Se já existir outro com o mesmo nome, o restaurado ganha "(restaurado)" no final, pra não duplicar.
 - **Excluir de vez** — apaga sem volta, e apaga também do backup sincronizado (o item não volta em nenhum aparelho).

@@ -4,7 +4,6 @@
 
 import type { CategoriaPdf, EspacoPdfData } from '../db/pdf-data';
 import { numerarGrupos } from '../domain/pdf-estrutura';
-import { nomeTemaExibicao } from '../domain/rotulos';
 import { TEXT_COLOR_NAMES } from './markdown';
 
 function inlineToPlain(text: string): string {
@@ -64,10 +63,10 @@ export function buildPlainText(espaco: EspacoPdfData['espaco'], grupos: Categori
 
   for (const cat of numerarGrupos(grupos)) {
     if (cat.temas.length === 0) continue;
-    lines.push('', `▸ ${cat.numero} ${(cat.grupo.categoria || 'sem categoria').toUpperCase()}`);
+    lines.push('', `▸ ${cat.numero} ${(cat.grupo.categoria || 'sem pasta').toUpperCase()}`);
 
     for (const tema of cat.temas) {
-      lines.push('', `— ${tema.numero} ${tema.temaPdf.tema.favorito ? '⭐ ' : ''}*${nomeTemaExibicao(tema.temaPdf.tema.nome)}*`);
+      lines.push('', `— ${tema.numero} ${tema.temaPdf.tema.favorito ? '⭐ ' : ''}*${tema.temaPdf.rotulo ?? tema.temaPdf.tema.nome}*`);
 
       if (tema.notas.length === 0) {
         lines.push('(sem notas)');

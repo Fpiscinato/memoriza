@@ -11,7 +11,6 @@ import {
   nomeCategoriaOuSemCategoria,
   numerarGrupos,
 } from '../../domain/pdf-estrutura';
-import { nomeTemaExibicao } from '../../domain/rotulos';
 import { navigate } from '../router';
 import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
@@ -35,7 +34,7 @@ function plural(n: number, singular: string): string {
 export async function renderEspacoPdf(container: HTMLElement, espacoId: string, categoria?: string): Promise<void> {
   const data = await buildEspacoPdfData(espacoId);
   if (!data) {
-    container.innerHTML = `<p class="text-muted">Espaço não encontrado.</p>`;
+    container.innerHTML = `<p class="text-muted">Pasta principal não encontrada.</p>`;
     return;
   }
   const { espaco } = data;
@@ -46,15 +45,15 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
 
   const categorias = numerarGrupos(grupos);
   const indice = montarIndice(categorias);
-  // Uma cor por Categoria, sem repetir dentro do Espaço; o Tema herda a cor da sua Categoria —
-  // a cor diz "isto é do mesmo bloco", o número diz "este Tema/Nota em específico".
+  // Uma cor por pasta principal, sem repetir dentro do Espaço; as subpastas herdam a cor da
+  // pasta principal — a cor diz "isto é do mesmo bloco", o número diz "esta pasta/nota".
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
   const corDaCategoria = (nome: string): string =>
     coresCategoria.get(chaveCategoria(nome)) ?? accentVar(chaveCategoria(nome));
 
   const vazio = grupos.every((g) => g.temas.length === 0);
-  // Com uma Categoria só (PDF filtrado) as opções não fazem sentido — índice de 1 linha e
-  // "quebra por categoria" seriam só ruído.
+  // Com uma pasta principal só (PDF filtrado) as opções não fazem sentido — índice de 1 linha
+  // e "quebra por pasta" seriam só ruído.
   const mostrarOpcoes = grupos.length > 1;
   const opcaoIndice = mostrarOpcoes && lerFlag(CHAVE_INDICE, true);
   const opcaoQuebra = mostrarOpcoes && lerFlag(CHAVE_QUEBRA, true);
@@ -68,7 +67,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
         mostrarOpcoes
           ? `
         <label class="pdf-opcao"><input type="checkbox" id="pdf-opcao-indice" ${opcaoIndice ? 'checked' : ''}> Índice</label>
-        <label class="pdf-opcao"><input type="checkbox" id="pdf-opcao-quebra" ${opcaoQuebra ? 'checked' : ''}> Nova página por Categoria</label>
+        <label class="pdf-opcao"><input type="checkbox" id="pdf-opcao-quebra" ${opcaoQuebra ? 'checked' : ''}> Nova página por pasta</label>
       `
           : ''
       }
@@ -85,16 +84,16 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
         <p class="pdf-meta">
           ${
             categoria !== undefined
-              ? `Categoria: ${escapeHtml(nomeCategoriaOuSemCategoria(categoria))} · `
+              ? `Pasta: ${escapeHtml(nomeCategoriaOuSemCategoria(categoria))} · `
               : ''
           }Gerado em ${formatDateBR(toLondonISODate() + 'T00:00:00Z')}
-          · ${plural(grupos.length, 'categoria')} · ${plural(indice.totalTemas, 'tema')} · ${plural(indice.totalNotas, 'nota')}
+          · ${plural(grupos.length, 'pasta')} · ${plural(indice.totalTemas, 'pasta')} · ${plural(indice.totalNotas, 'nota')}
         </p>
       </header>
 
       ${
         vazio
-          ? `<p class="text-muted">${categoria !== undefined ? 'Esta categoria ainda não tem temas ou notas.' : 'Este espaço ainda não tem temas ou notas.'}</p>`
+          ? `<p class="text-muted">${categoria !== undefined ? 'Esta pasta ainda não tem subpastas ou notas.' : 'Este espaço ainda não tem pastas ou notas.'}</p>`
           : ''
       }
 
@@ -104,7 +103,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
         <nav class="pdf-indice" id="pdf-indice" aria-label="Índice" ${opcaoIndice ? '' : 'hidden'}>
           <div class="pdf-indice__cabecalho">
             <span class="pdf-indice__titulo">Índice</span>
-            <span class="pdf-contagem">${plural(grupos.length, 'categoria')} · ${plural(indice.totalTemas, 'tema')} · ${plural(indice.totalNotas, 'nota')}</span>
+            <span class="pdf-contagem">${plural(grupos.length, 'pasta')} · ${plural(indice.totalTemas, 'pasta')} · ${plural(indice.totalNotas, 'nota')}</span>
           </div>
           <ul class="pdf-indice__lista">
             ${indice.linhas
@@ -134,9 +133,9 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
           <div class="pdf-category__title">
             <span class="pdf-num">${cat.numero}</span>
             <span class="color-dot" style="--dot-color:${corCat}" aria-hidden="true"></span>
-            <span class="pdf-nivel">Categoria</span>
+            <span class="pdf-nivel">Pasta</span>
             <span class="pdf-category__nome">${escapeHtml(nomeCategoriaOuSemCategoria(cat.grupo.categoria))}</span>
-            <span class="pdf-contagem">${plural(cat.temas.length, 'tema')} · ${plural(cat.totalNotas, 'nota')}</span>
+            <span class="pdf-contagem">${plural(cat.temas.length, 'pasta')} · ${plural(cat.totalNotas, 'nota')}</span>
           </div>
           ${cat.temas
             .map(
@@ -144,8 +143,8 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
             <section class="pdf-tema" id="${anexoTema(tema)}" style="--tema-accent:${corCat}">
               <div class="pdf-tema__title">
                 <span class="pdf-num pdf-num--tema">${tema.numero}</span>
-                <span class="pdf-nivel">Tema</span>
-                ${tema.temaPdf.tema.favorito ? `${ICONS.star} ` : ''}<span class="pdf-tema__nome">${escapeHtml(nomeTemaExibicao(tema.temaPdf.tema.nome))}</span>
+                <span class="pdf-nivel">Subpasta</span>
+                ${tema.temaPdf.tema.favorito ? `${ICONS.star} ` : ''}<span class="pdf-tema__nome">${escapeHtml(tema.temaPdf.rotulo)}</span>
                 <span class="pdf-contagem">${plural(tema.notas.length, 'nota')}</span>
               </div>
               ${

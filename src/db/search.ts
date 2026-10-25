@@ -5,6 +5,7 @@ import { getDB } from './schema';
 import type { Espaco, Tema } from '../types';
 import { compararTextos } from '../lib/ordem';
 import { nomeTemaExibicao } from '../domain/rotulos';
+import { caminhoDe } from '../domain/arvore';
 
 export type ResultadoBusca =
   | { kind: 'espaco'; id: string; titulo: string; meta: string; snippet?: string }
@@ -70,27 +71,37 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
   const resultados: ResultadoBusca[] = [];
 
   for (const espaco of espacos) {
-    if (temMatch([espaco.nome, espaco.categoria], q)) {
+    if (temMatch([espaco.nome], q)) {
       resultados.push({
         kind: 'espaco',
         id: espaco.id,
         titulo: espaco.nome,
-        meta: espaco.categoria ? `Espaço · ${espaco.categoria}` : 'Espaço',
+        meta: 'Pasta principal',
       });
       if (resultados.length >= LIMITE_TOTAL) return resultados;
     }
   }
 
   const temaPorId = new Map(temas.map((t: Tema) => [t.id, t]));
+  const caminhoPorTema = new Map<string, Tema[]>(
+    temas.map((tema) => [tema.id, caminhoDe(temas, tema)]),
+  );
+  const trilhaDe = (tema: Tema): string =>
+    [
+      ...(espacoPorId.get(tema.espaco_id) ? [espacoPorId.get(tema.espaco_id)!.nome] : []),
+      ...(caminhoPorTema.get(tema.id) ?? []).map((a) => nomeTemaExibicao(a.nome)),
+      nomeTemaExibicao(tema.nome),
+    ].join(' · ');
 
   for (const tema of temas) {
     if (temMatch([tema.nome, tema.categoria], q)) {
       const espaco = espacoPorId.get(tema.espaco_id);
+      const ancestrais = (caminhoPorTema.get(tema.id) ?? []).map((a) => nomeTemaExibicao(a.nome));
       resultados.push({
         kind: 'tema',
         id: tema.id,
         titulo: nomeTemaExibicao(tema.nome),
-        meta: `Tema${espaco ? ` · ${espaco.nome}` : ''}`,
+        meta: `Pasta${espaco ? ` · ${[espaco.nome, ...ancestrais].join(' › ')}` : ''}`,
       });
       if (resultados.length >= LIMITE_TOTAL) return resultados;
     }
@@ -99,11 +110,7 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
   for (const nota of notas) {
     if (!temMatch([nota.titulo, nota.fonte, nota.conteudo], q)) continue;
     const tema = temaPorId.get(nota.tema_id);
-    const espaco = tema && espacoPorId.get(tema.espaco_id);
-    const trilha = [
-      ...(espaco ? [espaco.nome] : []),
-      ...(tema ? [nomeTemaExibicao(tema.nome)] : []),
-    ].join(' · ');
+    const trilha = tema ? trilhaDe(tema) : '';
     resultados.push({
       kind: 'nota',
       id: nota.id,

@@ -8,6 +8,7 @@ import { getDB } from './schema';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
 import { nomeTemaExibicao } from '../domain/rotulos';
 import { resolverConflito, type ConflitoRestauro } from '../domain/restauro-lixeira';
+import { idsDaSubarvore } from '../domain/arvore';
 import { gravarPurgas } from './purgas';
 import type { LojaPurgavel, Nota, Tema } from '../types';
 
@@ -78,6 +79,20 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
 
   const itens: LixeiraItem[] = [];
 
+  /** Um tema dentro de uma cascata já listada no pai não aparece de novo na Lixeira. */
+  const temAncestralExcluido = (tema: Tema): boolean => {
+    let paiId = tema.pai_id;
+    const vistos = new Set<string>([tema.id]);
+    while (paiId && !vistos.has(paiId)) {
+      const pai = temaById.get(paiId);
+      if (!pai) return false;
+      if (pai.excluido) return true;
+      vistos.add(pai.id);
+      paiId = pai.pai_id;
+    }
+    return false;
+  };
+
   for (const espaco of espacos) {
     if (!espaco.excluido) continue;
     const temasDoEspaco = temasPorEspaco.get(espaco.id) ?? [];
@@ -89,7 +104,7 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
       tipo: 'espaco',
       id: espaco.id,
       nome: espaco.nome,
-      contexto: espaco.categoria || 'Sem categoria',
+      contexto: 'Pasta principal',
       excluido_em: espaco.excluido_em,
       temas: temasDoEspaco.filter((t) => t.excluido).length,
       notas: notasExcluidas,
@@ -98,15 +113,23 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
 
   for (const tema of todosTemas) {
     if (!tema.excluido) continue;
+    if (temAncestralExcluido(tema)) continue;
     const espaco = espacoById.get(tema.espaco_id);
     if (!espaco || espaco.excluido) continue;
+    const ids = idsDaSubarvore(todosTemas, tema.id);
+    const temasNaCascata = ids.filter((id) => temaById.get(id)?.excluido).length;
+    const notasNaCascata = ids.reduce(
+      (soma, id) => soma + (notasPorTema.get(id) ?? []).filter((n) => n.excluido).length,
+      0,
+    );
     itens.push({
       tipo: 'tema',
       id: tema.id,
       nome: nomeTemaExibicao(tema.nome),
       contexto: espaco.nome,
       excluido_em: tema.excluido_em,
-      notas: (notasPorTema.get(tema.id) ?? []).filter((n) => n.excluido).length,
+      temas: temasNaCascata,
+      notas: notasNaCascata,
     });
   }
 
@@ -152,12 +175,11 @@ export async function verificarConflitoRestauro(
     const tema = await db.get('temas', id);
     if (!tema) return { conflito: false, nomeSugerido: '' };
     const ativos = (await db.getAllFromIndex('temas', 'espaco_id', tema.espaco_id)).filter(
-      (t) => !t.excluido,
+      (t) => !t.excluido && (t.pai_id ?? null) === (tema.pai_id ?? null),
     );
     return resolverConflito(
       tema.nome || '',
-      ativos.map((t) => ({ nome: t.nome || '', categoria: t.categoria })),
-      tema.categoria,
+      ativos.map((t) => ({ nome: t.nome || '' })),
     );
   }
 
@@ -194,10 +216,20 @@ export async function restaurarItem(
   if (tipo === 'tema') {
     const tema = await db.get('temas', id);
     if (!tema) return;
-    if (opcoes?.nome !== undefined) tema.nome = opcoes.nome;
-    const notas = (await db.getAllFromIndex('notas', 'tema_id', id)).filter((n) => n.excluido);
+    const todos = await db.getAllFromIndex('temas', 'espaco_id', tema.espaco_id);
+    const ids = idsDaSubarvore(todos, id);
+    const temas = todos.filter((t) => ids.includes(t.id) && t.excluido);
+    if (opcoes?.nome !== undefined) {
+      const raiz = temas.find((t) => t.id === id);
+      if (raiz) raiz.nome = opcoes.nome;
+    }
+    const notas = (
+      await Promise.all(ids.map((temaId) => db.getAllFromIndex('notas', 'tema_id', temaId)))
+    )
+      .flat()
+      .filter((n) => n.excluido);
     const tx = db.transaction(['temas', 'notas'], 'readwrite');
-    await tx.objectStore('temas').put(marcarRestaurado(tema, agora));
+    for (const item of temas) await tx.objectStore('temas').put(marcarRestaurado(item, agora));
     for (const nota of notas) await tx.objectStore('notas').put(marcarRestaurado(nota, agora));
     await tx.done;
     return;
@@ -250,12 +282,20 @@ export async function expurgarItem(tipo: LixeiraTipo, id: string): Promise<void>
   // Tudo é lido ANTES de abrir a transação: um `await` de uma leitura que não pertence
   // à transação deixa a transação inativa (regra do IndexedDB) e o "Excluir de vez"
   // falharia no meio do caminho, deixando o item na Lixeira.
-  const temasDoEspaco =
-    tipo === 'tema' ? [] : await db.getAllFromIndex('temas', 'espaco_id', id);
+  const temaRaiz = tipo === 'tema' ? await db.get('temas', id) : undefined;
+  const todosTemasDoEspaco = tipo === 'tema' && temaRaiz
+    ? await db.getAllFromIndex('temas', 'espaco_id', temaRaiz.espaco_id)
+    : [];
+  const idsTema = tipo === 'tema' ? idsDaSubarvore(todosTemasDoEspaco, id) : [];
 
-  const notas = tipo === 'tema'
-    ? await db.getAllFromIndex('notas', 'tema_id', id)
-    : (await Promise.all(temasDoEspaco.map((t) => db.getAllFromIndex('notas', 'tema_id', t.id)))).flat();
+  const temasDoEspaco =
+    tipo === 'tema'
+      ? todosTemasDoEspaco.filter((tema) => idsTema.includes(tema.id))
+      : await db.getAllFromIndex('temas', 'espaco_id', id);
+
+  const notas = (
+    await Promise.all(temasDoEspaco.map((t) => db.getAllFromIndex('notas', 'tema_id', t.id)))
+  ).flat();
 
   const itens = (
     await Promise.all(notas.map((n) => db.getAllFromIndex('itens_revisao', 'nota_id', n.id)))
@@ -270,8 +310,10 @@ export async function expurgarItem(tipo: LixeiraTipo, id: string): Promise<void>
   );
   const purgas: { loja: LojaPurgavel; alvo: string }[] = [];
   if (tipo === 'tema') {
-    await tx.objectStore('temas').delete(id);
-    purgas.push({ loja: 'temas', alvo: id });
+    for (const tema of temasDoEspaco) {
+      await tx.objectStore('temas').delete(tema.id);
+      purgas.push({ loja: 'temas', alvo: tema.id });
+    }
   } else {
     await tx.objectStore('espacos').delete(id);
     for (const tema of temasDoEspaco) {

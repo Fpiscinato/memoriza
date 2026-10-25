@@ -20,8 +20,8 @@ import { searchAll } from '../src/db/search';
 
 async function montarCenario(nome: string) {
   const perfil = await createProfile(nome);
-  const espaco = await createEspaco(perfil.id, 'Espaço', 'Cursos');
-  const tema = await createTema(espaco.id, 'Tema', 'Matéria');
+  const espaco = await createEspaco(perfil.id, 'Espaço');
+  const tema = await createTema(espaco.id, 'Tema');
   const nota = await createNota(tema.id, {
     titulo: 'Nota',
     conteudo: 'Conteúdo',

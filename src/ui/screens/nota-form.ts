@@ -1,13 +1,15 @@
 import { createNota, deleteNota, getNota, listNotas, toggleNotaFavorito, updateNota } from '../../db/notas';
-import { getTema } from '../../db/temas';
+import { getTema, listTemas } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { validarCampos } from '../../lib/form-validacao';
+import { accentVar, espacoCorVar } from '../../lib/color';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { buildNotaPlainText } from '../../lib/pdf-text';
 import { nomeTemaExibicao } from '../../domain/rotulos';
+import { caminhoDe } from '../../domain/arvore';
 import { formatDateBR } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
@@ -15,6 +17,7 @@ import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderFieldHint } from '../components/field-hint';
 import { ativarRovingTabindex } from '../components/roving-tabindex';
 import { clearFormDirty, setFormDirty, setFormDirtyPrompt, canNavigateAway } from '../../lib/form-guard';
+import { espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 
 export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
@@ -48,14 +51,15 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   }
   const tema = await getTema(temaId);
   if (!tema) {
-    container.innerHTML = `<p class="text-muted">Tema não encontrado.</p>`;
+    container.innerHTML = `<p class="text-muted">Pasta não encontrada.</p>`;
     return;
   }
   const espaco = await getEspaco(tema.espaco_id);
+  const caminho = espaco ? caminhoDe(await listTemas(espaco.id), tema) : [];
   if (params.mode === 'nova' && espaco?.arquivado) {
     container.innerHTML = `
       <div class="banner banner--warning">
-        <span>O espaço "${escapeHtml(espaco.nome)}" está arquivado — não é possível criar notas novas aqui.</span>
+        <span>A pasta principal "${escapeHtml(espaco.nome)}" está arquivada — não é possível criar notas novas aqui.</span>
       </div>
       <button class="btn btn--secondary btn--sm" id="btn-voltar-arquivado" type="button">← Voltar</button>
     `;
@@ -68,7 +72,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const nota = params.mode === 'editar' ? await getNota(params.notaId) : undefined;
   const temItemPendente = nota ? await hasPendingItem(nota.id) : false;
 
-  // Sugere Título/Fonte com base na última Nota criada neste mesmo Tema — comum ter um
+  // Sugere Título/Fonte com base na última Nota criada nesta mesma pasta — comum ter um
   // padrão repetido (ex: "Aula 1", "Aula 2"), e o usuário só precisa ajustar o número.
   const ultimaNota = params.mode === 'nova' ? (await listNotas(temaId)).at(-1) : undefined;
   const tituloSugerido = ultimaNota?.titulo;
@@ -76,11 +80,29 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   container.innerHTML = `
     ${renderBreadcrumb([
-      { label: 'Espaços', route: 'espacos' },
-      ...(espaco?.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
-      ...(espaco ? [{ label: espaco.nome, route: `espacos/${espaco.id}`, colorKey: espaco.id }] : []),
-      ...(tema.categoria ? [{ label: tema.categoria, colorKey: tema.categoria.toLowerCase() }] : []),
-      { label: nomeTemaExibicao(tema.nome), route: `temas/${tema.id}` },
+      { label: 'Pastas', route: 'espacos' },
+      ...(espaco
+        ? [
+            {
+              label: espaco.nome,
+              route: `espacos/${espaco.id}`,
+              iconKey: espacoIconeChave(espaco),
+              iconColor: espacoCorVar(espaco.cor, accentVar(espaco.id)),
+            },
+          ]
+        : []),
+      ...caminho.map((a) => ({
+        label: nomeTemaExibicao(a.nome),
+        route: `temas/${a.id}`,
+        iconKey: espacoIconeChave(a),
+        iconColor: espacoCorVar(a.cor, accentVar(a.id)),
+      })),
+      {
+        label: nomeTemaExibicao(tema.nome),
+        route: `temas/${tema.id}`,
+        iconKey: espacoIconeChave(tema),
+        iconColor: espacoCorVar(tema.cor, accentVar(tema.id)),
+      },
       { label: params.mode === 'nova' ? 'Nova nota' : nota?.titulo || 'Editar nota' },
     ])}
 

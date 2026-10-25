@@ -3,7 +3,6 @@
 // os três números batem sempre, que é o ponto de "facil de saber cada nota".
 
 import type { CategoriaPdf, NotaPdf, TemaPdf } from '../db/pdf-data';
-import { nomeTemaExibicao } from './rotulos';
 
 export interface NotaNumerada {
   notaPdf: NotaPdf;
@@ -38,9 +37,9 @@ export interface IndicePdf {
   totalNotas: number;
 }
 
-/** Título do índice de uma Categoria "Sem categoria" (mesmo texto mostrado no corpo). */
+/** Título do índice de uma Categoria "Sem pasta" (mesmo texto mostrado no corpo). */
 export function nomeCategoriaOuSemCategoria(categoria: string): string {
-  return categoria || 'Sem categoria';
+  return categoria || 'Sem pasta';
 }
 
 function anexoDe(numero: string, prefixo: string): string {
@@ -92,7 +91,7 @@ export function montarIndice(categorias: CategoriaNumerada[]): IndicePdf {
       linhas.push({
         nivel: 'tema',
         numero: tema.numero,
-        nome: nomeTemaExibicao(tema.temaPdf.tema.nome),
+        nome: tema.temaPdf.rotulo ?? tema.temaPdf.tema.nome,
         notas: tema.notas.length,
         anexo: anexoDe(tema.numero, 'pdf-tema'),
       });

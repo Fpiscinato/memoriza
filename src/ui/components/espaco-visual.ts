@@ -1,6 +1,6 @@
-// Seletor de aparência de um Espaço: ícone (conjunto curado de espaco-icons.ts) + cor da
-// paleta de acento. Usado no formulário de criar (espacos.ts) e de editar (espaco-detail.ts).
-// O componente guarda a escolha em inputs hidden; a tela lê com lerEspacoVisual().
+// Seletor de aparência de uma pasta: ícone (conjunto curado de espaco-icons.ts) + cor da
+// paleta de acento. Usado nos formulários de criar/editar pasta. O componente guarda a
+// escolha em inputs hidden; a tela lê com lerEspacoVisual().
 
 import { ACCENT_COUNT } from '../../lib/color';
 import { ESPACO_ICONES, sugerirEspacoIcone } from '../espaco-icons';
@@ -23,8 +23,8 @@ export function renderEspacoVisualPicker(opts: EspacoVisualOpcoes): string {
   return `
     <div class="field espaco-visual" data-espaco-visual="${escapeAttr(prefix)}">
       <span class="field__label">Ícone</span>
-      <p class="espaco-visual__hint">Escolha um ícone — conforme você digita o nome/categoria, sugerimos os mais prováveis.</p>
-      <div class="espaco-visual__icons" role="group" aria-label="Ícone do espaço">
+      <p class="espaco-visual__hint">Escolha um ícone — conforme você digita o nome, sugerimos os mais prováveis.</p>
+      <div class="espaco-visual__icons" role="group" aria-label="Ícone da pasta">
         ${ESPACO_ICONES.map(
           (i) => `
           <button
@@ -41,7 +41,7 @@ export function renderEspacoVisualPicker(opts: EspacoVisualOpcoes): string {
       <input type="hidden" id="${escapeAttr(prefix)}-icone" value="${escapeAttr(icone ?? '')}" />
 
       <span class="field__label" style="margin-top: var(--space-4);">Cor</span>
-      <div class="espaco-visual__cores" role="group" aria-label="Cor do espaço">
+      <div class="espaco-visual__cores" role="group" aria-label="Cor da pasta">
         <button
           type="button"
           class="color-swatch color-swatch--auto${typeof cor !== 'number' ? ' is-selected' : ''}"
@@ -68,8 +68,8 @@ export function renderEspacoVisualPicker(opts: EspacoVisualOpcoes): string {
 }
 
 /**
- * Liga os cliques do seletor e a sugestão automática. `getTexto` deve devolver o nome +
- * categoria atuais, para sugerirmos o ícone enquanto o usuário digita. Enquanto ele não
+ * Liga os cliques do seletor e a sugestão automática. `getTexto` deve devolver o nome
+ * atual da pasta, para sugerirmos o ícone enquanto o usuário digita. Enquanto ele não
  * clicar num ícone manualmente, a sugestão vai sendo aplicada sozinha.
  */
 export function bindEspacoVisualPicker(
@@ -121,7 +121,7 @@ export function bindEspacoVisualPicker(
     if (sugerida) selecionarIcone(sugerida);
   };
 
-  // Sugere já na abertura (ex: categoria pré-preenchida) e enquanto digita.
+  // Sugere já na abertura (ex: nome pré-preenchido) e enquanto digita.
   aplicarSugestao();
   container.querySelectorAll<HTMLInputElement>('input[type="text"]').forEach((input) => {
     input.addEventListener('input', aplicarSugestao);
