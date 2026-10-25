@@ -62,7 +62,7 @@ describe('montarEscopos', () => {
     expect(escopos[0].itens).toHaveLength(2);
   });
 
-  it('categoria vazia vira "Sem pasta"', () => {
+  it('categoria vazia vira "Sem categoria"', () => {
     const comVazia = [
       notaComTema(semEspaco, 't1', 'n1', 'A', ''),
       notaComTema(semEspaco, 't2', 'n2', 'B', ''),
@@ -70,7 +70,7 @@ describe('montarEscopos', () => {
     ];
     const escopos = montarEscopos(comVazia, { nomeContexto: 'Curso', tipo: 'espaco' });
     const rotulos = escopos.map((e) => e.rotulo);
-    expect(rotulos).toContain('Sem pasta');
+    expect(rotulos).toContain('Sem categoria');
     expect(rotulos).toContain('Módulo');
   });
 });

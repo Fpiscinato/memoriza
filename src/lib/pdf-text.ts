@@ -63,7 +63,7 @@ export function buildPlainText(espaco: EspacoPdfData['espaco'], grupos: Categori
 
   for (const cat of numerarGrupos(grupos)) {
     if (cat.temas.length === 0) continue;
-    lines.push('', `▸ ${cat.numero} ${(cat.grupo.categoria || 'sem pasta').toUpperCase()}`);
+    lines.push('', `▸ ${cat.numero} ${(cat.grupo.categoria || 'sem categoria').toUpperCase()}`);
 
     for (const tema of cat.temas) {
       lines.push('', `— ${tema.numero} ${tema.temaPdf.tema.favorito ? '⭐ ' : ''}*${tema.temaPdf.rotulo ?? tema.temaPdf.tema.nome}*`);

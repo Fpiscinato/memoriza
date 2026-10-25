@@ -30,7 +30,7 @@ const AUTO_SYNC_INTERVAL_MINUTOS = 30;
 
 const NAV_ITEMS: { route: TopLevelRoute; label: string }[] = [
   { route: 'hoje', label: 'Hoje' },
-  { route: 'espacos', label: 'Pastas' },
+  { route: 'espacos', label: 'Espaços' },
   { route: 'favoritos', label: 'Favoritos' },
   { route: 'painel', label: 'Painel' },
   { route: 'config', label: 'Configurações' },
@@ -38,7 +38,7 @@ const NAV_ITEMS: { route: TopLevelRoute; label: string }[] = [
 
 const TOP_LEVEL_TITLES: Record<TopLevelRoute, string> = {
   hoje: 'Hoje',
-  espacos: 'Pastas',
+  espacos: 'Espaços',
   favoritos: 'Favoritos',
   painel: 'Painel',
   ajuda: 'Como Usar',

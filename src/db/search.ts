@@ -71,12 +71,12 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
   const resultados: ResultadoBusca[] = [];
 
   for (const espaco of espacos) {
-    if (temMatch([espaco.nome], q)) {
+    if (temMatch([espaco.nome, espaco.categoria], q)) {
       resultados.push({
         kind: 'espaco',
         id: espaco.id,
         titulo: espaco.nome,
-        meta: 'Pasta principal',
+        meta: espaco.categoria ? `Espaço · ${espaco.categoria}` : 'Espaço',
       });
       if (resultados.length >= LIMITE_TOTAL) return resultados;
     }
@@ -97,11 +97,16 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
     if (temMatch([tema.nome, tema.categoria], q)) {
       const espaco = espacoPorId.get(tema.espaco_id);
       const ancestrais = (caminhoPorTema.get(tema.id) ?? []).map((a) => nomeTemaExibicao(a.nome));
+      const trilha = [
+        ...(espaco ? [espaco.nome] : []),
+        ...(tema.categoria ? [tema.categoria] : []),
+        ...ancestrais,
+      ];
       resultados.push({
         kind: 'tema',
         id: tema.id,
         titulo: nomeTemaExibicao(tema.nome),
-        meta: `Pasta${espaco ? ` · ${[espaco.nome, ...ancestrais].join(' › ')}` : ''}`,
+        meta: `Tema${trilha.length > 0 ? ` · ${trilha.join(' › ')}` : ''}`,
       });
       if (resultados.length >= LIMITE_TOTAL) return resultados;
     }

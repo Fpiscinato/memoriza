@@ -1,6 +1,6 @@
-// Seletor de aparência de uma pasta: ícone (conjunto curado de espaco-icons.ts) + cor da
-// paleta de acento. Usado nos formulários de criar/editar pasta. O componente guarda a
-// escolha em inputs hidden; a tela lê com lerEspacoVisual().
+// Seletor de aparência de um espaço/tema: ícone (conjunto curado de espaco-icons.ts) + cor
+// da paleta de acento. Usado nos formulários de criar/editar. O componente guarda a escolha
+// em inputs hidden; a tela lê com lerEspacoVisual().
 
 import { ACCENT_COUNT } from '../../lib/color';
 import { ESPACO_ICONES, sugerirEspacoIcone } from '../espaco-icons';
@@ -24,7 +24,7 @@ export function renderEspacoVisualPicker(opts: EspacoVisualOpcoes): string {
     <div class="field espaco-visual" data-espaco-visual="${escapeAttr(prefix)}">
       <span class="field__label">Ícone</span>
       <p class="espaco-visual__hint">Escolha um ícone — conforme você digita o nome, sugerimos os mais prováveis.</p>
-      <div class="espaco-visual__icons" role="group" aria-label="Ícone da pasta">
+      <div class="espaco-visual__icons" role="group" aria-label="Ícone">
         ${ESPACO_ICONES.map(
           (i) => `
           <button
@@ -41,7 +41,7 @@ export function renderEspacoVisualPicker(opts: EspacoVisualOpcoes): string {
       <input type="hidden" id="${escapeAttr(prefix)}-icone" value="${escapeAttr(icone ?? '')}" />
 
       <span class="field__label" style="margin-top: var(--space-4);">Cor</span>
-      <div class="espaco-visual__cores" role="group" aria-label="Cor da pasta">
+      <div class="espaco-visual__cores" role="group" aria-label="Cor">
         <button
           type="button"
           class="color-swatch color-swatch--auto${typeof cor !== 'number' ? ' is-selected' : ''}"
@@ -69,7 +69,7 @@ export function renderEspacoVisualPicker(opts: EspacoVisualOpcoes): string {
 
 /**
  * Liga os cliques do seletor e a sugestão automática. `getTexto` deve devolver o nome
- * atual da pasta, para sugerirmos o ícone enquanto o usuário digita. Enquanto ele não
+ * atual, para sugerirmos o ícone enquanto o usuário digita. Enquanto ele não
  * clicar num ícone manualmente, a sugestão vai sendo aplicada sozinha.
  */
 export function bindEspacoVisualPicker(

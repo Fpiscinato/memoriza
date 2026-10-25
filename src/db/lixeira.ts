@@ -104,7 +104,7 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
       tipo: 'espaco',
       id: espaco.id,
       nome: espaco.nome,
-      contexto: 'Pasta principal',
+      contexto: espaco.categoria || 'Sem categoria',
       excluido_em: espaco.excluido_em,
       temas: temasDoEspaco.filter((t) => t.excluido).length,
       notas: notasExcluidas,

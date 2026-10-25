@@ -69,14 +69,14 @@ const NOTAS_ORDEM_OPTIONS: { value: NotasOrdem; label: string }[] = [
 ];
 
 const LIXEIRA_TIPO_LABEL: Record<LixeiraTipo, string> = {
-  espaco: 'Pasta principal',
-  tema: 'Pasta',
+  espaco: 'Espaço',
+  tema: 'Tema',
   nota: 'Nota',
 };
 
 function rotuloLixeira(item: LixeiraItem): string {
   const partes = [`${LIXEIRA_TIPO_LABEL[item.tipo]} em ${item.contexto}`];
-  if (item.temas) partes.push(`${item.temas} pasta(s)`);
+  if (item.temas) partes.push(`${item.temas} tema(s)`);
   if (item.notas) partes.push(`${item.notas} nota(s)`);
   if (item.excluido_em) partes.push(`excluído em ${formatDateTimeBR(item.excluido_em)}`);
   return partes.join(' · ');
@@ -138,7 +138,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
           <div class="settings-list-row">
             <div>
               <div class="settings-row__label">Como Usar</div>
-              <div class="settings-row__desc">Exemplos reais de pastas, subpastas, notas e o resto do app</div>
+              <div class="settings-row__desc">Exemplos reais de espaços, temas, notas e o resto do app</div>
             </div>
             <button class="btn btn--secondary btn--sm" id="btn-como-usar" type="button">Abrir</button>
           </div>
@@ -216,9 +216,9 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         <div class="card">
           <div class="settings-list-row">
             <div>
-              <div class="settings-row__label">Notas dentro da pasta</div>
+              <div class="settings-row__label">Notas dentro do tema</div>
               <p class="settings-row__desc">
-                Como as Notas são listadas. Pastas e subpastas já seguem sempre o
+                Como as Notas são listadas. Espaços, Temas e categorias já seguem sempre o
                 nome — em ordem do calendário quando são meses, e com os números como números
                 ("Aula 2" antes de "Aula 10"). A exportação em PDF segue esta escolha.
               </p>
@@ -317,7 +317,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
         <div class="settings-section__title">${ICONS.trash} Lixeira</div>
         <div class="card stack">
           <p class="text-muted sem-margem">
-            Excluir uma pasta principal, uma subpasta ou uma Nota manda pra cá em vez de apagar
+            Excluir um espaço, um tema ou uma Nota manda pra cá em vez de apagar
             na hora. Dá pra restaurar a qualquer momento; depois de ${EXCLUSAO_RETENCAO_DIAS}
             dias o item é removido de vez, sozinho. Se já existir algo com o mesmo nome, ao
             restaurar ele ganha "(restaurado)" no nome, pra não duplicar. "Excluir de vez" é
@@ -572,7 +572,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       const contagem = await countProfileCascade(perfilId);
       const ok = await confirmAction({
         title: `Excluir o perfil "${nome}"?`,
-        message: `Isso vai apagar ${contagem.espacos} pasta(s) principal(is), ${contagem.temas} subpasta(s) e ${contagem.notas} nota(s) — todo o conteúdo desse perfil.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
+        message: `Isso vai apagar ${contagem.espacos} espaço(s), ${contagem.temas} tema(s) e ${contagem.notas} nota(s) — todo o conteúdo desse perfil.\nNão pode ser desfeito — mas dá pra restaurar de um backup exportado, se tiver um.`,
       });
       if (!ok) return;
       await deleteProfileCascade(perfilId);
@@ -683,7 +683,7 @@ export async function renderSettings(container: HTMLElement, ctx: SettingsContex
       const ok = await confirmAction({
         title: `Excluir "${nome}" de vez?`,
         message:
-          'O item e tudo que foi junto com ele (pastas e notas) serão apagados deste aparelho e do backup sincronizado, sem volta.',
+          'O item e tudo que foi junto com ele (temas e notas) serão apagados deste aparelho e do backup sincronizado, sem volta.',
       });
       if (!ok) return;
       btn.disabled = true;

@@ -19,8 +19,8 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.star}</div>
         <div class="empty-state__title">Nenhum favorito ainda</div>
-        <p class="empty-state__hint">Marque uma Pasta ou uma Nota como favorita (☆ Favoritar) pra vê-las aqui, organizadas.</p>
-        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Pastas</button>
+        <p class="empty-state__hint">Marque um Tema ou uma Nota como favorito (☆ Favoritar) pra vê-los aqui, organizados.</p>
+        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Espaços</button>
       </div>
     `;
     container.querySelector('#btn-empty-espacos')?.addEventListener('click', () => navigate('espacos'));
@@ -57,12 +57,12 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
   };
 
   container.innerHTML = `
-    <p class="screen-hint sem-margem-topo">Pastas e Notas que você marcou pra achar rápido, sem navegar pelas pastas principais.</p>
+    <p class="screen-hint sem-margem-topo">Temas e Notas que você marcou pra achar rápido, sem navegar pelos espaços.</p>
 
     ${
       temas.length > 0
         ? `
-      <div class="category-group__title" style="margin-bottom: var(--space-3);">Pastas favoritas</div>
+      <div class="category-group__title" style="margin-bottom: var(--space-3);">Temas favoritos</div>
       ${Array.from(temasPorEspaco.values())
         .map(
           (grupo) => `

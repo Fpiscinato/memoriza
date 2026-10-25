@@ -51,7 +51,7 @@ describe('montarIndice', () => {
       'categoria:1:Módulo 1:3',
       'tema:1.1:Aula A:2',
       'tema:1.2:Aula B:1',
-      'categoria:2:Sem pasta:0',
+      'categoria:2:Sem categoria:0',
       'tema:2.1:Soltos:0',
       'categoria:3:Módulo 2:0',
     ]);

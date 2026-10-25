@@ -3,12 +3,22 @@ import type { Espaco } from '../types';
 import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
 import { marcarExcluido } from './lixeira';
+import { distinctCategorias } from '../lib/group';
 import { ordenarPorNome } from '../lib/ordem';
 
 export async function listEspacos(perfilId: string): Promise<Espaco[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('espacos', 'perfil_id', perfilId);
   return ordenarPorNome(all.filter((e) => !e.excluido), (e) => e.nome);
+}
+
+/** Sugestões sempre disponíveis, mesmo num perfil novo sem nenhum Espaço ainda criado. */
+const CATEGORIAS_ESPACO_SUGERIDAS = ['Cursos', 'Livros', 'Bíblia'];
+
+/** Categorias já usadas em Espaços deste perfil, mais as sugestões padrão — pra sugerir como chips. */
+export async function listCategoriasEspacos(perfilId: string): Promise<string[]> {
+  const espacos = await listEspacos(perfilId);
+  return distinctCategorias([...CATEGORIAS_ESPACO_SUGERIDAS, ...espacos.map((e) => e.categoria)]);
 }
 
 export async function getEspaco(id: string): Promise<Espaco | undefined> {
@@ -32,6 +42,7 @@ function aplicarVisual(espaco: Espaco, visual: EspacoVisual): void {
 export async function createEspaco(
   perfilId: string,
   nome: string,
+  categoria = '',
   visual: EspacoVisual = {},
 ): Promise<Espaco> {
   const db = await getDB();
@@ -40,8 +51,7 @@ export async function createEspaco(
     id: uuid(),
     perfil_id: perfilId,
     nome,
-    // O nome já é o grupo principal; o campo antigo fica vazio nos registros novos.
-    categoria: '',
+    categoria,
     criado_em: now,
     atualizado_em: now,
     arquivado: false,
@@ -54,12 +64,14 @@ export async function createEspaco(
 export async function updateEspaco(
   id: string,
   nome: string,
+  categoria: string,
   visual?: EspacoVisual,
 ): Promise<void> {
   const db = await getDB();
   const espaco = await db.get('espacos', id);
   if (!espaco) return;
   espaco.nome = nome;
+  espaco.categoria = categoria;
   if (visual) aplicarVisual(espaco, visual);
   espaco.atualizado_em = nowISO();
   await db.put('espacos', espaco);

@@ -32,12 +32,14 @@ interface — reduz a confusão que apareceu nos testes reais da Fase 1d
 (ex: Título × Fonte). Ainda não há nada relacionado à Fase 2 (Google Drive,
 multiusuário público).
 
-**v1.20** troca a organização por "Espaço + categoria / Tema + categoria" por
-um sistema de pastas: pastas principais na raiz e subpastas aninhadas dentro
-delas, com nome, ícone e cor. As notas ficam dentro das subpastas; dá pra
-continuar criando subpastas quantos níveis quiser. Os campos `categoria`
-antigos continuam no modelo só pra compatibilidade com dados e backups
-existentes, mas não aparecem mais na interface.
+**v1.20** chegou a trocar a organização por um sistema só de pastas (raiz e
+subpastas aninhadas, sem categoria). **v1.21** volta ao layout agrupado do
+v1.19 e mantém as subpastas como recurso opcional: na raiz, os Espaços voltam a
+aparecer agrupados por categoria (ex: Bíblia, Cursos, Livros); dentro de cada
+Espaço, os Temas também são agrupados por categoria. Além disso, um Tema pode
+ter subpastas aninhadas quantos níveis forem necessários, e as notas podem
+ficar no próprio Tema ou em qualquer subpasta dele. Os formulários voltam a
+pedir **Categoria + Nome** (nome opcional no Tema), com ícone e cor opcionais.
 
 ## Stack e decisões de arquitetura
 
@@ -413,9 +415,10 @@ Todo registro tem `id` (UUID) e `atualizado_em` (timestamp ISO) — é a base da
 mesclagem no importar/exportar.
 
 - `perfis`: `{ id, nome, criado_em, atualizado_em }`
-- `espacos`: `{ id, perfil_id, nome, categoria (legado), criado_em, atualizado_em, arquivado, icone?, cor? }` (pasta principal)
-- `temas`: `{ id, espaco_id, nome, categoria (legado), pai_id?, favorito, criado_em, atualizado_em, icone?, cor? }`
-  (`pai_id` ausente = subpasta direta do Espaço; presente = subpasta de outra pasta)
+- `espacos`: `{ id, perfil_id, nome, categoria, criado_em, atualizado_em, arquivado, icone?, cor? }`
+- `temas`: `{ id, espaco_id, nome, categoria, pai_id?, favorito, criado_em, atualizado_em, icone?, cor? }`
+  (`categoria` agrupa os Temas na tela do Espaço; `pai_id` ausente = Tema direto do
+  Espaço; presente = subpasta opcional de outro Tema, para aninhar como pastas)
 - `notas`: `{ id, tema_id, titulo, conteudo, fonte, pode_desatualizar, validade_ate?, favorito, titulo_revisado, criado_em, atualizado_em }`
 - `itens_revisao`: `{ id, nota_id, perfil_id, estagio, data_agendada, data_concluida?, status, avaliacao?, streak_facil, criado_em, atualizado_em }`
 - `avaliacoes`: `{ id, perfil_id, espaco_id, tema_id, nota_id, avaliacao, escopo, categoria?, sessao_id, criado_em, atualizado_em }`
@@ -463,10 +466,10 @@ estágio:
 ## Fila de "Hoje"
 
 Lista os Itens de Revisão do perfil atual com `status = 'pendente'` e
-`data_agendada <= hoje`, agrupados por pasta principal/subpasta (com o nome da
-pasta principal como cabeçalho só quando a fila tem mais de uma pasta ativa
-misturada). Itens atrasados aparecem misturados normalmente — sem badge de
-"atrasado" — de propósito, pra não criar uma sensação de dívida acumulada.
+`data_agendada <= hoje`, agrupados por Tema/subpasta (com o nome do Espaço como
+cabeçalho só quando a fila tem mais de um Espaço ativo misturado). Itens
+atrasados aparecem misturados normalmente — sem badge de "atrasado" — de
+propósito, pra não criar uma sensação de dívida acumulada.
 
 Abrir um item mostra primeiro só o Título/fonte da nota (recall ativo — tentar
 lembrar antes de ver a resposta); só depois de "Mostrar resposta" o conteúdo
@@ -490,10 +493,10 @@ Calendário.
 
 ## Editar e excluir
 
-Pasta principal, subpasta e Nota têm "Editar" visível (nome/ícone/cor, ou
+Espaço, Tema, subpasta e Nota têm "Editar" visível (categoria/nome/ícone/cor, ou
 conteúdo/fonte/validade no caso da Nota) e "Excluir" atrás de um menu "⋯" — de
 propósito mais escondido que "Arquivar", pra reduzir o risco de apagar algo sem
-querer. Exclusão é sempre em cascata (pasta principal → subpastas → Notas →
+querer. Exclusão é sempre em cascata (Espaço → Temas → subpastas → Notas →
 Itens de Revisão) e sempre passa por um modal de confirmação que mostra a
 contagem real do que vai sumir antes de executar.
 
@@ -606,18 +609,19 @@ Números simples pro perfil atual, sem gráfico:
 
 - Revisões feitas nos últimos 7 dias, e a sequência de dias seguidos com
   pelo menos uma revisão feita (streak).
-- Ranking das pastas com mais avaliações "Difícil" no histórico — os pontos
-  fracos reais, agregados por pasta a partir dos Itens de Revisão.
-- Contagem de pastas principais ativas, subpastas, Notas, e Itens de Revisão
-  em `'consulta'` (aposentados).
+- Ranking dos Temas com mais avaliações "Difícil" no histórico — os pontos
+  fracos reais, agregados por Tema a partir dos Itens de Revisão.
+- Contagem de Espaços ativos, Temas (incluindo subpastas), Notas, e Itens de
+  Revisão em `'consulta'` (aposentados).
 
 ## Exportar como PDF
 
-Em cada pasta principal, o botão "PDF" abre uma tela de impressão
-(`#/espacos/:id/pdf`) com o conteúdo agrupado por pasta principal → subpastas
-(mostrando o caminho, ex: "Curso › Módulo 1") → Notas (ordem cronológica de
-criação). Cada nota cujo histórico de avaliações tem mais "Difícil" do que
-"Fácil" ganha um indicador "⚠️ Reforçar". O botão
+Em cada Espaço, o botão "PDF" abre uma tela de impressão
+(`#/espacos/:id/pdf`) com o conteúdo agrupado por categoria → Tema (e
+subpastas, quando existirem, mostrando o caminho, ex: "Faixa Branca ›
+Exercícios") → Notas (ordem cronológica de criação). Cada nota cujo histórico
+de avaliações tem mais "Difícil" do que "Fácil" ganha um indicador "⚠️
+Reforçar". O botão
 "Imprimir / Salvar como PDF" chama `window.print()` — sem biblioteca de PDF,
 sem chamada de rede; a folha de estilo (`@media print` em
 `components.css`) esconde a navegação e ajusta o layout só na hora de

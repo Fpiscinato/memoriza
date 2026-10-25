@@ -18,7 +18,7 @@ export async function getTema(id: string): Promise<Tema | undefined> {
   return db.get('temas', id);
 }
 
-/** Aparência opcional de uma pasta (ícone escolhido e cor da paleta). */
+/** Aparência opcional de um tema (ícone escolhido e cor da paleta). */
 export interface TemaVisual {
   icone?: string;
   cor?: number;
@@ -33,7 +33,8 @@ function aplicarVisual(tema: Tema, visual?: TemaVisual): void {
 }
 
 export interface CriarTemaOpcoes {
-  /** Pasta pai. Ausente/null = subpasta direta do Espaço. */
+  categoria?: string;
+  /** Pasta pai. Ausente/null = Tema/subpasta direta do Espaço. */
   paiId?: string | null;
   visual?: TemaVisual;
 }
@@ -49,7 +50,7 @@ export async function createTema(
     id: uuid(),
     espaco_id: espacoId,
     nome,
-    categoria: '',
+    categoria: opcoes.categoria ?? '',
     favorito: false,
     criado_em: now,
     atualizado_em: now,
@@ -60,11 +61,17 @@ export async function createTema(
   return tema;
 }
 
-export async function updateTema(id: string, nome: string, visual?: TemaVisual): Promise<void> {
+export async function updateTema(
+  id: string,
+  nome: string,
+  categoria: string,
+  visual?: TemaVisual,
+): Promise<void> {
   const db = await getDB();
   const tema = await db.get('temas', id);
   if (!tema) return;
   tema.nome = nome;
+  tema.categoria = categoria;
   aplicarVisual(tema, visual);
   tema.atualizado_em = nowISO();
   await db.put('temas', tema);
@@ -80,7 +87,7 @@ export async function toggleTemaFavorito(id: string): Promise<boolean> {
   return tema.favorito;
 }
 
-/** Conta pastas e notas que seriam mandadas pra Lixeira em cascata. */
+/** Conta temas/subpastas e notas que seriam mandados pra Lixeira em cascata. */
 export async function countTemaCascade(temaId: string): Promise<{ temas: number; notas: number }> {
   const db = await getDB();
   const tema = await db.get('temas', temaId);
@@ -123,7 +130,7 @@ export async function deleteTemaCascade(temaId: string): Promise<void> {
   await tx.done;
 }
 
-/** Quantas pastas estão diretamente abaixo de cada pasta (para exibir na listagem). */
+/** Quantas subpastas estão diretamente abaixo de cada tema (para exibir na listagem). */
 export function contarFilhosPorPasta(temas: Tema[]): Map<string, number> {
   const contagem = new Map<string, number>();
   for (const tema of temas) {

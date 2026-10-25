@@ -37,9 +37,9 @@ export interface IndicePdf {
   totalNotas: number;
 }
 
-/** Título do índice de uma Categoria "Sem pasta" (mesmo texto mostrado no corpo). */
+/** Título do índice de uma Categoria "Sem categoria" (mesmo texto mostrado no corpo). */
 export function nomeCategoriaOuSemCategoria(categoria: string): string {
-  return categoria || 'Sem pasta';
+  return categoria || 'Sem categoria';
 }
 
 function anexoDe(numero: string, prefixo: string): string {

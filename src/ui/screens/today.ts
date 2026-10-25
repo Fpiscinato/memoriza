@@ -82,8 +82,8 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.calendar}</div>
         <div class="empty-state__title">Nenhuma revisão por enquanto</div>
-        <p class="empty-state__hint">Volte amanhã, ou crie uma nota nova em Pastas — ela entra na fila a partir de amanhã.</p>
-        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Pastas</button>
+        <p class="empty-state__hint">Volte amanhã, ou crie uma nota nova em Espaços — ela entra na fila a partir de amanhã.</p>
+        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Espaços</button>
       </div>
     `;
     container.querySelector('#btn-empty-espacos')?.addEventListener('click', () => navigate('espacos'));
@@ -232,7 +232,7 @@ function renderAposentado(container: HTMLElement, ctx: TodayContext, novaFila: Q
   container.innerHTML = `
     <div class="card stack">
       <div class="banner banner--success sem-margem-baixo">
-        <span>${ICONS.confete} Duas fáceis seguidas — essa nota foi aposentada da fila de revisão. Ela continua acessível normalmente pela pasta.</span>
+        <span>${ICONS.confete} Duas fáceis seguidas — essa nota foi aposentada da fila de revisão. Ela continua acessível normalmente pelo tema.</span>
       </div>
       <button class="btn btn--primary" id="btn-continuar" type="button">Continuar</button>
     </div>

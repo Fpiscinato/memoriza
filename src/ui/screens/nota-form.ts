@@ -51,7 +51,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   }
   const tema = await getTema(temaId);
   if (!tema) {
-    container.innerHTML = `<p class="text-muted">Pasta não encontrada.</p>`;
+    container.innerHTML = `<p class="text-muted">Tema não encontrado.</p>`;
     return;
   }
   const espaco = await getEspaco(tema.espaco_id);
@@ -59,7 +59,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   if (params.mode === 'nova' && espaco?.arquivado) {
     container.innerHTML = `
       <div class="banner banner--warning">
-        <span>A pasta principal "${escapeHtml(espaco.nome)}" está arquivada — não é possível criar notas novas aqui.</span>
+        <span>O espaço "${escapeHtml(espaco.nome)}" está arquivado — não é possível criar notas novas aqui.</span>
       </div>
       <button class="btn btn--secondary btn--sm" id="btn-voltar-arquivado" type="button">← Voltar</button>
     `;
@@ -72,7 +72,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   const nota = params.mode === 'editar' ? await getNota(params.notaId) : undefined;
   const temItemPendente = nota ? await hasPendingItem(nota.id) : false;
 
-  // Sugere Título/Fonte com base na última Nota criada nesta mesma pasta — comum ter um
+  // Sugere Título/Fonte com base na última Nota criada neste mesmo tema — comum ter um
   // padrão repetido (ex: "Aula 1", "Aula 2"), e o usuário só precisa ajustar o número.
   const ultimaNota = params.mode === 'nova' ? (await listNotas(temaId)).at(-1) : undefined;
   const tituloSugerido = ultimaNota?.titulo;
@@ -80,7 +80,10 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   container.innerHTML = `
     ${renderBreadcrumb([
-      { label: 'Pastas', route: 'espacos' },
+      { label: 'Espaços', route: 'espacos' },
+      ...(espaco?.categoria
+        ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }]
+        : []),
       ...(espaco
         ? [
             {
@@ -88,6 +91,14 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
               route: `espacos/${espaco.id}`,
               iconKey: espacoIconeChave(espaco),
               iconColor: espacoCorVar(espaco.cor, accentVar(espaco.id)),
+            },
+          ]
+        : []),
+      ...((caminho[0] ?? tema).categoria
+        ? [
+            {
+              label: (caminho[0] ?? tema).categoria,
+              colorKey: (caminho[0] ?? tema).categoria.toLowerCase(),
             },
           ]
         : []),

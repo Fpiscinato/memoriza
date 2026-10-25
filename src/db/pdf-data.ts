@@ -1,4 +1,5 @@
 import { getDB } from './schema';
+import { agruparPorCategoria } from '../lib/group';
 import { getNotasOrdem } from '../lib/settings';
 import { ordenarPorNome } from '../lib/ordem';
 import { isNotaFraca } from '../domain/stats';
@@ -13,13 +14,13 @@ export interface NotaPdf {
 
 export interface TemaPdf {
   tema: Tema;
-  /** Caminho dentro do grupo (ex: "Capítulo 2 › Exercícios"), pra não perder a hierarquia. */
-  rotulo: string;
+  /** Caminho dentro do grupo (ex: "Capítulo 2 › Exercícios"), pra não perder a hierarquia
+   *  quando o Tema tem subpastas. Ausente em dados antigos/testes: cai no nome do Tema. */
+  rotulo?: string;
   notas: NotaPdf[];
 }
 
 export interface CategoriaPdf {
-  /** Nome da pasta principal (raiz do Espaço) — mantido com este nome por compatibilidade. */
   categoria: string;
   temas: TemaPdf[];
 }
@@ -30,10 +31,9 @@ export interface EspacoPdfData {
 }
 
 /**
- * Monta os dados do PDF por pasta principal → subpastas (em pré-ordem) → notas.
- * Dentro de cada pasta principal, o rótulo de cada subpasta mostra o caminho (ex:
- * "Capítulo 2 › Exercícios"), então a hierarquia continua legível mesmo com vários níveis.
- * A ordem das pastas e das notas segue a mesma das telas (lib/ordem.ts + preferência).
+ * Monta os dados do PDF agrupados por categoria → tema → notas (como na tela). Temas com
+ * subpastas aparecem em pré-ordem dentro da categoria, com o caminho no rótulo (ex:
+ * "Módulo 1 › Exercícios"), então a hierarquia opcional continua legível.
  */
 export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfData | undefined> {
   const db = await getDB();
@@ -55,11 +55,10 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
   }
   for (const lista of filhosPorPai.values()) ordenarPorNome(lista, (t) => t.nome);
 
-  // Raízes: subpastas diretas do Espaço, mais eventuais órfãs (pai excluído/ausente).
-  const raizes = ordenarPorNome(
-    temas.filter((t) => !t.pai_id || !idsValidos.has(t.pai_id)),
-    (t) => t.nome,
-  );
+  // Só os Temas de primeiro nível entram nos grupos de categoria; as subpastas (filhas)
+  // aparecem logo abaixo do Tema pai, em pré-ordem.
+  const raizes = temas.filter((t) => !t.pai_id || !idsValidos.has(t.pai_id));
+  const gruposTemas = agruparPorCategoria(raizes);
 
   const montarNotas = async (tema: Tema): Promise<NotaPdf[]> => {
     const notas = (await db.getAllFromIndex('notas', 'tema_id', tema.id)).filter((n) => !n.excluido);
@@ -76,7 +75,7 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
   };
 
   const grupos: CategoriaPdf[] = [];
-  for (const raiz of raizes) {
+  for (const grupo of gruposTemas) {
     const temasPdf: TemaPdf[] = [];
     const visitar = async (tema: Tema, prefixo: string): Promise<void> => {
       const nome = nomeTemaExibicao(tema.nome);
@@ -86,8 +85,8 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
         await visitar(filho, rotulo);
       }
     };
-    await visitar(raiz, '');
-    grupos.push({ categoria: raiz.nome, temas: temasPdf });
+    for (const raiz of grupo.itens) await visitar(raiz, '');
+    grupos.push({ categoria: grupo.categoria, temas: temasPdf });
   }
 
   return { espaco, grupos };
