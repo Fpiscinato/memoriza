@@ -1,6 +1,7 @@
 import { getFavoritos } from '../../db/favorites';
 import { escapeHtml } from '../../lib/dom';
 import { nomeTemaExibicao } from '../../domain/rotulos';
+import { ehPastaOculta } from '../../domain/arvore';
 import { accentVar, assignEspacoCores } from '../../lib/color';
 import { navigate } from '../router';
 import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
@@ -19,8 +20,8 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.star}</div>
         <div class="empty-state__title">Nenhum favorito ainda</div>
-        <p class="empty-state__hint">Marque um Tema ou uma Nota como favorito (☆ Favoritar) pra vê-los aqui, organizados.</p>
-        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Espaços</button>
+        <p class="empty-state__hint">Marque uma Pasta ou uma Nota como favorito (☆ Favoritar) pra vê-las aqui, organizadas.</p>
+        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Pastas</button>
       </div>
     `;
     container.querySelector('#btn-empty-espacos')?.addEventListener('click', () => navigate('espacos'));
@@ -37,7 +38,8 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
   const notasPorTema = new Map<string, { temaNome: string; espaco: Espaco; itens: typeof notas }>();
   for (const nf of notas) {
     const grupo = notasPorTema.get(nf.tema.id) ?? {
-      temaNome: nomeTemaExibicao(nf.tema.nome),
+      // Nota solta da pasta principal: o cabeçalho é a própria pasta, sem repetir o nome.
+      temaNome: ehPastaOculta(nf.tema) ? '' : nomeTemaExibicao(nf.tema.nome),
       espaco: nf.espaco,
       itens: [],
     };
@@ -57,12 +59,12 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
   };
 
   container.innerHTML = `
-    <p class="screen-hint sem-margem-topo">Temas e Notas que você marcou pra achar rápido, sem navegar pelos espaços.</p>
+    <p class="screen-hint sem-margem-topo">Pastas e Notas que você marcou pra achar rápido, sem precisar navegar por tudo.</p>
 
     ${
       temas.length > 0
         ? `
-      <div class="category-group__title" style="margin-bottom: var(--space-3);">Temas favoritos</div>
+      <div class="category-group__title" style="margin-bottom: var(--space-3);">Pastas favoritas</div>
       ${Array.from(temasPorEspaco.values())
         .map(
           (grupo) => `
@@ -100,7 +102,11 @@ export async function renderFavoritos(container: HTMLElement, ctx: FavoritosCont
           (grupo) => `
         <div class="category-group">
           <div class="queue-group__title" style="--group-accent:${cores.get(grupo.espaco.id) ?? accentVar(grupo.espaco.id)}; text-transform:none; letter-spacing:normal; font-size: var(--font-size-sm);">
-            ${marcador(grupo.espaco)}${escapeHtml(grupo.temaNome)} <span class="queue-group__espaco"> · ${escapeHtml(grupo.espaco.nome)}</span>
+            ${marcador(grupo.espaco)}${
+              grupo.temaNome
+                ? `${escapeHtml(grupo.temaNome)} <span class="queue-group__espaco"> · ${escapeHtml(grupo.espaco.nome)}</span>`
+                : escapeHtml(grupo.espaco.nome)
+            }
           </div>
           <div class="item-list">
             ${grupo.itens

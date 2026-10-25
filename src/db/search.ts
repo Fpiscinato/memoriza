@@ -76,24 +76,27 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
         kind: 'espaco',
         id: espaco.id,
         titulo: espaco.nome,
-        meta: espaco.categoria ? `Espaço · ${espaco.categoria}` : 'Espaço',
+        meta: espaco.categoria ? `Pasta · ${espaco.categoria}` : 'Pasta',
       });
       if (resultados.length >= LIMITE_TOTAL) return resultados;
     }
   }
 
+  // A pasta oculta não é um resultado de busca (não tem nome próprio), mas as notas dela
+  // continuam sendo — por isso ela fica no mapa de notas e só sai da lista de pastas.
+  const temasVisiveis = temas.filter((t) => !t.oculta);
   const temaPorId = new Map(temas.map((t: Tema) => [t.id, t]));
   const caminhoPorTema = new Map<string, Tema[]>(
-    temas.map((tema) => [tema.id, caminhoDe(temas, tema)]),
+    temasVisiveis.map((tema) => [tema.id, caminhoDe(temasVisiveis, tema)]),
   );
   const trilhaDe = (tema: Tema): string =>
     [
       ...(espacoPorId.get(tema.espaco_id) ? [espacoPorId.get(tema.espaco_id)!.nome] : []),
       ...(caminhoPorTema.get(tema.id) ?? []).map((a) => nomeTemaExibicao(a.nome)),
-      nomeTemaExibicao(tema.nome),
+      ...(tema.oculta ? [] : [nomeTemaExibicao(tema.nome)]),
     ].join(' · ');
 
-  for (const tema of temas) {
+  for (const tema of temasVisiveis) {
     if (temMatch([tema.nome, tema.categoria], q)) {
       const espaco = espacoPorId.get(tema.espaco_id);
       const ancestrais = (caminhoPorTema.get(tema.id) ?? []).map((a) => nomeTemaExibicao(a.nome));
@@ -106,7 +109,7 @@ export async function searchAll(perfilId: string, consulta: string): Promise<Res
         kind: 'tema',
         id: tema.id,
         titulo: nomeTemaExibicao(tema.nome),
-        meta: `Tema${trilha.length > 0 ? ` · ${trilha.join(' › ')}` : ''}`,
+        meta: `Pasta${trilha.length > 0 ? ` · ${trilha.join(' › ')}` : ''}`,
       });
       if (resultados.length >= LIMITE_TOTAL) return resultados;
     }

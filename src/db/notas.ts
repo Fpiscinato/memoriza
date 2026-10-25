@@ -5,6 +5,7 @@ import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
 import { getNotasOrdem } from '../lib/settings';
 import { ordenarPorNome } from '../lib/ordem';
 import { marcarExcluido } from './lixeira';
+import { garantirTemaRaiz } from './temas';
 
 export async function listNotas(temaId: string): Promise<Nota[]> {
   const db = await getDB();
@@ -90,6 +91,16 @@ export async function createNota(temaId: string, input: NotaInput): Promise<Nota
   await tx.done;
 
   return nota;
+}
+
+/** Cria uma nota solta na própria pasta principal — a pasta oculta é criada na hora,
+ *  se ainda não existir. */
+export async function createNotaNaPastaPrincipal(
+  espacoId: string,
+  input: NotaInput,
+): Promise<Nota> {
+  const raiz = await garantirTemaRaiz(espacoId);
+  return createNota(raiz.id, input);
 }
 
 /**

@@ -3,6 +3,7 @@ import { escapeHtml } from '../../lib/dom';
 import { renderMarkdown } from '../../lib/markdown';
 import { precisaAvisoDeValidade } from '../../domain/validade';
 import { nomeTemaExibicao } from '../../domain/rotulos';
+import { ehPastaOculta } from '../../domain/arvore';
 import { accentVar } from '../../lib/color';
 import { navigate } from '../router';
 import type { Avaliacao } from '../../types';
@@ -82,8 +83,8 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.calendar}</div>
         <div class="empty-state__title">Nenhuma revisão por enquanto</div>
-        <p class="empty-state__hint">Volte amanhã, ou crie uma nota nova em Espaços — ela entra na fila a partir de amanhã.</p>
-        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Espaços</button>
+        <p class="empty-state__hint">Volte amanhã, ou crie uma nota nova em Pastas — ela entra na fila a partir de amanhã.</p>
+        <button class="btn btn--secondary btn--sm empty-state__action" id="btn-empty-espacos" type="button">Explorar Pastas</button>
       </div>
     `;
     container.querySelector('#btn-empty-espacos')?.addEventListener('click', () => navigate('espacos'));
@@ -111,12 +112,13 @@ async function renderLista(container: HTMLElement, ctx: TodayContext, fila: Queu
     .map((entries) => {
       const tema = entries[0].tema;
       const espaco = entries[0].espaco;
+      const notaNaPastaPrincipal = ehPastaOculta(tema);
       return `
         <div class="queue-group">
           <div class="queue-group__title" style="--group-accent:${accentVar(tema.id)}">
             <span class="color-dot" style="--dot-color:${accentVar(tema.id)}"></span>
-            ${escapeHtml(nomeTemaExibicao(tema.nome))}
-            ${mostrarEspaco ? `<span class="queue-group__espaco"> · ${escapeHtml(espaco.nome)}</span>` : ''}
+            ${escapeHtml(notaNaPastaPrincipal ? espaco.nome : nomeTemaExibicao(tema.nome))}
+            ${mostrarEspaco && !notaNaPastaPrincipal ? `<span class="queue-group__espaco"> · ${escapeHtml(espaco.nome)}</span>` : ''}
           </div>
           <div class="item-list">
             ${entries

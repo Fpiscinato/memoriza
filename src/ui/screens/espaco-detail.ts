@@ -1,6 +1,6 @@
 import { countEspacoCascade, deleteEspacoCascade, getEspaco, listCategoriasEspacos, listEspacos, setEspacoArquivado, updateEspaco } from '../../db/espacos';
-import { createTema, listTemas } from '../../db/temas';
-import { listNotasPorEspaco } from '../../db/notas';
+import { createTema, getTemaRaiz, listTemas } from '../../db/temas';
+import { listNotas, listNotasPorEspaco } from '../../db/notas';
 import { getDB } from '../../db/schema';
 import { getTempoTotalEspaco } from '../../db/dashboard';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
@@ -23,29 +23,30 @@ import { ICONS } from '../icons';
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
   const espaco = await getEspaco(espacoId);
   if (!espaco) {
-    container.innerHTML = `<p class="text-muted">Espaço não encontrado.</p>`;
+    container.innerHTML = `<p class="text-muted">Pasta não encontrada.</p>`;
     return;
   }
   const temas = await listTemas(espacoId);
   const idsTemas = new Set(temas.map((t) => t.id));
-  // Temas de primeiro nível aparecem agrupados por categoria; as subpastas opcionais ficam
-  // dentro do Tema pai (ou de outra subpasta), não repetidas na lista do Espaço.
+  // Pastas de primeiro nível aparecem agrupadas por categoria; as subpastas opcionais ficam
+  // dentro da pasta pai (ou de outra subpasta), não repetidas na lista principal.
   const temasRaiz = temas.filter((t) => !t.pai_id || !idsTemas.has(t.pai_id));
   const notaCounts = await countNotasPorTema(temas.map((t) => t.id));
+  const raiz = await getTemaRaiz(espacoId);
+  const notasDiretas = raiz ? await listNotas(raiz.id) : [];
   const grupos = agruparPorCategoria(temasRaiz);
   const categoriasEspaco = await listCategoriasEspacos(espaco.perfil_id);
-  // Escopo é só este Espaço (não o perfil inteiro) — sugestão de categoria de Tema precisa
-  // ser relevante pro "curso" atual, não misturar módulos de outros Espaços.
-  const categoriasTema = distinctCategorias(temasRaiz.map((t) => t.categoria));
-  // Sugere a categoria do último Tema criado neste Espaço — ajuda a lembrar o "módulo" atual
-  // sem precisar rolar a tela pra conferir os outros Temas já criados.
+  // Escopo é só esta pasta (não o perfil inteiro) — sugestão de categoria precisa ser
+  // relevante pro conteúdo atual, não misturar módulos de outras pastas.
+  const categoriasTema = distinctCategorias(temas.map((t) => t.categoria));
+  // Sugere a categoria da última pasta criada aqui — ajuda a lembrar o "módulo" atual.
   const ultimoTemaCriado = [...temas].sort((a, b) => b.criado_em.localeCompare(a.criado_em))[0];
   const categoriaTemaSugerida = ultimoTemaCriado?.categoria?.trim() || undefined;
-  const nomeTemaSugerido = ultimoTemaCriado?.nome?.trim() || undefined;
   const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
   const espacoIcone = getEspacoIcone(espacoIconeChave(espaco));
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
   const coresTemas = assignEspacoCores(temasRaiz);
+  const pastasVazias = temasRaiz.length === 0 && notasDiretas.length === 0;
 
   const notasDaSubarvore = (temaId: string): number =>
     idsDaSubarvore(temas, temaId).reduce((soma, id) => soma + (notaCounts.get(id) ?? 0), 0);
@@ -54,7 +55,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
 
   container.innerHTML = `
     ${renderBreadcrumb([
-      { label: 'Espaços', route: 'espacos' },
+      { label: 'Pastas', route: 'espacos' },
       ...(espaco.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
       { label: espaco.nome, iconKey: espacoIcone.chave, iconColor: espacoCor },
     ])}
@@ -74,7 +75,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           <div class="item-menu__panel">
             <button id="btn-detalhes" type="button">${ICONS.info} Detalhes</button>
             <button id="btn-avaliar" type="button">${ICONS.dice} Avaliar notas</button>
-            <button id="btn-excluir" class="danger" type="button">Excluir espaço</button>
+            <button id="btn-excluir" class="danger" type="button">Excluir pasta</button>
           </div>
         </details>
       </div>
@@ -88,7 +89,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         ${renderCategoriaChips(categoriasEspaco, 'input-categoria-espaco-editar')}
       </div>
       <div class="field com-margem">
-        <label class="field__label" for="input-nome-espaco-editar">Nome</label>
+        <label class="field__label" for="input-nome-espaco-editar">Nome da pasta</label>
         <input class="input" id="input-nome-espaco-editar" type="text" value="${escapeHtml(espaco.nome)}" maxlength="120" />
         <p class="field__error" role="alert"></p>
       </div>
@@ -103,56 +104,71 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
 
     ${
       espaco.arquivado
-        ? `<div class="banner banner--warning"><span>Este espaço está arquivado — não é possível criar novos temas, subpastas ou notas nele, mas as revisões já agendadas continuam normalmente.</span></div>`
+        ? `<div class="banner banner--warning"><span>Esta pasta está arquivada — não é possível criar pastas ou notas novas nela, mas as revisões já agendadas continuam normalmente.</span></div>`
         : ''
     }
 
     ${
       !espaco.arquivado
         ? `
-    <div id="form-novo-tema" class="card content-narrow is-hidden">
-      <p class="screen-hint sem-margem-topo">Um Tema é um assunto ou aula dentro deste Espaço. A <strong>categoria</strong> agrupa os temas (ex: o módulo do curso) — preencha ela primeiro; o nome é opcional.</p>
+    <div id="form-nova-pasta" class="card content-narrow is-hidden">
+      <p class="screen-hint sem-margem-topo">Uma <strong>pasta</strong> organiza outras pastas e notas. A <strong>categoria</strong> agrupa as pastas (ex: o módulo do curso) — preencha ela primeiro.</p>
       <div class="field">
         <label class="field__label" for="input-categoria-tema">Categoria</label>
         <input class="input${categoriaTemaSugerida ? ' input--sugerido' : ''}" id="input-categoria-tema" type="text" placeholder="Ex: nome do módulo" maxlength="80" value="${escapeHtml(categoriaTemaSugerida ?? '')}" />
         <p class="field__error" role="alert"></p>
-        ${categoriaTemaSugerida ? `<p class="field__sugestao-hint">↻ Categoria do último tema criado aqui — edite se for outro módulo</p>` : ''}
+        ${categoriaTemaSugerida ? `<p class="field__sugestao-hint">↻ Categoria da última pasta criada aqui — edite se for outro módulo</p>` : ''}
         ${renderCategoriaChips(categoriasTema, 'input-categoria-tema')}
       </div>
       <div class="field com-margem">
-        <label class="field__label" for="input-nome-tema">Nome do tema (opcional)</label>
-        <input class="input${nomeTemaSugerido ? ' input--sugerido' : ''}" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" value="${escapeHtml(nomeTemaSugerido ?? '')}" />
+        <label class="field__label" for="input-nome-tema">Nome da pasta</label>
+        <input class="input" id="input-nome-tema" type="text" placeholder="Ex: Renda Fixa" maxlength="120" />
         <p class="field__error" role="alert"></p>
-        ${nomeTemaSugerido ? `<p class="field__sugestao-hint">↻ Nome do último tema criado aqui — edite antes de salvar</p>` : ''}
       </div>
       <div style="margin-top: var(--space-4);">
         ${renderEspacoVisualPicker({ prefix: 'novo-tema' })}
       </div>
       <div class="form-actions com-margem">
-        <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar</button>
+        <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar pasta</button>
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-tema" type="button">Cancelar</button>
       </div>
     </div>
-    <button class="btn btn--primary btn--sm" id="btn-novo-tema" type="button" style="margin-bottom: var(--space-5);">+ Novo tema</button>
+    <div class="form-actions" style="justify-content:flex-start; margin-bottom: var(--space-5);">
+      <button class="btn btn--secondary btn--sm" id="btn-novo-tema" type="button">+ Nova pasta</button>
+      <button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">+ Nova nota</button>
+    </div>
     `
         : ''
     }
 
     ${
-      temasRaiz.length === 0
+      pastasVazias
         ? `
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.folder}</div>
-        <div class="empty-state__title">Nenhum tema neste espaço ainda</div>
-        <p class="empty-state__hint">Temas organizam as notas dentro de um espaço — ex: "Renda Fixa", "Renda Variável".</p>
-        ${!espaco.arquivado ? `<button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-novo-tema" type="button">Criar o primeiro tema</button>` : ''}
+        <div class="empty-state__title">Esta pasta ainda está vazia</div>
+        <p class="empty-state__hint">Crie uma pasta para organizar o conteúdo ou uma nota direto nesta pasta.</p>
+        ${
+          !espaco.arquivado
+            ? `
+          <div class="form-actions" style="justify-content:center;">
+            <button class="btn btn--secondary btn--sm" id="btn-empty-novo-tema" type="button">+ Nova pasta</button>
+            <button class="btn btn--primary btn--sm" id="btn-empty-nova-nota" type="button">+ Nova nota</button>
+          </div>
+        `
+            : ''
+        }
       </div>
     `
-        : grupos
-            .map((grupo) => {
-              const corCategoria = coresCategoria.get(chaveCategoria(grupo.categoria)) ?? accentVar(grupo.categoria || 'sem-categoria');
-              const iconeCategoria = getEspacoIcone(categoriaIconeChave(grupo.categoria));
-              return `
+        : `
+      ${
+        temasRaiz.length === 0
+          ? `<p class="text-muted">Nenhuma pasta aqui ainda.</p>`
+          : grupos
+              .map((grupo) => {
+                const corCategoria = coresCategoria.get(chaveCategoria(grupo.categoria)) ?? accentVar(grupo.categoria || 'sem-categoria');
+                const iconeCategoria = getEspacoIcone(categoriaIconeChave(grupo.categoria));
+                return `
       <details class="category-group">
         <summary class="category-group__title" style="--group-accent:${corCategoria}">
           <span class="category-group__label">
@@ -162,7 +178,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           <span class="category-group__actions">
             ${
               !espaco.arquivado
-                ? `<button class="category-group__action" type="button" data-novo-tema-categoria="${escapeHtml(grupo.categoria)}" title="Criar tema já nesta categoria">+ Tema</button>`
+                ? `<button class="category-group__action" type="button" data-novo-tema-categoria="${escapeHtml(grupo.categoria)}" title="Criar pasta já nesta categoria">+ Pasta</button>`
                 : ''
             }
             <button class="category-group__action" type="button" data-pdf-categoria="${escapeHtml(encodeCategoriaSegment(grupo.categoria))}" title="Gerar PDF só desta categoria">PDF</button>
@@ -173,14 +189,18 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
             .map((t) => {
               const notas = notasDaSubarvore(t.id);
               const subpastas = subpastasDoTema(t.id);
-              const meta = [`${notas} nota(s)`, subpastas > 0 ? `${subpastas} subpasta(s)` : '']
+              const meta = [`${notas} nota(s)`, subpastas > 0 ? `${subpastas} pasta(s)` : '']
                 .filter(Boolean)
                 .join(' · ');
               const corTema = coresTemas.get(t.id) ?? corCategoria;
+              const iconeTema = getEspacoIcone(espacoIconeChave(t));
               return `
             <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${corTema}">
               <span class="item-row__main">
-                <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(t.nome))}</span>
+                <span class="item-row__title-row">
+                  <span class="espaco-icon-badge" style="--badge-accent:${corTema}" aria-hidden="true">${iconeTema.svg}</span>
+                  <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(t.nome))}</span>
+                </span>
                 <span class="item-row__meta">${meta}</span>
               </span>
             </button>
@@ -190,8 +210,46 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         </div>
       </details>
     `;
-            })
-            .join('')
+              })
+              .join('')
+      }
+
+      <div class="section-header" style="margin-top: var(--space-6);">
+        <span class="section-header__title" style="font-size: var(--font-size-base);">Notas nesta pasta</span>
+      </div>
+      ${
+        notasDiretas.length === 0
+          ? `
+        <div class="empty-state">
+          <div class="empty-state__icon" aria-hidden="true">${ICONS.pen}</div>
+          <div class="empty-state__title">Nenhuma nota nesta pasta ainda</div>
+          <p class="empty-state__hint">Cada nota criada aqui já entra na fila de revisão automaticamente, a partir de amanhã.</p>
+          ${
+            !espaco.arquivado
+              ? `<button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-nova-nota" type="button">Criar a primeira nota</button>`
+              : ''
+          }
+        </div>
+      `
+          : `
+        <div class="item-list">
+          ${notasDiretas
+            .map(
+              (n) => `
+            <button class="item-row" data-open-nota="${escapeHtml(n.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${espacoCor}">
+              <span class="item-row__main">
+                <span class="item-row__title">${n.favorito ? `${ICONS.star} ` : ''}${escapeHtml(n.titulo || '(sem título)')}</span>
+                <span class="item-row__meta">${escapeHtml(n.fonte || 'Sem fonte')}${n.pode_desatualizar ? ' · pode desatualizar' : ''}</span>
+              </span>
+              ${!n.titulo_revisado ? '<span class="badge badge--muted">revisar título</span>' : ''}
+            </button>
+          `,
+            )
+            .join('')}
+        </div>
+      `
+      }
+    `
     }
   `;
 
@@ -225,7 +283,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       const ok = await confirmAction({
         title: `Arquivar "${espaco.nome}"?`,
         message:
-          'Some da lista principal e não deixa criar temas ou notas novas nele — mas as revisões já agendadas continuam normalmente, e dá pra reativar quando quiser.',
+          'Some da lista principal e não deixa criar pastas ou notas novas nela — mas as revisões já agendadas continuam normalmente, e dá pra reativar quando quiser.',
         confirmLabel: 'Arquivar',
         confirmVariant: 'primary',
       });
@@ -253,15 +311,15 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     const categoria = categoriaEditarInput.value.trim();
     if (
       !validarCampos([
-        { input: categoriaEditarInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para o espaço.' },
-        { input: nomeEditarInput, ok: nome.length > 0, mensagem: 'Informe um nome para o espaço.' },
+        { input: categoriaEditarInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para a pasta.' },
+        { input: nomeEditarInput, ok: nome.length > 0, mensagem: 'Informe um nome para a pasta.' },
       ])
     ) {
       return;
     }
     const irmaos = await listEspacos(espaco.perfil_id);
     if (irmaos.some((e) => e.id !== espaco.id && e.nome.trim().toLowerCase() === nome.toLowerCase())) {
-      marcarErroCampo(nomeEditarInput, 'Já existe um espaço com esse nome.');
+      marcarErroCampo(nomeEditarInput, 'Já existe uma pasta com esse nome.');
       nomeEditarInput.focus();
       return;
     }
@@ -270,7 +328,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   });
 
   container.querySelector('#btn-detalhes')?.addEventListener('click', async () => {
-    const totalNotas = Array.from(notaCounts.values()).reduce((soma, n) => soma + n, 0);
+    const totalNotas =
+      Array.from(notaCounts.values()).reduce((soma, n) => soma + n, 0) + notasDiretas.length;
     const hoje = toLondonISODate();
     const tempoTotalSegundos = await getTempoTotalEspaco(espaco.id);
 
@@ -299,7 +358,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <div class="stat-grid" style="margin-bottom: var(--space-3); grid-template-columns: repeat(2, 1fr);">
           <div class="stat-tile">
             <div class="stat-tile__value">${temas.length}</div>
-            <div class="stat-tile__label">Temas/subpastas</div>
+            <div class="stat-tile__label">Pastas</div>
           </div>
           <div class="stat-tile">
             <div class="stat-tile__value">${totalNotas}</div>
@@ -334,14 +393,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     const contagem = await countEspacoCascade(espaco.id);
     const ok = await confirmAction({
       title: `Excluir "${espaco.nome}"?`,
-      message: `Isso manda pra Lixeira o espaço com ${contagem.temas} tema(s) e ${contagem.notas} nota(s).\nDá pra restaurar tudo em Configurações → Lixeira, por até 30 dias.`,
+      message: `Isso manda pra Lixeira a pasta com ${contagem.temas} pasta(s) e ${contagem.notas} nota(s).\nDá pra restaurar tudo em Configurações → Lixeira, por até 30 dias.`,
     });
     if (!ok) return;
     await deleteEspacoCascade(espaco.id);
     navigate('espacos');
   });
 
-  const formTema = container.querySelector<HTMLElement>('#form-novo-tema');
+  const formTema = container.querySelector<HTMLElement>('#form-nova-pasta');
   const abrirFormTema = () => {
     if (formTema) formTema.classList.remove('is-hidden');
     container.querySelector<HTMLInputElement>('#input-categoria-tema')?.focus();
@@ -353,9 +412,6 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   });
   const nomeTemaInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;
   const categoriaTemaInput = container.querySelector<HTMLInputElement>('#input-categoria-tema')!;
-  if (nomeTemaSugerido) {
-    nomeTemaInput.addEventListener('input', () => clearInputSugestao(nomeTemaInput), { once: true });
-  }
   if (categoriaTemaSugerida) {
     categoriaTemaInput.addEventListener('input', () => clearInputSugestao(categoriaTemaInput), { once: true });
   }
@@ -376,16 +432,18 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   container.querySelector('#btn-salvar-tema')?.addEventListener('click', async () => {
     const nome = nomeTemaInput.value.trim();
     const categoria = categoriaTemaInput.value.trim();
-    if (!validarCampos([{ input: categoriaTemaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para o tema.' }])) {
+    if (
+      !validarCampos([
+        { input: categoriaTemaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para a pasta.' },
+        { input: nomeTemaInput, ok: nome.length > 0, mensagem: 'Informe um nome para a pasta.' },
+      ])
+    ) {
       return;
     }
-    // Categoria + Nome iguais no mesmo Espaço = Tema duplicado. Sem nome, não dá pra comparar.
     const normalizado = (s: string) => s.trim().toLowerCase();
-    const duplicado = temasRaiz.some(
-      (t) => normalizado(t.categoria) === normalizado(categoria) && normalizado(t.nome) === normalizado(nome) && nome.length > 0,
-    );
+    const duplicado = temasRaiz.some((t) => normalizado(t.nome) === normalizado(nome));
     if (duplicado) {
-      marcarErroCampo(nomeTemaInput, 'Já existe um tema com esse nome nesta categoria.');
+      marcarErroCampo(nomeTemaInput, 'Já existe uma pasta com esse nome aqui.');
       nomeTemaInput.focus();
       return;
     }
@@ -396,8 +454,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     navigate(`temas/${novoTema.id}`);
   });
 
+  container.querySelector('#btn-nova-nota')?.addEventListener('click', () => navigate(`espacos/${espacoId}/nova-nota`));
+  container.querySelector('#btn-empty-nova-nota')?.addEventListener('click', () => navigate(`espacos/${espacoId}/nova-nota`));
+
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`temas/${btn.dataset.open}`));
+  });
+  container.querySelectorAll<HTMLButtonElement>('[data-open-nota]').forEach((btn) => {
+    btn.addEventListener('click', () => navigate(`notas/${btn.dataset.openNota}`));
   });
 }
 

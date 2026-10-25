@@ -78,15 +78,20 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
   for (const grupo of gruposTemas) {
     const temasPdf: TemaPdf[] = [];
     const visitar = async (tema: Tema, prefixo: string): Promise<void> => {
-      const nome = nomeTemaExibicao(tema.nome);
+      // A pasta oculta representa as notas soltas da própria pasta principal: no PDF ela
+      // vira a seção “Notas da pasta”, em vez de repetir o nome da pasta.
+      const nome = tema.oculta ? 'Notas da pasta' : nomeTemaExibicao(tema.nome);
       const rotulo = prefixo ? `${prefixo} › ${nome}` : nome;
-      temasPdf.push({ tema, rotulo, notas: await montarNotas(tema) });
+      const notas = await montarNotas(tema);
+      if (!(tema.oculta && notas.length === 0)) {
+        temasPdf.push({ tema, rotulo, notas });
+      }
       for (const filho of filhosPorPai.get(tema.id) ?? []) {
         await visitar(filho, rotulo);
       }
     };
     for (const raiz of grupo.itens) await visitar(raiz, '');
-    grupos.push({ categoria: grupo.categoria, temas: temasPdf });
+    if (temasPdf.length > 0) grupos.push({ categoria: grupo.categoria, temas: temasPdf });
   }
 
   return { espaco, grupos };

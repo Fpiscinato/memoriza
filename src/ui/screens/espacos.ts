@@ -28,8 +28,8 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
 
   container.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-4);">
-      <p class="screen-hint sem-margem">Cada Espaço é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
-      <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Novo espaço</button>
+      <p class="screen-hint sem-margem">Cada pasta é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
+      <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Nova pasta</button>
     </div>
 
     <div id="form-novo-espaco" class="card is-hidden">
@@ -40,7 +40,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
       </div>
       <div class="field com-margem">
-        <label class="field__label" for="input-nome-espaco">Nome do espaço</label>
+        <label class="field__label" for="input-nome-espaco">Nome da pasta</label>
         <input class="input" id="input-nome-espaco" type="text" placeholder="Ex: Curso de Investimentos" maxlength="120" />
         <p class="field__error" role="alert"></p>
       </div>
@@ -58,9 +58,9 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
         ? `
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.bookOpen}</div>
-        <div class="empty-state__title">Nenhum espaço de estudo ainda</div>
-        <p class="empty-state__hint">Crie um espaço (ex: "Curso de Investimentos") para organizar seus temas e notas.</p>
-        <button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-novo-espaco" type="button">Criar o primeiro espaço</button>
+        <div class="empty-state__title">Nenhuma pasta ainda</div>
+        <p class="empty-state__hint">Crie uma pasta (ex: "Curso de Investimentos") para organizar outras pastas e notas.</p>
+        <button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-novo-espaco" type="button">Criar a primeira pasta</button>
       </div>
     `
         : grupos
@@ -151,18 +151,18 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
 
     if (
       !validarCampos([
-        { input: categoriaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para o espaço.' },
+        { input: categoriaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para a pasta.' },
         {
           input,
           ok: nome.length > 0,
-          mensagem: 'Informe um nome para o espaço.',
+          mensagem: 'Informe um nome para a pasta.',
         },
       ])
     ) {
       return;
     }
     if (nomeJaExiste) {
-      marcarErroCampo(input, 'Já existe um espaço com esse nome.');
+      marcarErroCampo(input, 'Já existe uma pasta com esse nome.');
       input.focus();
       return;
     }
@@ -193,7 +193,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       const contagem = await countEspacoCascade(id);
       const ok = await confirmAction({
         title: `Excluir "${nome}"?`,
-        message: `Isso manda pra Lixeira o espaço com ${contagem.temas} tema(s) e ${contagem.notas} nota(s).\nDá pra restaurar tudo em Configurações → Lixeira, por até 30 dias.`,
+        message: `Isso manda pra Lixeira a pasta com ${contagem.temas} pasta(s) e ${contagem.notas} nota(s).\nDá pra restaurar tudo em Configurações → Lixeira, por até 30 dias.`,
       });
       if (!ok) return;
       await deleteEspacoCascade(id);
@@ -211,7 +211,7 @@ function renderRow(e: Espaco, temaCount: number, cor: string): string {
           <span class="espaco-icon-badge" style="--badge-accent:${cor}" aria-hidden="true">${icone.svg}</span>
           <span class="item-row__title">${escapeHtml(e.nome)}</span>
         </span>
-        <span class="item-row__meta">${temaCount} tema(s)</span>
+        <span class="item-row__meta">${temaCount} pasta(s)</span>
       </button>
       <div class="item-row__actions">
         <button class="btn btn--secondary btn--sm" data-archive="${escapeHtml(e.id)}" type="button" title="As revisões já agendadas continuam normalmente — só some da lista principal">Arquivar</button>
@@ -233,7 +233,7 @@ async function countTemasPorEspaco(espacoIds: string[]): Promise<Map<string, num
   );
   const counts = new Map<string, number>();
   espacoIds.forEach((id, i) => {
-    counts.set(id, resultados[i].filter((t) => !t.excluido).length);
+    counts.set(id, resultados[i].filter((t) => !t.excluido && !t.oculta).length);
   });
   return counts;
 }

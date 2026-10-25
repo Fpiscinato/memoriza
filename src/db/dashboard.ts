@@ -129,7 +129,7 @@ export async function getDashboardStats(perfilId: string): Promise<DashboardStat
     espacos.map((e) => db.getAllFromIndex('temas', 'espaco_id', e.id)),
   );
   const todosTemas = temasPorEspaco.flat().filter((t) => !t.excluido);
-  const totalTemas = todosTemas.length;
+  const totalTemas = todosTemas.filter((t) => !t.oculta).length;
 
   const notasPorTema = await Promise.all(
     todosTemas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),

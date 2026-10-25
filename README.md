@@ -41,6 +41,14 @@ ter subpastas aninhadas quantos níveis forem necessários, e as notas podem
 ficar no próprio Tema ou em qualquer subpasta dele. Os formulários voltam a
 pedir **Categoria + Nome** (nome opcional no Tema), com ícone e cor opcionais.
 
+**v1.22** unifica a linguagem e a navegação em **pastas dentro de pastas**:
+categoria → pasta → categoria → pasta → notas, uma tela por pasta, com os
+grupos de categoria recolhidos em todos os níveis. "Espaço", "Tema" e
+"Subpasta" passam a se chamar só **Pasta**, e toda pasta pode receber notas —
+inclusive a pasta principal. Pra isso, cada pasta de topo ganhou uma pasta
+interna oculta (criada sob demanda, id determinístico), que guarda essas notas
+sem mudar o modelo `notas.tema_id` e sem migração destrutiva dos dados.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado
@@ -416,9 +424,11 @@ mesclagem no importar/exportar.
 
 - `perfis`: `{ id, nome, criado_em, atualizado_em }`
 - `espacos`: `{ id, perfil_id, nome, categoria, criado_em, atualizado_em, arquivado, icone?, cor? }`
-- `temas`: `{ id, espaco_id, nome, categoria, pai_id?, favorito, criado_em, atualizado_em, icone?, cor? }`
-  (`categoria` agrupa os Temas na tela do Espaço; `pai_id` ausente = Tema direto do
-  Espaço; presente = subpasta opcional de outro Tema, para aninhar como pastas)
+- `temas`: `{ id, espaco_id, nome, categoria, pai_id?, favorito, oculta?, criado_em, atualizado_em, icone?, cor? }`
+  (`categoria` agrupa as pastas na tela; `pai_id` ausente = pasta direta da pasta
+  de topo; presente = pasta aninhada dentro de outra, quantos níveis forem
+  necessários; `oculta` marca a pasta interna que guarda as notas soltas da pasta
+  principal — ela não aparece na navegação, na busca nem na Lixeira)
 - `notas`: `{ id, tema_id, titulo, conteudo, fonte, pode_desatualizar, validade_ate?, favorito, titulo_revisado, criado_em, atualizado_em }`
 - `itens_revisao`: `{ id, nota_id, perfil_id, estagio, data_agendada, data_concluida?, status, avaliacao?, streak_facil, criado_em, atualizado_em }`
 - `avaliacoes`: `{ id, perfil_id, espaco_id, tema_id, nota_id, avaliacao, escopo, categoria?, sessao_id, criado_em, atualizado_em }`
@@ -466,9 +476,9 @@ estágio:
 ## Fila de "Hoje"
 
 Lista os Itens de Revisão do perfil atual com `status = 'pendente'` e
-`data_agendada <= hoje`, agrupados por Tema/subpasta (com o nome do Espaço como
-cabeçalho só quando a fila tem mais de um Espaço ativo misturado). Itens
-atrasados aparecem misturados normalmente — sem badge de "atrasado" — de
+`data_agendada <= hoje`, agrupados por pasta (com o nome da pasta de topo como
+cabeçalho só quando a fila tem mais de uma pasta principal ativa misturada).
+Itens atrasados aparecem misturados normalmente — sem badge de "atrasado" — de
 propósito, pra não criar uma sensação de dívida acumulada.
 
 Abrir um item mostra primeiro só o Título/fonte da nota (recall ativo — tentar
@@ -493,10 +503,10 @@ Calendário.
 
 ## Editar e excluir
 
-Espaço, Tema, subpasta e Nota têm "Editar" visível (categoria/nome/ícone/cor, ou
+Pasta e Nota têm "Editar" visível (categoria/nome/ícone/cor, ou
 conteúdo/fonte/validade no caso da Nota) e "Excluir" atrás de um menu "⋯" — de
 propósito mais escondido que "Arquivar", pra reduzir o risco de apagar algo sem
-querer. Exclusão é sempre em cascata (Espaço → Temas → subpastas → Notas →
+querer. Exclusão é sempre em cascata (Pasta → pastas internas → Notas →
 Itens de Revisão) e sempre passa por um modal de confirmação que mostra a
 contagem real do que vai sumir antes de executar.
 
@@ -609,17 +619,18 @@ Números simples pro perfil atual, sem gráfico:
 
 - Revisões feitas nos últimos 7 dias, e a sequência de dias seguidos com
   pelo menos uma revisão feita (streak).
-- Ranking dos Temas com mais avaliações "Difícil" no histórico — os pontos
-  fracos reais, agregados por Tema a partir dos Itens de Revisão.
-- Contagem de Espaços ativos, Temas (incluindo subpastas), Notas, e Itens de
-  Revisão em `'consulta'` (aposentados).
+- Ranking das Pastas com mais avaliações "Difícil" no histórico — os pontos
+  fracos reais, agregados por pasta a partir dos Itens de Revisão.
+- Contagem de Pastas (de todos os níveis, sem contar a pasta interna oculta),
+  Notas, e Itens de Revisão em `'consulta'` (aposentados).
 
 ## Exportar como PDF
 
-Em cada Espaço, o botão "PDF" abre uma tela de impressão
-(`#/espacos/:id/pdf`) com o conteúdo agrupado por categoria → Tema (e
-subpastas, quando existirem, mostrando o caminho, ex: "Faixa Branca ›
-Exercícios") → Notas (ordem cronológica de criação). Cada nota cujo histórico
+Em cada pasta, o botão "PDF" abre uma tela de impressão
+(`#/espacos/:id/pdf`) com o conteúdo agrupado por categoria → pasta → Notas
+(ordem cronológica de criação). Pastas aninhadas mostram o caminho, ex:
+"Faixa Branca › Aula 5 — Risco"; as notas soltas da pasta principal aparecem
+como a seção "Notas da pasta". Cada nota cujo histórico
 de avaliações tem mais "Difícil" do que "Fácil" ganha um indicador "⚠️
 Reforçar". O botão
 "Imprimir / Salvar como PDF" chama `window.print()` — sem biblioteca de PDF,
@@ -700,8 +711,8 @@ ser configurado no app de Calendário/Lembretes do próprio celular.
 
 ## Ordenação das listagens
 
-Toda listagem por nome (Espaços, Temas, grupos/categorias, chips de sugestão,
-Favoritos, busca global e a ordem dos Temas no PDF) passa por um único lugar,
+Toda listagem por nome (Pastas, grupos/categorias, chips de sugestão,
+Favoritos, busca global e a ordem das pastas no PDF) passa por um único lugar,
 `src/lib/ordem.ts`. Antes cada tela chamava `localeCompare` do seu jeito, e isso
 quebrava em dois casos:
 
@@ -718,10 +729,10 @@ Uma lista com "Janeiro", "Mar" e "Aula 1" continua alfabética, e "Mar" sozinho
 nunca é reordenado.
 
 A aplicação é **por grupo**, não só sobre a lista inteira: um grupo de meses sai
-no calendário mesmo que o Espaço tenha outras categorias ao lado dele.
+no calendário mesmo que a pasta tenha outras categorias ao lado dele.
 
 As **Notas** são a exceção — por padrão continuam em ordem de criação (mais
-antigas primeiro), porque é o que faz sentido ao revisar um Tema. Em
+antigas primeiro), porque é o que faz sentido ao revisar uma pasta. Em
 Configurações › Ordenação dá para trocar por "Título (A–Z)", que aí passa a valer
 a mesma ordem de meses e números. O PDF segue a escolha, para não sair diferente
 da tela.

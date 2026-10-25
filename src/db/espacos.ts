@@ -5,6 +5,7 @@ import { nowISO } from '../lib/time';
 import { marcarExcluido } from './lixeira';
 import { distinctCategorias } from '../lib/group';
 import { ordenarPorNome } from '../lib/ordem';
+import { idPastaPrincipal } from '../domain/arvore';
 
 export async function listEspacos(perfilId: string): Promise<Espaco[]> {
   const db = await getDB();
@@ -75,6 +76,16 @@ export async function updateEspaco(
   if (visual) aplicarVisual(espaco, visual);
   espaco.atualizado_em = nowISO();
   await db.put('espacos', espaco);
+
+  // A pasta oculta que guarda as notas soltas acompanha o nome/categoria da pasta principal
+  // — é ela que aparece como “contexto” da nota na fila de hoje, na busca e na Lixeira.
+  const raiz = await db.get('temas', idPastaPrincipal(id));
+  if (raiz) {
+    raiz.nome = nome;
+    raiz.categoria = categoria;
+    raiz.atualizado_em = espaco.atualizado_em;
+    await db.put('temas', raiz);
+  }
 }
 
 export async function setEspacoArquivado(id: string, arquivado: boolean): Promise<void> {
@@ -92,15 +103,16 @@ export interface EspacoCascadeCount {
   notas: number;
 }
 
-/** Conta o que seria mandado pra Lixeira em cascata, pra mostrar no modal de confirmação. */
+/** Conta o que seria mandado pra Lixeira em cascata, pra mostrar no modal de confirmação.
+ *  A pasta oculta não entra na contagem de pastas, mas as notas dela entram na de notas. */
 export async function countEspacoCascade(espacoId: string): Promise<EspacoCascadeCount> {
   const db = await getDB();
-  const temas = (await db.getAllFromIndex('temas', 'espaco_id', espacoId)).filter((t) => !t.excluido);
+  const todas = (await db.getAllFromIndex('temas', 'espaco_id', espacoId)).filter((t) => !t.excluido);
   let notas = 0;
-  for (const tema of temas) {
+  for (const tema of todas) {
     notas += (await db.getAllFromIndex('notas', 'tema_id', tema.id)).filter((n) => !n.excluido).length;
   }
-  return { temas: temas.length, notas };
+  return { temas: todas.filter((t) => !t.oculta).length, notas };
 }
 
 /** Manda o Espaço e, em cascata, seus Temas e Notas pra Lixeira (exclusão suave — dá pra
@@ -110,6 +122,7 @@ export async function deleteEspacoCascade(espacoId: string): Promise<void> {
   const espaco = await db.get('espacos', espacoId);
   if (!espaco) return;
 
+  // Inclui a pasta oculta aqui: as notas soltas da pasta principal também vão pra Lixeira.
   const temas = (await db.getAllFromIndex('temas', 'espaco_id', espacoId)).filter((t) => !t.excluido);
   const notasPorTema = await Promise.all(
     temas.map((tema) => db.getAllFromIndex('notas', 'tema_id', tema.id)),

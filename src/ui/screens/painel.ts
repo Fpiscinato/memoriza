@@ -109,12 +109,8 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
           <div class="stat-tile__label">Dias seguidos</div>
         </div>
         <div class="stat-tile">
-          <div class="stat-tile__value">${stats.espacosAtivos}</div>
-          <div class="stat-tile__label">Espaços</div>
-        </div>
-        <div class="stat-tile">
-          <div class="stat-tile__value">${stats.totalTemas}</div>
-          <div class="stat-tile__label">Temas</div>
+          <div class="stat-tile__value">${stats.espacosAtivos + stats.totalTemas}</div>
+          <div class="stat-tile__label">Pastas</div>
         </div>
         <div class="stat-tile">
           <div class="stat-tile__value">${stats.totalNotas}</div>
@@ -128,7 +124,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
     </div>
 
     <div id="tab-revisao" role="tabpanel" aria-labelledby="tab-btn-revisao" tabindex="0" style="display:none;">
-      <p class="screen-hint sem-margem-topo">Como a revisão espaçada está indo: onde suas notas estão na escada, a carga dos próximos dias, sua retenção recente e os Temas onde você mais marca "Difícil" — os pontos fracos reais.</p>
+      <p class="screen-hint sem-margem-topo">Como a revisão espaçada está indo: onde suas notas estão na escada, a carga dos próximos dias, sua retenção recente e as Pastas onde você mais marca "Difícil" — os pontos fracos reais.</p>
 
       <div class="section-header">
         <span class="section-header__title" style="font-size: var(--font-size-base);">Onde suas notas estão na escada</span>
@@ -193,7 +189,7 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
       }
 
       <div class="section-header">
-        <span class="section-header__title" style="font-size: var(--font-size-base);">Temas com mais "Difícil"</span>
+        <span class="section-header__title" style="font-size: var(--font-size-base);">Pastas com mais "Difícil"</span>
       </div>
       ${
         stats.rankingDificeis.length === 0
@@ -216,11 +212,11 @@ export async function renderPainel(container: HTMLElement, ctx: PainelContext): 
     </div>
 
     <div id="tab-avaliacoes" role="tabpanel" aria-labelledby="tab-btn-avaliacoes" tabindex="0" style="display:none;">
-      <p class="screen-hint sem-margem-topo">Seu autoteste com Fácil, Médio e Difícil — à parte da fila de revisão espaçada. Vem do botão "Avaliar" num espaço, tema ou subpasta.</p>
+      <p class="screen-hint sem-margem-topo">Seu autoteste com Fácil, Médio e Difícil — à parte da fila de revisão espaçada. Vem do botão "Avaliar" numa pasta.</p>
 
       ${
         avaliacoes.total === 0
-          ? `<p class="text-muted">Nenhuma avaliação registrada ainda. Abra um espaço (ou um tema) e toque em "Avaliar".</p>`
+          ? `<p class="text-muted">Nenhuma avaliação registrada ainda. Abra uma pasta e toque em "Avaliar".</p>`
           : `
         <div class="stat-grid">
           <div class="stat-tile">

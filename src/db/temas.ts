@@ -4,13 +4,67 @@ import { uuid } from '../lib/uuid';
 import { nowISO } from '../lib/time';
 import { ordenarPorNome } from '../lib/ordem';
 import { marcarExcluido } from './lixeira';
-import { idsDaSubarvore } from '../domain/arvore';
+import { idPastaPrincipal, idsDaSubarvore } from '../domain/arvore';
 
-/** Todas as pastas (subpastas) ativas de um Espaço — usadas para contagens, busca, PDF etc. */
+/** Pastas visíveis de um Espaço — a pasta oculta que guarda as notas da pasta principal
+ *  fica de fora (ela não é navegável; as notas dela aparecem na tela da própria pasta). */
 export async function listTemas(espacoId: string): Promise<Tema[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('temas', 'espaco_id', espacoId);
-  return ordenarPorNome(all.filter((t) => !t.excluido), (t) => t.nome);
+  return ordenarPorNome(all.filter((t) => !t.excluido && !t.oculta), (t) => t.nome);
+}
+
+/** A pasta oculta que guarda as notas da pasta principal, se ela já existir. */
+export async function getTemaRaiz(espacoId: string): Promise<Tema | undefined> {
+  const db = await getDB();
+  const tema = await db.get('temas', idPastaPrincipal(espacoId));
+  return tema && !tema.excluido ? tema : undefined;
+}
+
+/**
+ * Garante a pasta oculta da pasta principal (criada na primeira nota solta). O id é
+ * determinístico (`pasta-principal:<id da pasta>`), então sync/importar em aparelhos
+ * diferentes convergem para o mesmo registro em vez de duplicar.
+ */
+export async function garantirTemaRaiz(espacoId: string): Promise<Tema> {
+  const db = await getDB();
+  const id = idPastaPrincipal(espacoId);
+  const espaco = await db.get('espacos', espacoId);
+  if (!espaco) throw new Error('Pasta não encontrada.');
+
+  const existente = await db.get('temas', id);
+  if (existente) {
+    let mudou = false;
+    if (existente.excluido) {
+      delete existente.excluido;
+      delete existente.excluido_em;
+      mudou = true;
+    }
+    if (existente.nome !== espaco.nome || existente.categoria !== espaco.categoria) {
+      existente.nome = espaco.nome;
+      existente.categoria = espaco.categoria;
+      mudou = true;
+    }
+    if (mudou) {
+      existente.atualizado_em = nowISO();
+      await db.put('temas', existente);
+    }
+    return existente;
+  }
+
+  const now = nowISO();
+  const tema: Tema = {
+    id,
+    espaco_id: espacoId,
+    nome: espaco.nome,
+    categoria: espaco.categoria,
+    oculta: true,
+    favorito: false,
+    criado_em: now,
+    atualizado_em: now,
+  };
+  await db.put('temas', tema);
+  return tema;
 }
 
 export async function getTema(id: string): Promise<Tema | undefined> {

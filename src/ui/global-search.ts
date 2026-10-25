@@ -7,8 +7,8 @@ import { navigate } from './router';
 import { ICONS } from './icons';
 
 const ROLE_LABEL: Record<ResultadoBusca['kind'], string> = {
-  espaco: 'Espaço',
-  tema: 'Tema',
+  espaco: 'Pasta',
+  tema: 'Pasta',
   nota: 'Nota',
 };
 
@@ -42,7 +42,7 @@ export async function openGlobalSearch(perfilId: string): Promise<void> {
           type="text"
           autocomplete="off"
           spellcheck="false"
-          placeholder="Buscar espaços, temas e notas…"
+          placeholder="Buscar pastas e notas…"
           aria-label="Buscar"
           role="combobox"
           aria-expanded="true"

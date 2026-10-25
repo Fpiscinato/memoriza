@@ -34,12 +34,12 @@ describe('montarEscopos', () => {
     expect(escopos[0].itens).toHaveLength(2);
   });
 
-  it('num Espaço com várias categorias, oferece "todo o espaço" + cada categoria', () => {
+  it('numa pasta com várias categorias, oferece "toda a pasta" + cada categoria', () => {
     const escopos = montarEscopos(notas, { nomeContexto: 'Curso', tipo: 'espaco' });
     expect(escopos).toHaveLength(3);
 
     expect(escopos[0].escopo).toBe('espaco');
-    expect(escopos[0].rotulo).toBe('Curso (todo o espaço)');
+    expect(escopos[0].rotulo).toBe('Curso (toda a pasta)');
     expect(escopos[0].itens).toHaveLength(4);
 
     const demais = escopos.slice(1);
@@ -55,7 +55,7 @@ describe('montarEscopos', () => {
     expect(avançado.itens).toHaveLength(2);
   });
 
-  it('num Espaço com uma única categoria, cai direto no escopo inteiro', () => {
+  it('numa pasta com uma única categoria, cai direto no escopo inteiro', () => {
     const escopos = montarEscopos(notas.slice(0, 2), { nomeContexto: 'Curso', tipo: 'espaco' });
     expect(escopos).toHaveLength(1);
     expect(escopos[0].escopo).toBe('espaco');

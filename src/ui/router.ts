@@ -8,6 +8,7 @@ export type Route =
   | { name: 'espaco-pdf'; id: string; categoria?: string }
   | { name: 'tema'; id: string }
   | { name: 'nota-nova'; temaId: string }
+  | { name: 'nota-nova-pasta'; espacoId: string }
   | { name: 'nota'; id: string }
   | { name: 'painel' }
   | { name: 'favoritos' }
@@ -46,6 +47,9 @@ export function getCurrentRoute(): Route {
   if (parts[0] === 'espacos') {
     if (parts.length === 1) return { name: 'espacos' };
     if (parts.length === 2) return { name: 'espaco', id: parts[1] };
+    if (parts.length === 3 && parts[2] === 'nova-nota') {
+      return { name: 'nota-nova-pasta', espacoId: parts[1] };
+    }
     if (parts.length === 3 && parts[2] === 'pdf') return { name: 'espaco-pdf', id: parts[1] };
     if (parts.length === 4 && parts[2] === 'pdf') {
       return { name: 'espaco-pdf', id: parts[1], categoria: decodeCategoriaSegment(parts[3]) };
@@ -77,6 +81,7 @@ export function topLevelFor(route: Route): TopLevelRoute {
     case 'tema':
     case 'nota':
     case 'nota-nova':
+    case 'nota-nova-pasta':
       return 'espacos';
     default:
       return 'hoje';

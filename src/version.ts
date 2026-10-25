@@ -1,3 +1,3 @@
-export const APP_VERSION = 'v1.21';
+export const APP_VERSION = 'v1.22';
 export const APP_TITLE = 'Memoriza';
 export const APP_VERSION_LABEL = `${APP_TITLE} ${APP_VERSION}`;

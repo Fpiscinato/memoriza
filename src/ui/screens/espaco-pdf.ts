@@ -34,7 +34,7 @@ function plural(n: number, singular: string): string {
 export async function renderEspacoPdf(container: HTMLElement, espacoId: string, categoria?: string): Promise<void> {
   const data = await buildEspacoPdfData(espacoId);
   if (!data) {
-    container.innerHTML = `<p class="text-muted">Espaço não encontrado.</p>`;
+    container.innerHTML = `<p class="text-muted">Pasta não encontrada.</p>`;
     return;
   }
   const { espaco } = data;
@@ -87,13 +87,13 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
               ? `Categoria: ${escapeHtml(nomeCategoriaOuSemCategoria(categoria))} · `
               : ''
           }Gerado em ${formatDateBR(toLondonISODate() + 'T00:00:00Z')}
-          · ${plural(grupos.length, 'categoria')} · ${plural(indice.totalTemas, 'tema')} · ${plural(indice.totalNotas, 'nota')}
+          · ${plural(grupos.length, 'categoria')} · ${plural(indice.totalTemas, 'pasta')} · ${plural(indice.totalNotas, 'nota')}
         </p>
       </header>
 
       ${
         vazio
-          ? `<p class="text-muted">${categoria !== undefined ? 'Esta categoria ainda não tem temas ou notas.' : 'Este espaço ainda não tem categorias ou notas.'}</p>`
+          ? `<p class="text-muted">${categoria !== undefined ? 'Esta categoria ainda não tem pastas ou notas.' : 'Esta pasta ainda não tem categorias ou notas.'}</p>`
           : ''
       }
 
@@ -103,7 +103,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
         <nav class="pdf-indice" id="pdf-indice" aria-label="Índice" ${opcaoIndice ? '' : 'hidden'}>
           <div class="pdf-indice__cabecalho">
             <span class="pdf-indice__titulo">Índice</span>
-            <span class="pdf-contagem">${plural(grupos.length, 'categoria')} · ${plural(indice.totalTemas, 'tema')} · ${plural(indice.totalNotas, 'nota')}</span>
+            <span class="pdf-contagem">${plural(grupos.length, 'categoria')} · ${plural(indice.totalTemas, 'pasta')} · ${plural(indice.totalNotas, 'nota')}</span>
           </div>
           <ul class="pdf-indice__lista">
             ${indice.linhas
@@ -135,7 +135,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
             <span class="color-dot" style="--dot-color:${corCat}" aria-hidden="true"></span>
             <span class="pdf-nivel">Categoria</span>
             <span class="pdf-category__nome">${escapeHtml(nomeCategoriaOuSemCategoria(cat.grupo.categoria))}</span>
-            <span class="pdf-contagem">${plural(cat.temas.length, 'tema')} · ${plural(cat.totalNotas, 'nota')}</span>
+            <span class="pdf-contagem">${plural(cat.temas.length, 'pasta')} · ${plural(cat.totalNotas, 'nota')}</span>
           </div>
           ${cat.temas
             .map(
@@ -143,7 +143,7 @@ export async function renderEspacoPdf(container: HTMLElement, espacoId: string, 
             <section class="pdf-tema" id="${anexoTema(tema)}" style="--tema-accent:${corCat}">
               <div class="pdf-tema__title">
                 <span class="pdf-num pdf-num--tema">${tema.numero}</span>
-                <span class="pdf-nivel">Tema</span>
+                <span class="pdf-nivel">Pasta</span>
                 ${tema.temaPdf.tema.favorito ? `${ICONS.star} ` : ''}<span class="pdf-tema__nome">${escapeHtml(tema.temaPdf.rotulo ?? tema.temaPdf.tema.nome)}</span>
                 <span class="pdf-contagem">${plural(tema.notas.length, 'nota')}</span>
               </div>

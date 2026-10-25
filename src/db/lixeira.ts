@@ -8,7 +8,7 @@ import { getDB } from './schema';
 import { addDaysToISODate, nowISO, todayLondonISODate } from '../lib/time';
 import { nomeTemaExibicao } from '../domain/rotulos';
 import { resolverConflito, type ConflitoRestauro } from '../domain/restauro-lixeira';
-import { idsDaSubarvore } from '../domain/arvore';
+import { idPastaPrincipal, idsDaSubarvore } from '../domain/arvore';
 import { gravarPurgas } from './purgas';
 import type { LojaPurgavel, Nota, Tema } from '../types';
 
@@ -106,13 +106,13 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
       nome: espaco.nome,
       contexto: espaco.categoria || 'Sem categoria',
       excluido_em: espaco.excluido_em,
-      temas: temasDoEspaco.filter((t) => t.excluido).length,
+      temas: temasDoEspaco.filter((t) => t.excluido && !t.oculta).length,
       notas: notasExcluidas,
     });
   }
 
   for (const tema of todosTemas) {
-    if (!tema.excluido) continue;
+    if (!tema.excluido || tema.oculta) continue;
     if (temAncestralExcluido(tema)) continue;
     const espaco = espacoById.get(tema.espaco_id);
     if (!espaco || espaco.excluido) continue;
@@ -143,7 +143,8 @@ export async function listarLixeira(perfilId: string): Promise<LixeiraItem[]> {
       tipo: 'nota',
       id: nota.id,
       nome: nota.titulo || '(sem título)',
-      contexto: nomeTemaExibicao(tema.nome),
+      // Nota solta da pasta principal: o “contexto” é a própria pasta, não a pasta oculta.
+      contexto: tema.oculta ? espaco.nome : nomeTemaExibicao(tema.nome),
       excluido_em: nota.excluido_em,
     });
   }
@@ -245,9 +246,18 @@ export async function restaurarItem(
     .flat()
     .filter((n) => n.excluido);
 
+  const raizId = idPastaPrincipal(id);
   const tx = db.transaction(['espacos', 'temas', 'notas'], 'readwrite');
   await tx.objectStore('espacos').put(marcarRestaurado(espaco, agora));
-  for (const tema of temas) await tx.objectStore('temas').put(marcarRestaurado(tema, agora));
+  for (const tema of temas) {
+    // Se o nome da pasta mudou ao restaurar (ex: “(restaurado)”), mantém a pasta oculta
+    // coerente com a pasta principal.
+    if (tema.id === raizId) {
+      tema.nome = espaco.nome;
+      tema.categoria = espaco.categoria;
+    }
+    await tx.objectStore('temas').put(marcarRestaurado(tema, agora));
+  }
   for (const nota of notas) await tx.objectStore('notas').put(marcarRestaurado(nota, agora));
   await tx.done;
 }

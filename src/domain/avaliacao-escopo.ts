@@ -47,11 +47,11 @@ export function montarEscopos(todas: NotaComTema[], ctx: ContextoEscopo): Escopo
   }
 
   if (porCategoria.size <= 1) {
-    return [{ rotulo: `${ctx.nomeContexto} (todo o espaço)`, escopo: 'espaco', itens: todas }];
+    return [{ rotulo: `${ctx.nomeContexto} (toda a pasta)`, escopo: 'espaco', itens: todas }];
   }
 
   return [
-    { rotulo: `${ctx.nomeContexto} (todo o espaço)`, escopo: 'espaco', itens: todas },
+    { rotulo: `${ctx.nomeContexto} (toda a pasta)`, escopo: 'espaco', itens: todas },
     ...[...porCategoria.values()].sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'pt-BR')),
   ];
 }

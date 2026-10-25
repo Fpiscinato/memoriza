@@ -4,6 +4,19 @@
 
 import type { Tema } from '../types';
 
+/** Prefixo do id determinístico da pasta interna que guarda as notas da pasta principal. */
+const PREFIXO_PASTA_PRINCIPAL = 'pasta-principal:';
+
+/** Id estável da pasta oculta que representa “notas soltas” dentro da pasta principal. */
+export function idPastaPrincipal(espacoId: string): string {
+  return `${PREFIXO_PASTA_PRINCIPAL}${espacoId}`;
+}
+
+/** Pasta automática (não navegável) que guarda as notas criadas na pasta principal. */
+export function ehPastaOculta(tema: { oculta?: boolean }): boolean {
+  return tema.oculta === true;
+}
+
 /** Filhos diretos de uma pasta (ou da raiz do Espaço, quando `paiId` é null). */
 export function filhosDe(temas: Tema[], paiId: string | null): Tema[] {
   return temas.filter((tema) => (tema.pai_id ?? null) === paiId);

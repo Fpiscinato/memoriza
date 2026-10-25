@@ -37,6 +37,9 @@ export interface Tema {
   categoria: string;
   /** Subpasta opcional (outro Tema). Ausente = Tema direto do Espaço. */
   pai_id?: string;
+  /** Pasta interna automática que guarda as notas da própria pasta principal.
+   *  Não aparece na navegação nem na Lixeira — é só o “recipiente” das notas. */
+  oculta?: boolean;
   /** Chave de um ícone do conjunto curado (src/ui/espaco-icons.ts). Ausente = sugestão automática. */
   icone?: string;
   /** Índice da paleta de acento (0..ACCENT_COUNT-1). Ausente = cor automática (sem repetir). */

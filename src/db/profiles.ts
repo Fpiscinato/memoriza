@@ -62,7 +62,8 @@ export async function countProfileCascade(perfilId: string): Promise<ProfileCasc
   let notas = 0;
   for (const espaco of espacos) {
     const temasDoEspaco = await db.getAllFromIndex('temas', 'espaco_id', espaco.id);
-    temas += temasDoEspaco.length;
+    // A pasta oculta não é uma pasta de verdade pro usuário — mas as notas dela contam.
+    temas += temasDoEspaco.filter((t) => !t.oculta).length;
     for (const tema of temasDoEspaco) {
       notas += (await db.getAllFromIndex('notas', 'tema_id', tema.id)).length;
     }

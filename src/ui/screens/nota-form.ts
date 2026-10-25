@@ -1,5 +1,5 @@
-import { createNota, deleteNota, getNota, listNotas, toggleNotaFavorito, updateNota } from '../../db/notas';
-import { getTema, listTemas } from '../../db/temas';
+import { createNota, createNotaNaPastaPrincipal, deleteNota, getNota, listNotas, toggleNotaFavorito, updateNota } from '../../db/notas';
+import { getTema, getTemaRaiz, listTemas } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
@@ -9,18 +9,22 @@ import { accentVar, espacoCorVar } from '../../lib/color';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { buildNotaPlainText } from '../../lib/pdf-text';
 import { nomeTemaExibicao } from '../../domain/rotulos';
-import { caminhoDe } from '../../domain/arvore';
+import { caminhoDe, ehPastaOculta } from '../../domain/arvore';
 import { formatDateBR } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
-import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
+import { renderBreadcrumb, bindBreadcrumb, type BreadcrumbCrumb } from '../components/breadcrumb';
 import { renderFieldHint } from '../components/field-hint';
 import { ativarRovingTabindex } from '../components/roving-tabindex';
 import { clearFormDirty, setFormDirty, setFormDirtyPrompt, canNavigateAway } from '../../lib/form-guard';
 import { espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
+import type { Espaco, Tema } from '../../types';
 
-export type NotaFormParams = { mode: 'nova'; temaId: string } | { mode: 'editar'; notaId: string };
+export type NotaFormParams =
+  | { mode: 'nova'; temaId: string }
+  | { mode: 'nova-na-pasta'; espacoId: string }
+  | { mode: 'editar'; notaId: string };
 
 // Mapeia cada cor de texto pra sua variável de acento — azul/vermelho/verde/rosa (índices
 // 0/4/1/6 da paleta fixa), ver as classes .text-color--* em src/styles/components.css.
@@ -44,82 +48,100 @@ function unwrapColorSpans(root: DocumentFragment | HTMLElement): void {
 }
 
 export async function renderNotaForm(container: HTMLElement, params: NotaFormParams): Promise<void> {
-  const temaId = params.mode === 'nova' ? params.temaId : (await getNota(params.notaId))?.tema_id;
-  if (!temaId) {
+  const nota = params.mode === 'editar' ? await getNota(params.notaId) : undefined;
+  if (params.mode === 'editar' && !nota) {
     container.innerHTML = `<p class="text-muted">Nota não encontrada.</p>`;
     return;
   }
-  const tema = await getTema(temaId);
-  if (!tema) {
-    container.innerHTML = `<p class="text-muted">Tema não encontrado.</p>`;
+
+  // `nova-na-pasta` cria a nota direto na pasta principal (Espaço): a pasta oculta que
+  // guarda esse tipo de nota só nasce na hora de salvar.
+  let tema: Tema | undefined;
+  let espaco: Espaco | undefined;
+  if (params.mode === 'nova') {
+    tema = await getTema(params.temaId);
+    if (tema) espaco = await getEspaco(tema.espaco_id);
+  } else if (params.mode === 'nova-na-pasta') {
+    espaco = await getEspaco(params.espacoId);
+    tema = await getTemaRaiz(params.espacoId);
+  } else if (nota) {
+    tema = await getTema(nota.tema_id);
+    if (tema) espaco = await getEspaco(tema.espaco_id);
+  }
+
+  if (!espaco) {
+    container.innerHTML = `<p class="text-muted">Pasta não encontrada.</p>`;
     return;
   }
-  const espaco = await getEspaco(tema.espaco_id);
-  const caminho = espaco ? caminhoDe(await listTemas(espaco.id), tema) : [];
-  if (params.mode === 'nova' && espaco?.arquivado) {
+
+  const ehOculta = tema ? ehPastaOculta(tema) : params.mode === 'nova-na-pasta';
+  const caminho = tema ? caminhoDe(await listTemas(espaco.id), tema) : [];
+  const backRoute = !tema || ehOculta ? `espacos/${espaco.id}` : `temas/${tema.id}`;
+  const modoNova = params.mode !== 'editar';
+  if (params.mode !== 'editar' && espaco.arquivado) {
     container.innerHTML = `
       <div class="banner banner--warning">
-        <span>O espaço "${escapeHtml(espaco.nome)}" está arquivado — não é possível criar notas novas aqui.</span>
+        <span>A pasta "${escapeHtml(espaco.nome)}" está arquivada — não é possível criar notas novas aqui.</span>
       </div>
       <button class="btn btn--secondary btn--sm" id="btn-voltar-arquivado" type="button">← Voltar</button>
     `;
     container
       .querySelector('#btn-voltar-arquivado')
-      ?.addEventListener('click', () => navigate(`temas/${temaId}`));
+      ?.addEventListener('click', () => navigate(backRoute));
     return;
   }
 
-  const nota = params.mode === 'editar' ? await getNota(params.notaId) : undefined;
   const temItemPendente = nota ? await hasPendingItem(nota.id) : false;
 
-  // Sugere Título/Fonte com base na última Nota criada neste mesmo tema — comum ter um
+  // Sugere Título/Fonte com base na última Nota criada nesta mesma pasta — comum ter um
   // padrão repetido (ex: "Aula 1", "Aula 2"), e o usuário só precisa ajustar o número.
-  const ultimaNota = params.mode === 'nova' ? (await listNotas(temaId)).at(-1) : undefined;
+  const ultimaNota =
+    params.mode !== 'editar' && tema ? (await listNotas(tema.id)).at(-1) : undefined;
   const tituloSugerido = ultimaNota?.titulo;
   const fonteSugerido = ultimaNota?.fonte;
 
+  // Caminho visual: Categoria › Pasta › Categoria › Pasta … A pasta oculta da pasta
+  // principal não aparece — a nota pertence visualmente à própria pasta.
+  const crumbs: BreadcrumbCrumb[] = [{ label: 'Pastas', route: 'espacos' }];
+  let ultimoRotulo = 'Pastas';
+  const adicionarCategoria = (categoria: string): void => {
+    const limpa = categoria.trim();
+    if (!limpa || limpa === ultimoRotulo) return;
+    crumbs.push({ label: limpa, colorKey: limpa.toLowerCase() });
+    ultimoRotulo = limpa;
+  };
+  adicionarCategoria(espaco.categoria);
+  crumbs.push({
+    label: espaco.nome,
+    route: `espacos/${espaco.id}`,
+    iconKey: espacoIconeChave(espaco),
+    iconColor: espacoCorVar(espaco.cor, accentVar(espaco.id)),
+  });
+  ultimoRotulo = espaco.nome;
+  if (tema && !ehOculta) {
+    for (const pasta of [...caminho, tema]) {
+      adicionarCategoria(pasta.categoria);
+      const nome = nomeTemaExibicao(pasta.nome);
+      crumbs.push({
+        label: nome,
+        route: `temas/${pasta.id}`,
+        iconKey: espacoIconeChave(pasta),
+        iconColor: espacoCorVar(pasta.cor, accentVar(pasta.id)),
+      });
+      ultimoRotulo = nome;
+    }
+  }
+  crumbs.push({
+    label:
+      params.mode === 'editar' ? nota?.titulo || 'Editar nota' : 'Nova nota',
+  });
+
   container.innerHTML = `
-    ${renderBreadcrumb([
-      { label: 'Espaços', route: 'espacos' },
-      ...(espaco?.categoria
-        ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }]
-        : []),
-      ...(espaco
-        ? [
-            {
-              label: espaco.nome,
-              route: `espacos/${espaco.id}`,
-              iconKey: espacoIconeChave(espaco),
-              iconColor: espacoCorVar(espaco.cor, accentVar(espaco.id)),
-            },
-          ]
-        : []),
-      ...((caminho[0] ?? tema).categoria
-        ? [
-            {
-              label: (caminho[0] ?? tema).categoria,
-              colorKey: (caminho[0] ?? tema).categoria.toLowerCase(),
-            },
-          ]
-        : []),
-      ...caminho.map((a) => ({
-        label: nomeTemaExibicao(a.nome),
-        route: `temas/${a.id}`,
-        iconKey: espacoIconeChave(a),
-        iconColor: espacoCorVar(a.cor, accentVar(a.id)),
-      })),
-      {
-        label: nomeTemaExibicao(tema.nome),
-        route: `temas/${tema.id}`,
-        iconKey: espacoIconeChave(tema),
-        iconColor: espacoCorVar(tema.cor, accentVar(tema.id)),
-      },
-      { label: params.mode === 'nova' ? 'Nova nota' : nota?.titulo || 'Editar nota' },
-    ])}
+    ${renderBreadcrumb(crumbs)}
 
     <div class="section-header">
       <div>
-        <span class="section-header__title">${params.mode === 'nova' ? 'Nova nota' : 'Editar nota'}</span>
+        <span class="section-header__title">${modoNova ? 'Nova nota' : 'Editar nota'}</span>
         ${
           params.mode === 'editar' && nota
             ? `<div class="section-header__meta text-muted">Criada em ${formatDateBR(nota.criado_em)}${nota.atualizado_em !== nota.criado_em ? ` · Editada em ${formatDateBR(nota.atualizado_em)}` : ''}</div>`
@@ -168,13 +190,13 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         <label class="field__label" for="input-titulo">Título${renderFieldHint('É isso que aparece na fila "Hoje" antes de revelar a resposta — pense numa pergunta ou frase-chave, não numa citação.')}</label>
         <input class="input${tituloSugerido ? ' input--sugerido' : ''}" id="input-titulo" type="text" placeholder="Ex: O que é Duration e Convexity?" maxlength="200" value="${escapeHtml(nota?.titulo ?? tituloSugerido ?? '')}" lang="pt-BR" spellcheck="true" autocorrect="on" autocapitalize="sentences" />
         <p class="field__error" role="alert"></p>
-        ${tituloSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
+        ${tituloSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota desta pasta — edite antes de salvar</p>` : ''}
       </div>
 
       <div class="field">
         <label class="field__label" for="input-fonte">Fonte (opcional)${renderFieldHint('Citação/referência — só aparece depois de revelar a resposta, junto do conteúdo.')}</label>
         <input class="input${fonteSugerido ? ' input--sugerido' : ''}" id="input-fonte" type="text" placeholder="Ex: Aula 4, slide 12 ou página 87" maxlength="200" value="${escapeHtml(nota?.fonte ?? fonteSugerido ?? '')}" lang="pt-BR" spellcheck="true" autocorrect="on" autocapitalize="sentences" />
-        ${fonteSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota deste tema — edite antes de salvar</p>` : ''}
+        ${fonteSugerido ? `<p class="field__sugestao-hint">↻ Repetido da última nota desta pasta — edite antes de salvar</p>` : ''}
       </div>
 
       <div class="field">
@@ -254,7 +276,6 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     </div>
   `;
 
-  const backRoute = `temas/${temaId}`;
   // "Favorito" da nota: no modo editar o estado já está salvo (a mudança vai pro banco
   // na hora); no modo "nova nota" é só a marca pra nota nascer como favorita.
   let favoritado = params.mode === 'editar' ? (nota?.favorito ?? false) : false;
@@ -654,7 +675,9 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     };
 
     if (params.mode === 'nova') {
-      await createNota(temaId, input);
+      await createNota(tema!.id, input);
+    } else if (params.mode === 'nova-na-pasta') {
+      await createNotaNaPastaPrincipal(espaco.id, input);
     } else {
       await updateNota(params.notaId, input);
     }
