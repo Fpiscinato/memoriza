@@ -17,7 +17,9 @@ O Memoriza é um app de repetição espaçada simples, 100% local (IndexedDB), c
 Lista de itens agendados para revisar hoje, agrupados por pasta. Clique num item para iniciar a revisão (mostra pergunta, revela resposta).
 
 ### Pastas
-Mostra primeiro as categorias (ex: Bíblia, Cursos, Livros) e, dentro de cada uma, as pastas daquela categoria. Os grupos ficam recolhidos; toque no título pra abrir. Para criar, informe a **categoria** e o **nome da pasta**; ícone e cor são opcionais. Ao abrir uma pasta, você vê Categoria → Pasta de novo (as pastas internas também são agrupadas por categoria) e, abaixo, as notas daquela pasta. Em qualquer nível há **+ Nova pasta** e **+ Nova nota**, inclusive na pasta principal.
+Mostra primeiro as categorias (ex: Bíblia, Cursos, Livros) e, dentro de cada uma, as pastas daquela categoria. Os grupos ficam recolhidos; toque no título pra abrir. Para criar, use o **+ Pasta** do grupo: só o **nome** é pedido, e a categoria já vem herdada dali (na pasta principal, a categoria herdada é a da própria pasta). Ícone e cor continuam editáveis depois em **Editar**. Ao abrir uma pasta, você vê Categoria → Pasta de novo (as pastas internas também são agrupadas por categoria) e, abaixo, as notas daquela pasta. Em qualquer nível há **+ Nova pasta** (contorno, com ícone de pasta) e **+ Nova nota** (preenchido, com ícone de caderno), inclusive na pasta principal.
+
+Para **mover** uma pasta ou uma nota, abra o menu **⋯** e escolha **Mover pasta** / **Mover nota**. O seletor mostra todas as pastas ativas do perfil — inclusive as de outras pastas de topo — e a pasta principal de cada uma (para notas soltas). Mover uma pasta leva junto todas as subpastas e notas dentro dela; a pasta não pode ir para dentro dela mesma nem de uma subpasta sua. Mover uma nota só troca a pasta: o conteúdo, o histórico e o agendamento de revisão continuam iguais.
 
 ### Configurações
 Perfis, aparência (claro/escuro/sistema), ordenação de listas, backup local, lixeira, sincronização GitHub Gist, atividade, exportar/importar JSON, zera dados.

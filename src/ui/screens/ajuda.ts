@@ -81,9 +81,13 @@ const SECOES: Secao[] = [
         <li><strong>Livros</strong> → "Quem Pensa Enriquece" → "Capítulos" → "Capítulo 1 — Desejo".</li>
         <li><strong>Bíblia</strong> → "Estudo da Bíblia" → "Antigo Testamento" → "Gênesis".</li>
       </ul>
-      <p>O formulário pede a <strong>categoria</strong> e o <strong>nome da pasta</strong>. A
-      categoria vem preenchida com a da pasta atual — útil quando o padrão se repete — e você
-      troca ou usa uma das sugestões. Cada pasta também pode ter ícone e cor próprios.</p>
+      <p>O formulário de criação pede <strong>só o nome da pasta</strong>: a
+      <strong>categoria</strong> é herdada do grupo onde você tocou em <strong>+ Pasta</strong> (na
+      pasta principal, herda a categoria dela). Dá pra mudar categoria, ícone e cor depois em
+      <strong>Editar</strong>.</p>
+      <p>Para mudar uma pasta de lugar, use <strong>⋯ → Mover pasta</strong>: o seletor mostra
+      todas as pastas do perfil, e as subpastas e notas vão junto. Notas também podem ser movidas
+      pelo <strong>⋯ → Mover nota</strong> do editor.</p>
       <p>Os grupos de categoria ficam <strong>recolhidos</strong> em todos os níveis; toque no
       título do grupo pra abrir. O caminho completo aparece no topo da tela (breadcrumb), então
       dá pra voltar pra qualquer nível com um clique.</p>`,

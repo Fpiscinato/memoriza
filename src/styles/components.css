@@ -1697,6 +1697,143 @@ button.item-row:hover {
   line-height: var(--line-height-base);
 }
 
+/* Seletor de destino do "Mover" — árvore de pastas em vez de arrastar e soltar. */
+
+.modal--mover {
+  max-width: 520px;
+}
+
+.mover-subtitulo {
+  margin-bottom: var(--space-3);
+}
+
+.mover-busca {
+  margin-bottom: var(--space-3);
+}
+
+.mover-lista {
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+}
+
+.mover-grupo + .mover-grupo {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+/* O filtro de busca usa o atributo `hidden`; sem esta regra o `display:flex` do item
+   venceria o estilo nativo do navegador e o item continuaria visível. */
+.mover-grupo[hidden],
+.mover-item[hidden] {
+  display: none;
+}
+
+.mover-grupo__titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mover-grupo__icone {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.mover-grupo__nome {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--font-weight-semibold);
+}
+
+.mover-grupo__categoria {
+  flex-shrink: 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.mover-grupo__itens {
+  display: flex;
+  flex-direction: column;
+}
+
+.mover-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  padding-left: calc(var(--space-2) + var(--mover-depth, 0) * var(--space-4));
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mover-item:hover,
+.mover-item:focus-visible {
+  background: var(--color-surface-raised);
+}
+
+.mover-item:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.mover-item__icone {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--color-text-faint);
+}
+
+.mover-item__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mover-item__nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mover-item__meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mover-erro {
+  min-height: 1.25rem;
+  margin-top: var(--space-2);
+}
+
+.mover-erro:empty {
+  min-height: 0;
+  margin-top: 0;
+}
+
 /* Painel (dashboard) */
 
 /* Card de streak do Painel — único lugar do app com essa energia mais viva, de propósito

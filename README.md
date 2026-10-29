@@ -49,6 +49,15 @@ inclusive a pasta principal. Pra isso, cada pasta de topo ganhou uma pasta
 interna oculta (criada sob demanda, id determinístico), que guarda essas notas
 sem mudar o modelo `notas.tema_id` e sem migração destrutiva dos dados.
 
+**v1.23** adiciona **Mover** no menu `⋯` de pastas e notas, com um seletor da
+árvore de pastas (funciona entre pastas de topo diferentes, sem arrastar e
+soltar). Mover uma pasta leva junto subpastas e notas; mover uma nota preserva
+histórico e agendamento de revisão. A criação de pasta passa a pedir **só o
+nome**, herdando a categoria do grupo/pasta onde foi clicada — categoria,
+ícone e cor continuam editáveis depois. Os botões **+ Nova pasta** (contorno,
+ícone de pasta) e **+ Nova nota** (preenchido, ícone de caderno) ficaram
+visualmente distintos.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado

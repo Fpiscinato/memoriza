@@ -10,15 +10,17 @@ import {
 } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
 import { listNotas, listNotasPorEspaco } from '../../db/notas';
+import { listarDestinosMover, moverTema } from '../../db/mover';
 import { getTempoTotalTema } from '../../db/dashboard';
 import { getDB } from '../../db/schema';
-import { clearInputSugestao, escapeHtml } from '../../lib/dom';
+import { escapeHtml } from '../../lib/dom';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria, espacoCorVar } from '../../lib/color';
 import { agruparPorCategoria, distinctCategorias } from '../../lib/group';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
+import { abrirModalMover } from '../components/mover-modal';
 import { iniciarAvaliacao, type AvaliacaoContexto } from '../components/avaliacao-aleatoria';
 import { renderBreadcrumb, bindBreadcrumb, type BreadcrumbCrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
@@ -55,10 +57,12 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const temaCor = espacoCorVar(tema.cor, accentVar(tema.id));
   const temaIcone = getEspacoIcone(espacoIconeChave(tema));
 
-  // Escopo é só a pasta de topo deste Tema, não o perfil inteiro — sugestão precisa ser
-  // relevante pro conteúdo atual.
+  // Categorias já usadas nesta pasta de topo — só para os chips do formulário de "Editar".
   const categoriasTema = distinctCategorias(todosTemas.map((t) => t.categoria));
-  const categoriaSugerida = tema.categoria.trim() || undefined;
+
+  // Categoria herdada da pasta onde a nova subpasta vai nascer — o formulário de criação
+  // pede só o nome; categoria/ícone/cor continuam editáveis depois em "Editar".
+  let categoriaNova = tema.categoria.trim();
 
   const notasDaSubarvore = (id: string): number =>
     idsDaSubarvore(todosTemas, id).reduce((soma, tid) => soma + (notaCounts.get(tid) ?? 0), 0);
@@ -110,14 +114,15 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         ${
           !espaco.arquivado
             ? `
-          <button class="btn btn--secondary btn--sm" id="btn-nova-subpasta" type="button">+ Nova pasta</button>
-          <button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">+ Nova nota</button>
+          <button class="btn btn--secondary btn--sm" id="btn-nova-subpasta" type="button">${ICONS.folder} Nova pasta</button>
+          <button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
         `
             : ''
         }
         <details class="item-menu">
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
+            <button id="btn-mover-tema" type="button">${ICONS.move} Mover pasta</button>
             <button id="btn-detalhes-tema" type="button">${ICONS.info} Detalhes</button>
             <button id="btn-avaliar-tema" type="button">${ICONS.dice} Avaliar notas</button>
             <button id="btn-excluir-tema" class="danger" type="button">Excluir pasta</button>
@@ -157,21 +162,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       !espaco.arquivado
         ? `
     <div id="form-nova-subpasta" class="card content-narrow is-hidden">
-      <p class="screen-hint sem-margem-topo">Uma <strong>pasta</strong> organiza outras pastas e notas. A <strong>categoria</strong> agrupa as pastas (ex: o módulo do curso) — preencha ela primeiro.</p>
       <div class="field">
-        <label class="field__label" for="input-categoria-subpasta">Categoria</label>
-        <input class="input${categoriaSugerida ? ' input--sugerido' : ''}" id="input-categoria-subpasta" type="text" placeholder="Ex: nome do módulo" maxlength="80" value="${escapeHtml(categoriaSugerida ?? '')}" />
-        <p class="field__error" role="alert"></p>
-        ${categoriaSugerida ? `<p class="field__sugestao-hint">↻ Categoria desta pasta — edite se for outro módulo</p>` : ''}
-        ${renderCategoriaChips(categoriasTema, 'input-categoria-subpasta')}
-      </div>
-      <div class="field com-margem">
         <label class="field__label" for="input-nome-subpasta">Nome da pasta</label>
         <input class="input" id="input-nome-subpasta" type="text" placeholder="Ex: Capítulo 1, Aula 2, Exercícios" maxlength="120" />
         <p class="field__error" role="alert"></p>
-      </div>
-      <div style="margin-top: var(--space-4);">
-        ${renderEspacoVisualPicker({ prefix: 'nova-subpasta' })}
+        <p class="field__sugestao-hint" id="hint-categoria-subpasta"></p>
       </div>
       <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-subpasta" type="button">Criar pasta</button>
@@ -193,8 +188,8 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
           !espaco.arquivado
             ? `
           <div class="form-actions" style="justify-content:center;">
-            <button class="btn btn--secondary btn--sm" id="btn-empty-nova-subpasta" type="button">+ Nova pasta</button>
-            <button class="btn btn--primary btn--sm" id="btn-empty-nova-nota" type="button">+ Nova nota</button>
+            <button class="btn btn--secondary btn--sm" id="btn-empty-nova-subpasta" type="button">${ICONS.folder} Nova pasta</button>
+            <button class="btn btn--primary btn--sm" id="btn-empty-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
           </div>
         `
             : ''
@@ -307,13 +302,6 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         container.querySelector<HTMLInputElement>('#input-categoria-tema-editar')?.value ?? ''
       }`,
   });
-  bindEspacoVisualPicker(container, {
-    prefix: 'nova-subpasta',
-    getTexto: () =>
-      `${container.querySelector<HTMLInputElement>('#input-nome-subpasta')?.value ?? ''} ${
-        container.querySelector<HTMLInputElement>('#input-categoria-subpasta')?.value ?? ''
-      }`,
-  });
 
   container.querySelector('#btn-favoritar-tema')?.addEventListener('click', async () => {
     await toggleTemaFavorito(tema.id);
@@ -332,14 +320,18 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
 
   const formNovo = container.querySelector<HTMLElement>('#form-nova-subpasta');
   const nomeNovoInput = container.querySelector<HTMLInputElement>('#input-nome-subpasta');
-  const categoriaNovaInput = container.querySelector<HTMLInputElement>('#input-categoria-subpasta');
+  const hintCategoria = container.querySelector<HTMLElement>('#hint-categoria-subpasta');
+  const atualizarHintCategoria = () => {
+    if (!hintCategoria) return;
+    hintCategoria.textContent = categoriaNova
+      ? `Categoria herdada: ${categoriaNova} — dá pra trocar depois em Editar.`
+      : 'Sem categoria — dá pra definir depois em Editar.';
+  };
   const abrirFormNova = (categoria?: string) => {
-    if (formNovo) formNovo.classList.remove('is-hidden');
-    if (categoriaNovaInput && categoria !== undefined) {
-      categoriaNovaInput.value = categoria;
-      clearInputSugestao(categoriaNovaInput);
-    }
-    (categoria !== undefined ? nomeNovoInput : categoriaNovaInput)?.focus();
+    categoriaNova = categoria !== undefined ? categoria.trim() : tema.categoria.trim();
+    atualizarHintCategoria();
+    formNovo?.classList.remove('is-hidden');
+    nomeNovoInput?.focus();
     formNovo?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   container.querySelector('#btn-nova-subpasta')?.addEventListener('click', () => abrirFormNova());
@@ -354,21 +346,12 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   container.querySelector('#btn-cancelar-subpasta')?.addEventListener('click', () => {
     if (formNovo) formNovo.classList.add('is-hidden');
   });
-  for (const input of [nomeNovoInput, categoriaNovaInput]) {
-    input?.addEventListener('input', () => limparErroCampo(input));
-  }
-  if (categoriaSugerida && categoriaNovaInput) {
-    categoriaNovaInput.addEventListener('input', () => clearInputSugestao(categoriaNovaInput), {
-      once: true,
-    });
-  }
+  nomeNovoInput?.addEventListener('input', () => limparErroCampo(nomeNovoInput));
   container.querySelector('#btn-salvar-subpasta')?.addEventListener('click', async () => {
-    if (!nomeNovoInput || !categoriaNovaInput) return;
+    if (!nomeNovoInput) return;
     const nome = nomeNovoInput.value.trim();
-    const categoria = categoriaNovaInput.value.trim();
     if (
       !validarCampos([
-        { input: categoriaNovaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para a pasta.' },
         { input: nomeNovoInput, ok: nome.length > 0, mensagem: 'Informe um nome para a pasta.' },
       ])
     ) {
@@ -381,11 +364,30 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       return;
     }
     const nova = await createTema(tema.espaco_id, nome, {
-      categoria,
+      categoria: categoriaNova,
       paiId: tema.id,
-      visual: lerEspacoVisual(container, 'nova-subpasta'),
     });
     navigate(`temas/${nova.id}`);
+  });
+
+  container.querySelector('#btn-mover-tema')?.addEventListener('click', async () => {
+    const { grupos } = await listarDestinosMover(espaco.perfil_id, { temaId: tema.id });
+    if (grupos.length === 0) {
+      showInfo({
+        title: 'Mover pasta',
+        bodyHtml: '<p class="sem-margem">Não há outra pasta ativa que possa receber esta pasta.</p>',
+      });
+      return;
+    }
+    abrirModalMover({
+      titulo: `Mover "${nomeTemaExibicao(tema.nome)}"`,
+      subtitulo: 'As subpastas e as notas dentro dela vão junto.',
+      grupos,
+      onMover: async (destino) => {
+        await moverTema(tema.id, { tipo: destino.tipo, id: destino.id });
+        renderTemaDetail(container, temaId);
+      },
+    });
   });
 
   container.querySelector('#btn-detalhes-tema')?.addEventListener('click', async () => {

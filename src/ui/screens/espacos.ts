@@ -1,12 +1,10 @@
-import { countEspacoCascade, createEspaco, deleteEspacoCascade, listCategoriasEspacos, listEspacos, setEspacoArquivado } from '../../db/espacos';
+import { countEspacoCascade, createEspaco, deleteEspacoCascade, listEspacos, setEspacoArquivado } from '../../db/espacos';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
-import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
-import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
 import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
@@ -24,28 +22,25 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const grupos = agruparPorCategoria(ativos);
   const cores = assignEspacoCores(ativos);
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
-  const categoriasConhecidas = await listCategoriasEspacos(ctx.perfilId);
+  // Categoria herdada do grupo em que o "+ Pasta" foi clicado (no estado vazio, sem grupo).
+  let categoriaNovaEspaco = '';
 
   container.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-4);">
       <p class="screen-hint sem-margem">Cada pasta é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
-      <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">+ Nova pasta</button>
+      ${
+        ativos.length === 0
+          ? `<button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">${ICONS.folder} Nova pasta</button>`
+          : ''
+      }
     </div>
 
     <div id="form-novo-espaco" class="card is-hidden">
       <div class="field">
-        <label class="field__label" for="input-categoria-espaco">Categoria</label>
-        <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
-        <p class="field__error" role="alert"></p>
-        ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
-      </div>
-      <div class="field com-margem">
         <label class="field__label" for="input-nome-espaco">Nome da pasta</label>
         <input class="input" id="input-nome-espaco" type="text" placeholder="Ex: Curso de Investimentos" maxlength="120" />
         <p class="field__error" role="alert"></p>
-      </div>
-      <div style="margin-top: var(--space-4);">
-        ${renderEspacoVisualPicker({ prefix: 'novo-espaco' })}
+        <p class="field__sugestao-hint" id="hint-categoria-espaco"></p>
       </div>
       <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-espaco" type="button">Criar</button>
@@ -76,6 +71,9 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
           <span class="category-group__label">
             <span class="espaco-icon-inline" style="--badge-accent:${corGrupo}" aria-hidden="true">${iconeGrupo.svg}</span>
             ${escapeHtml(grupo.categoria || 'Sem categoria')}
+          </span>
+          <span class="category-group__actions">
+            <button class="category-group__action" type="button" data-novo-espaco-categoria="${escapeHtml(grupo.categoria)}" title="Criar pasta já nesta categoria">+ Pasta</button>
           </span>
         </summary>
         <div class="item-list">
@@ -118,56 +116,51 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
     }
   `;
 
-  bindCategoriaChips(container);
-  bindEspacoVisualPicker(container, {
-    prefix: 'novo-espaco',
-    getTexto: () =>
-      `${container.querySelector<HTMLInputElement>('#input-nome-espaco')?.value ?? ''} ${
-        container.querySelector<HTMLInputElement>('#input-categoria-espaco')?.value ?? ''
-      }`,
-  });
-
   const form = container.querySelector<HTMLElement>('#form-novo-espaco')!;
-  const abrirFormEspaco = () => {
+  const nomeInput = container.querySelector<HTMLInputElement>('#input-nome-espaco')!;
+  const hintCategoria = container.querySelector<HTMLElement>('#hint-categoria-espaco');
+  const abrirFormEspaco = (categoria?: string) => {
+    categoriaNovaEspaco = (categoria ?? '').trim();
+    if (hintCategoria) {
+      hintCategoria.textContent = categoriaNovaEspaco
+        ? `Categoria herdada: ${categoriaNovaEspaco} — dá pra trocar depois em Editar.`
+        : 'Sem categoria — dá pra definir depois em Editar.';
+    }
     form.classList.remove('is-hidden');
-    container.querySelector<HTMLInputElement>('#input-categoria-espaco')?.focus();
+    nomeInput.focus();
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  container.querySelector('#btn-novo-espaco')?.addEventListener('click', abrirFormEspaco);
-  container.querySelector('#btn-empty-novo-espaco')?.addEventListener('click', abrirFormEspaco);
+  container.querySelector('#btn-novo-espaco')?.addEventListener('click', () => abrirFormEspaco());
+  container.querySelector('#btn-empty-novo-espaco')?.addEventListener('click', () => abrirFormEspaco());
   container.querySelector('#btn-cancelar-espaco')?.addEventListener('click', () => {
     form.classList.add('is-hidden');
   });
-  for (const id of ['#input-nome-espaco', '#input-categoria-espaco']) {
-    container.querySelector<HTMLInputElement>(id)?.addEventListener('input', (e) => {
-      limparErroCampo(e.target as HTMLElement);
+  container.querySelectorAll<HTMLButtonElement>('[data-novo-espaco-categoria]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      abrirFormEspaco(btn.dataset.novoEspacoCategoria ?? '');
     });
-  }
+  });
+  nomeInput.addEventListener('input', () => limparErroCampo(nomeInput));
   container.querySelector('#btn-salvar-espaco')?.addEventListener('click', async () => {
-    const input = container.querySelector<HTMLInputElement>('#input-nome-espaco')!;
-    const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco')!;
-    const nome = input.value.trim();
-    const categoria = categoriaInput.value.trim();
+    const nome = nomeInput.value.trim();
     const nomeJaExiste = todos.some((e) => e.nome.trim().toLowerCase() === nome.toLowerCase());
 
     if (
       !validarCampos([
-        { input: categoriaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para a pasta.' },
-        {
-          input,
-          ok: nome.length > 0,
-          mensagem: 'Informe um nome para a pasta.',
-        },
+        { input: nomeInput, ok: nome.length > 0, mensagem: 'Informe um nome para a pasta.' },
       ])
     ) {
       return;
     }
     if (nomeJaExiste) {
-      marcarErroCampo(input, 'Já existe uma pasta com esse nome.');
-      input.focus();
+      marcarErroCampo(nomeInput, 'Já existe uma pasta com esse nome.');
+      nomeInput.focus();
       return;
     }
 
-    const novo = await createEspaco(ctx.perfilId, nome, categoria, lerEspacoVisual(container, 'novo-espaco'));
+    const novo = await createEspaco(ctx.perfilId, nome, categoriaNovaEspaco);
     navigate(`espacos/${novo.id}`);
   });
 

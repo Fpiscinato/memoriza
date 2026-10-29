@@ -1,6 +1,7 @@
 import { createNota, createNotaNaPastaPrincipal, deleteNota, getNota, listNotas, toggleNotaFavorito, updateNota } from '../../db/notas';
 import { getTema, getTemaRaiz, listTemas } from '../../db/temas';
 import { getEspaco } from '../../db/espacos';
+import { listarDestinosMover, moverNota } from '../../db/mover';
 import { stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
@@ -13,6 +14,8 @@ import { caminhoDe, ehPastaOculta } from '../../domain/arvore';
 import { formatDateBR } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { showInfo } from '../components/info-modal';
+import { abrirModalMover } from '../components/mover-modal';
 import { renderBreadcrumb, bindBreadcrumb, type BreadcrumbCrumb } from '../components/breadcrumb';
 import { renderFieldHint } from '../components/field-hint';
 import { ativarRovingTabindex } from '../components/roving-tabindex';
@@ -161,6 +164,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
           <details class="item-menu">
             <summary aria-label="Mais opções">⋯</summary>
             <div class="item-menu__panel">
+              <button id="btn-mover-nota" type="button">${ICONS.move} Mover nota</button>
               <button id="btn-excluir-nota" class="danger" type="button">Excluir nota</button>
             </div>
           </details>
@@ -745,6 +749,28 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       setTimeout(() => {
         btnCompartilhar.textContent = original;
       }, 1800);
+    });
+    container.querySelector('#btn-mover-nota')?.addEventListener('click', async () => {
+      const { grupos } = await listarDestinosMover(espaco.perfil_id, { notaId: nota.id });
+      if (grupos.length === 0) {
+        showInfo({
+          title: 'Mover nota',
+          bodyHtml:
+            '<p class="sem-margem">Não há outra pasta ativa que possa receber esta nota.</p>',
+        });
+        return;
+      }
+      abrirModalMover({
+        titulo: 'Mover nota',
+        subtitulo: nota.titulo || '(sem título)',
+        grupos,
+        onMover: async (destino) => {
+          await moverNota(nota.id, { tipo: destino.tipo, id: destino.id });
+          if (!canNavigateAway()) return;
+          clearFormDirty();
+          navigate(destino.tipo === 'tema' ? `temas/${destino.id}` : `espacos/${destino.id}`);
+        },
+      });
     });
     container.querySelector('#btn-excluir-nota')?.addEventListener('click', async () => {
       const ok = await confirmAction({
