@@ -751,7 +751,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       }, 1800);
     });
     container.querySelector('#btn-mover-nota')?.addEventListener('click', async () => {
-      const { grupos } = await listarDestinosMover(espaco.perfil_id, { notaId: nota.id });
+      const { grupos, atualCaminho } = await listarDestinosMover(espaco.perfil_id, { notaId: nota.id });
       if (grupos.length === 0) {
         showInfo({
           title: 'Mover nota',
@@ -763,6 +763,8 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       abrirModalMover({
         titulo: 'Mover nota',
         subtitulo: nota.titulo || '(sem título)',
+        itemNome: nota.titulo || '(sem título)',
+        atualCaminho,
         grupos,
         onMover: async (destino) => {
           await moverNota(nota.id, { tipo: destino.tipo, id: destino.id });

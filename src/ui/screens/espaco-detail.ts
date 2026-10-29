@@ -4,7 +4,7 @@ import { listNotas, listNotasPorEspaco } from '../../db/notas';
 import { getDB } from '../../db/schema';
 import { getTempoTotalEspaco } from '../../db/dashboard';
 import { escapeHtml } from '../../lib/dom';
-import { agruparPorCategoria } from '../../lib/group';
+import { agruparPorCategoria, deveAgruparPorCategoria } from '../../lib/group';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria, espacoCorVar } from '../../lib/color';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate, encodeCategoriaSegment } from '../router';
@@ -19,6 +19,7 @@ import { idsDaSubarvore } from '../../domain/arvore';
 import { nomeTemaExibicao } from '../../domain/rotulos';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
+import type { Tema } from '../../types';
 
 export async function renderEspacoDetail(container: HTMLElement, espacoId: string): Promise<void> {
   const espaco = await getEspaco(espacoId);
@@ -35,10 +36,11 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const raiz = await getTemaRaiz(espacoId);
   const notasDiretas = raiz ? await listNotas(raiz.id) : [];
   const grupos = agruparPorCategoria(temasRaiz);
+  const agruparPastas = deveAgruparPorCategoria(temasRaiz);
   const categoriasEspaco = await listCategoriasEspacos(espaco.perfil_id);
-  // Categoria herdada ao criar uma pasta aqui: a da própria pasta de topo, a menos que o
-  // usuário clique no "+ Pasta" de um grupo específico.
-  let categoriaNovaTema = espaco.categoria.trim();
+  // Pasta nova nasce direto dentro desta pasta, sem herdar categoria (como no Windows).
+  // Se o usuário clicar no "+ Pasta" de um grupo, aí a categoria é escolhida explicitamente.
+  let categoriaNovaTema = '';
   const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
   const espacoIcone = getEspacoIcone(espacoIconeChave(espaco));
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
@@ -49,6 +51,27 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     idsDaSubarvore(temas, temaId).reduce((soma, id) => soma + (notaCounts.get(id) ?? 0), 0);
   const subpastasDoTema = (temaId: string): number =>
     temas.filter((t) => t.pai_id === temaId).length;
+
+  const renderLinhaTema = (t: Tema, corFallback: string): string => {
+    const notas = notasDaSubarvore(t.id);
+    const subpastas = subpastasDoTema(t.id);
+    const meta = [`${notas} nota(s)`, subpastas > 0 ? `${subpastas} pasta(s)` : '']
+      .filter(Boolean)
+      .join(' · ');
+    const corTema = coresTemas.get(t.id) ?? corFallback;
+    const iconeTema = getEspacoIcone(espacoIconeChave(t));
+    return `
+      <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${corTema}">
+        <span class="item-row__main">
+          <span class="item-row__title-row">
+            <span class="espaco-icon-badge" style="--badge-accent:${corTema}" aria-hidden="true">${iconeTema.svg}</span>
+            <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(t.nome))}</span>
+          </span>
+          <span class="item-row__meta">${meta}</span>
+        </span>
+      </button>
+    `;
+  };
 
   container.innerHTML = `
     ${renderBreadcrumb([
@@ -115,6 +138,9 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <p class="field__error" role="alert"></p>
         <p class="field__sugestao-hint" id="hint-categoria-tema"></p>
       </div>
+      <div style="margin-top: var(--space-4);">
+        ${renderEspacoVisualPicker({ prefix: 'novo-tema' })}
+      </div>
       <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-tema" type="button">Criar pasta</button>
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-tema" type="button">Cancelar</button>
@@ -151,7 +177,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       ${
         temasRaiz.length === 0
           ? `<p class="text-muted">Nenhuma pasta aqui ainda.</p>`
-          : grupos
+          : !agruparPastas
+            ? `<div class="item-list">
+                ${grupos
+                  .flatMap((grupo) => grupo.itens)
+                  .map((t) => renderLinhaTema(t, coresTemas.get(t.id) ?? espacoCor))
+                  .join('')}
+              </div>`
+            : grupos
               .map((grupo) => {
                 const corCategoria = coresCategoria.get(chaveCategoria(grupo.categoria)) ?? accentVar(grupo.categoria || 'sem-categoria');
                 const iconeCategoria = getEspacoIcone(categoriaIconeChave(grupo.categoria));
@@ -172,28 +205,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
           </span>
         </summary>
         <div class="item-list">
-          ${grupo.itens
-            .map((t) => {
-              const notas = notasDaSubarvore(t.id);
-              const subpastas = subpastasDoTema(t.id);
-              const meta = [`${notas} nota(s)`, subpastas > 0 ? `${subpastas} pasta(s)` : '']
-                .filter(Boolean)
-                .join(' · ');
-              const corTema = coresTemas.get(t.id) ?? corCategoria;
-              const iconeTema = getEspacoIcone(espacoIconeChave(t));
-              return `
-            <button class="item-row" data-open="${escapeHtml(t.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${corTema}">
-              <span class="item-row__main">
-                <span class="item-row__title-row">
-                  <span class="espaco-icon-badge" style="--badge-accent:${corTema}" aria-hidden="true">${iconeTema.svg}</span>
-                  <span class="item-row__title">${t.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(t.nome))}</span>
-                </span>
-                <span class="item-row__meta">${meta}</span>
-              </span>
-            </button>
-          `;
-            })
-            .join('')}
+          ${grupo.itens.map((t) => renderLinhaTema(t, corCategoria)).join('')}
         </div>
       </details>
     `;
@@ -383,14 +395,22 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const formTema = container.querySelector<HTMLElement>('#form-nova-pasta');
   const nomeTemaInput = container.querySelector<HTMLInputElement>('#input-nome-tema')!;
   const hintCategoriaTema = container.querySelector<HTMLElement>('#hint-categoria-tema');
+
+  bindEspacoVisualPicker(container, {
+    prefix: 'novo-tema',
+    getTexto: () => `${nomeTemaInput.value} ${categoriaNovaTema}`,
+  });
+
   const atualizarHintCategoria = () => {
     if (!hintCategoriaTema) return;
     hintCategoriaTema.textContent = categoriaNovaTema
-      ? `Categoria herdada: ${categoriaNovaTema} — dá pra trocar depois em Editar.`
+      ? `Categoria: ${categoriaNovaTema} — dá pra trocar depois em Editar.`
       : 'Sem categoria — dá pra definir depois em Editar.';
   };
   const abrirFormTema = (categoria?: string) => {
-    categoriaNovaTema = categoria !== undefined ? categoria.trim() : espaco.categoria.trim();
+    // Criar pasta dentro desta pasta não herda a categoria do lugar (como no Windows):
+    // só usa categoria quando veio do "+ Pasta" de um grupo específico.
+    categoriaNovaTema = (categoria ?? '').trim();
     atualizarHintCategoria();
     if (formTema) formTema.classList.remove('is-hidden');
     nomeTemaInput.focus();
@@ -425,7 +445,10 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       nomeTemaInput.focus();
       return;
     }
-    const novoTema = await createTema(espacoId, nome, { categoria: categoriaNovaTema });
+    const novoTema = await createTema(espacoId, nome, {
+      categoria: categoriaNovaTema,
+      visual: lerEspacoVisual(container, 'novo-tema'),
+    });
     navigate(`temas/${novoTema.id}`);
   });
 

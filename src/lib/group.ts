@@ -55,6 +55,21 @@ export function agruparPorCategoria<T extends { categoria: string; nome: string 
 }
 
 /**
+ * Diz se vale a pena mostrar os cabeçalhos de categoria numa lista. Só faz sentido quando
+ * há **duas ou mais** categorias preenchidas — com uma categoria só (ou nenhuma), o
+ * cabeçalho repetiria o que a própria pasta já diz. É o caso comum ao criar uma pasta
+ * dentro de outra: ela nasce sem categoria e a lista fica plana, como no Windows.
+ */
+export function deveAgruparPorCategoria(itens: { categoria: string }[]): boolean {
+  const categorias = new Set<string>();
+  for (const item of itens) {
+    const bruto = item.categoria.trim();
+    if (bruto) categorias.add(chaveCategoria(bruto));
+  }
+  return categorias.size > 1;
+}
+
+/**
  * Lista de categorias distintas (pra sugestão/autocomplete), ignorando maiúsculas/minúsculas
  * e espaços nas pontas — mantém a primeira grafia encontrada, ordenada alfabeticamente
  * (meses em ordem de calendário, quando as categorias forem todas meses).

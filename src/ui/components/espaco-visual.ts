@@ -121,9 +121,12 @@ export function bindEspacoVisualPicker(
     if (sugerida) selecionarIcone(sugerida);
   };
 
-  // Sugere já na abertura (ex: nome pré-preenchido) e enquanto digita.
+  // Sugere já na abertura (ex: nome pré-preenchido) e enquanto digita. O escopo é o card
+  // do formulário: numa mesma tela podem existir dois seletores (criar e editar), e digitar
+  // num não deve trocar o ícone do outro.
   aplicarSugestao();
-  container.querySelectorAll<HTMLInputElement>('input[type="text"]').forEach((input) => {
+  const escopo = raiz.closest<HTMLElement>('.card') ?? container;
+  escopo.querySelectorAll<HTMLInputElement>('input[type="text"]').forEach((input) => {
     input.addEventListener('input', aplicarSugestao);
   });
 }

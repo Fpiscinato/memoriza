@@ -1,18 +1,23 @@
 // Seletor de destino do "Mover" (pastas e notas). Substitui o arrastar e soltar por uma
 // lista com a árvore de pastas do perfil: funciona no celular, no teclado e em listas
-// longas, e deixa claro o caminho de cada destino.
+// longas, e deixa claro de onde o item sai e para onde vai.
 //
 // A validação de verdade fica em db/mover.ts — aqui só montamos a lista, filtramos pelo
-// texto digitado e mostramos a mensagem de erro que vier de lá.
+// texto digitado, pedimos confirmação e mostramos a mensagem de erro que vier de lá.
 
 import { escapeHtml } from '../../lib/dom';
+import { accentVar, espacoCorVar } from '../../lib/color';
 import type { DestinoMover, GrupoDestinosMover } from '../../domain/mover-destinos';
+import { getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { gerenciarFocoModal } from './modal-foco';
-import { ICONS } from '../icons';
 
 export interface MoverModalOptions {
   titulo: string;
   subtitulo?: string;
+  /** Nome do item em movimento, usado na pergunta de confirmação. */
+  itemNome?: string;
+  /** Caminho de onde o item está agora (ex: "Curso › Módulo 1"). */
+  atualCaminho?: string;
   grupos: GrupoDestinosMover[];
   onMover: (destino: DestinoMover) => Promise<void>;
 }
@@ -25,8 +30,26 @@ function normalizar(valor: string): string {
     .trim();
 }
 
-function descrever(destino: DestinoMover): string {
-  return destino.descricao;
+function visualDoDestino(destino: DestinoMover): { svg: string; cor: string } {
+  const icone = getEspacoIcone(
+    espacoIconeChave({
+      icone: destino.icone,
+      nome: destino.iconeNome,
+      categoria: destino.categoria,
+    }),
+  );
+  return { svg: icone.svg, cor: espacoCorVar(destino.cor, accentVar(destino.id)) };
+}
+
+function visualDoGrupo(grupo: GrupoDestinosMover): { svg: string; cor: string } {
+  const icone = getEspacoIcone(
+    espacoIconeChave({
+      icone: grupo.icone,
+      nome: grupo.espacoNome,
+      categoria: grupo.categoria,
+    }),
+  );
+  return { svg: icone.svg, cor: espacoCorVar(grupo.cor, accentVar(grupo.espacoId)) };
 }
 
 /** Abre o modal de escolha de destino. Fecha sozinho depois que `onMover` resolve. */
@@ -35,40 +58,45 @@ export function abrirModalMover(opts: MoverModalOptions): void {
   overlay.className = 'modal-overlay';
 
   const gruposHtml = opts.grupos
-    .map(
-      (grupo) => `
-      <div class="mover-grupo" data-mover-grupo>
-        <div class="mover-grupo__titulo">
-          <span class="mover-grupo__icone" aria-hidden="true">${ICONS.folder}</span>
+    .map((grupo) => {
+      const visualGrupo = visualDoGrupo(grupo);
+      return `
+      <details class="mover-grupo" data-mover-grupo>
+        <summary class="mover-grupo__titulo" style="--group-accent:${visualGrupo.cor}">
+          <span class="espaco-icon-inline mover-grupo__icone" style="--badge-accent:${visualGrupo.cor}" aria-hidden="true">${visualGrupo.svg}</span>
           <span class="mover-grupo__nome">${escapeHtml(grupo.espacoNome)}</span>
           ${grupo.categoria ? `<span class="mover-grupo__categoria">${escapeHtml(grupo.categoria)}</span>` : ''}
-        </div>
+          <span class="mover-grupo__contagem">${grupo.destinos.length}</span>
+        </summary>
         <div class="mover-grupo__itens">
           ${grupo.destinos
-            .map(
-              (destino) => `
+            .map((destino) => {
+              const visual = visualDoDestino(destino);
+              return `
             <button
               class="mover-item"
               type="button"
               data-destino="${escapeHtml(destino.chave)}"
               data-busca="${escapeHtml(normalizar(`${destino.nome} ${destino.caminho} ${destino.categoria}`))}"
-              style="--mover-depth:${destino.profundidade}"
+              style="--mover-depth:${destino.profundidade}; --row-accent:${visual.cor}"
               title="${escapeHtml(destino.caminho)}"
             >
-              <span class="mover-item__icone" aria-hidden="true">${ICONS.folder}</span>
+              <span class="espaco-icon-inline mover-item__icone" style="--badge-accent:${visual.cor}" aria-hidden="true">${visual.svg}</span>
               <span class="mover-item__texto">
                 <span class="mover-item__nome">${escapeHtml(destino.nome)}</span>
-                <span class="mover-item__meta">${escapeHtml(descrever(destino))}</span>
+                <span class="mover-item__meta">${escapeHtml(destino.descricao)}</span>
               </span>
             </button>
-          `,
-            )
+          `;
+            })
             .join('')}
         </div>
-      </div>
-    `,
-    )
+      </details>
+    `;
+    })
     .join('');
+
+  const itemNome = opts.itemNome?.trim();
 
   overlay.innerHTML = `
     <div class="modal modal--mover" role="dialog" aria-modal="true" aria-labelledby="mover-title">
@@ -78,17 +106,40 @@ export function abrirModalMover(opts: MoverModalOptions): void {
           ? `<p class="modal__message mover-subtitulo">${escapeHtml(opts.subtitulo)}</p>`
           : ''
       }
-      <div class="field mover-busca">
-        <label class="field__label" for="mover-busca">Buscar pasta</label>
-        <input class="input" id="mover-busca" type="search" placeholder="Digite parte do nome…" autocomplete="off" />
+      ${
+        opts.atualCaminho
+          ? `
+        <div class="mover-atual">
+          <span class="mover-atual__rotulo">De</span>
+          <span class="mover-atual__caminho">${escapeHtml(opts.atualCaminho)}</span>
+        </div>
+      `
+          : ''
+      }
+
+      <div id="mover-escolha">
+        <div class="field mover-busca">
+          <label class="field__label" for="mover-busca">Buscar pasta</label>
+          <input class="input" id="mover-busca" type="search" placeholder="Digite parte do nome…" autocomplete="off" />
+        </div>
+        <div class="mover-lista" id="mover-lista">
+          ${gruposHtml || '<p class="text-muted sem-margem">Nenhum destino disponível.</p>'}
+          <p class="mover-vazio text-muted sem-margem" id="mover-vazio" hidden>Nenhuma pasta encontrada com esse nome.</p>
+        </div>
       </div>
-      <div class="mover-lista" id="mover-lista">
-        ${gruposHtml || '<p class="text-muted sem-margem">Nenhum destino disponível.</p>'}
-        <p class="mover-vazio text-muted sem-margem" id="mover-vazio" hidden>Nenhuma pasta encontrada com esse nome.</p>
+
+      <div class="mover-confirmacao is-hidden" id="mover-confirmacao">
+        <p class="mover-confirmacao__pergunta">
+          Mover${itemNome ? ` <strong>${escapeHtml(itemNome)}</strong>` : ' este item'} para esta pasta?
+        </p>
+        <div class="mover-confirmacao__destino" id="mover-confirmacao-destino"></div>
       </div>
+
       <p class="field__error mover-erro" id="mover-erro" role="alert"></p>
       <div class="form-actions">
         <button class="btn btn--secondary" id="mover-cancelar" type="button">Cancelar</button>
+        <button class="btn btn--secondary is-hidden" id="mover-voltar" type="button">Voltar</button>
+        <button class="btn btn--primary is-hidden" id="mover-confirmar" type="button">Mover</button>
       </div>
     </div>
   `;
@@ -99,13 +150,23 @@ export function abrirModalMover(opts: MoverModalOptions): void {
   const busca = overlay.querySelector<HTMLInputElement>('#mover-busca')!;
   const vazio = overlay.querySelector<HTMLElement>('#mover-vazio')!;
   const erro = overlay.querySelector<HTMLElement>('#mover-erro')!;
+  const escolha = overlay.querySelector<HTMLElement>('#mover-escolha')!;
+  const confirmacao = overlay.querySelector<HTMLElement>('#mover-confirmacao')!;
+  const confirmacaoDestino = overlay.querySelector<HTMLElement>('#mover-confirmacao-destino')!;
+  const btnCancelar = overlay.querySelector<HTMLButtonElement>('#mover-cancelar')!;
+  const btnVoltar = overlay.querySelector<HTMLButtonElement>('#mover-voltar')!;
+  const btnConfirmar = overlay.querySelector<HTMLButtonElement>('#mover-confirmar')!;
   const botoes = Array.from(overlay.querySelectorAll<HTMLButtonElement>('[data-destino]'));
+  const gruposEls = Array.from(overlay.querySelectorAll<HTMLDetailsElement>('[data-mover-grupo]'));
   const destinos = new Map<string, DestinoMover>();
   for (const grupo of opts.grupos) {
     for (const destino of grupo.destinos) destinos.set(destino.chave, destino);
   }
 
   let fechado = false;
+  let ocupado = false;
+  let pendente: DestinoMover | null = null;
+
   function fechar(): void {
     if (fechado) return;
     fechado = true;
@@ -119,6 +180,37 @@ export function abrirModalMover(opts: MoverModalOptions): void {
   };
   document.addEventListener('keydown', onKeydown);
 
+  function mostrarEscolha(): void {
+    pendente = null;
+    erro.textContent = '';
+    escolha.classList.remove('is-hidden');
+    confirmacao.classList.add('is-hidden');
+    btnCancelar.classList.remove('is-hidden');
+    btnVoltar.classList.add('is-hidden');
+    btnConfirmar.classList.add('is-hidden');
+    busca.focus();
+  }
+
+  function mostrarConfirmacao(destino: DestinoMover): void {
+    pendente = destino;
+    erro.textContent = '';
+    const visual = visualDoDestino(destino);
+    confirmacaoDestino.innerHTML = `
+      <span class="mover-atual__rotulo">Para</span>
+      <span class="espaco-icon-badge" style="--badge-accent:${visual.cor}" aria-hidden="true">${visual.svg}</span>
+      <span class="mover-confirmacao__texto">
+        <span class="mover-confirmacao__nome">${escapeHtml(destino.nome)}</span>
+        <span class="mover-confirmacao__caminho">${escapeHtml(destino.caminho)}</span>
+      </span>
+    `;
+    escolha.classList.add('is-hidden');
+    confirmacao.classList.remove('is-hidden');
+    btnCancelar.classList.add('is-hidden');
+    btnVoltar.classList.remove('is-hidden');
+    btnConfirmar.classList.remove('is-hidden');
+    btnConfirmar.focus();
+  }
+
   busca.addEventListener('input', () => {
     const consulta = normalizar(busca.value);
     let visiveis = 0;
@@ -127,36 +219,49 @@ export function abrirModalMover(opts: MoverModalOptions): void {
       botao.hidden = !combina;
       if (combina) visiveis++;
     }
-    overlay.querySelectorAll<HTMLElement>('[data-mover-grupo]').forEach((grupo) => {
-      grupo.hidden = !Array.from(grupo.querySelectorAll<HTMLElement>('[data-destino]')).some(
-        (botao) => !botao.hidden,
-      );
-    });
-    if (vazio) vazio.hidden = visiveis > 0 || botoes.length === 0;
+    for (const grupo of gruposEls) {
+      const visiveisNoGrupo = Array.from(
+        grupo.querySelectorAll<HTMLElement>('[data-destino]'),
+      ).filter((botao) => !botao.hidden).length;
+      grupo.hidden = visiveisNoGrupo === 0;
+      // A lista começa recolhida; a busca abre só os grupos que têm resultado.
+      grupo.open = Boolean(consulta) && visiveisNoGrupo > 0;
+    }
+    vazio.hidden = visiveis > 0 || botoes.length === 0;
   });
 
-  let ocupado = false;
   for (const botao of botoes) {
-    botao.addEventListener('click', async () => {
+    botao.addEventListener('click', () => {
       if (ocupado) return;
       const destino = destinos.get(botao.dataset.destino ?? '');
       if (!destino) return;
-
-      ocupado = true;
-      erro.textContent = '';
-      for (const item of botoes) item.disabled = true;
-      try {
-        await opts.onMover(destino);
-        fechar();
-      } catch (e) {
-        erro.textContent = e instanceof Error ? e.message : 'Não foi possível mover.';
-        ocupado = false;
-        for (const item of botoes) item.disabled = false;
-      }
+      mostrarConfirmacao(destino);
     });
   }
 
-  overlay.querySelector('#mover-cancelar')?.addEventListener('click', fechar);
+  btnVoltar.addEventListener('click', () => {
+    if (ocupado) return;
+    mostrarEscolha();
+  });
+
+  btnConfirmar.addEventListener('click', async () => {
+    if (ocupado || !pendente) return;
+    ocupado = true;
+    erro.textContent = '';
+    btnConfirmar.disabled = true;
+    btnVoltar.disabled = true;
+    try {
+      await opts.onMover(pendente);
+      fechar();
+    } catch (e) {
+      erro.textContent = e instanceof Error ? e.message : 'Não foi possível mover.';
+      ocupado = false;
+      btnConfirmar.disabled = false;
+      btnVoltar.disabled = false;
+    }
+  });
+
+  btnCancelar.addEventListener('click', fechar);
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) fechar();
   });

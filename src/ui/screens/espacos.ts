@@ -1,10 +1,12 @@
-import { countEspacoCascade, createEspaco, deleteEspacoCascade, listEspacos, setEspacoArquivado } from '../../db/espacos';
+import { countEspacoCascade, createEspaco, deleteEspacoCascade, listCategoriasEspacos, listEspacos, setEspacoArquivado } from '../../db/espacos';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria } from '../../lib/color';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
+import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
+import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
 import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
@@ -22,25 +24,28 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   const grupos = agruparPorCategoria(ativos);
   const cores = assignEspacoCores(ativos);
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
-  // Categoria herdada do grupo em que o "+ Pasta" foi clicado (no estado vazio, sem grupo).
-  let categoriaNovaEspaco = '';
+  const categoriasConhecidas = await listCategoriasEspacos(ctx.perfilId);
 
   container.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-4);">
       <p class="screen-hint sem-margem">Cada pasta é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
-      ${
-        ativos.length === 0
-          ? `<button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">${ICONS.folder} Nova pasta</button>`
-          : ''
-      }
+      <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">${ICONS.folder} Nova pasta</button>
     </div>
 
     <div id="form-novo-espaco" class="card is-hidden">
       <div class="field">
+        <label class="field__label" for="input-categoria-espaco">Categoria</label>
+        <input class="input" id="input-categoria-espaco" type="text" placeholder="Ex: Cursos, Livros, Estudos" maxlength="80" />
+        <p class="field__error" role="alert"></p>
+        ${renderCategoriaChips(categoriasConhecidas, 'input-categoria-espaco')}
+      </div>
+      <div class="field com-margem">
         <label class="field__label" for="input-nome-espaco">Nome da pasta</label>
         <input class="input" id="input-nome-espaco" type="text" placeholder="Ex: Curso de Investimentos" maxlength="120" />
         <p class="field__error" role="alert"></p>
-        <p class="field__sugestao-hint" id="hint-categoria-espaco"></p>
+      </div>
+      <div style="margin-top: var(--space-4);">
+        ${renderEspacoVisualPicker({ prefix: 'novo-espaco' })}
       </div>
       <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-espaco" type="button">Criar</button>
@@ -118,16 +123,24 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
 
   const form = container.querySelector<HTMLElement>('#form-novo-espaco')!;
   const nomeInput = container.querySelector<HTMLInputElement>('#input-nome-espaco')!;
-  const hintCategoria = container.querySelector<HTMLElement>('#hint-categoria-espaco');
+  const categoriaInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco')!;
+
+  bindCategoriaChips(container);
+  bindEspacoVisualPicker(container, {
+    prefix: 'novo-espaco',
+    getTexto: () => `${nomeInput.value} ${categoriaInput.value}`,
+  });
+
   const abrirFormEspaco = (categoria?: string) => {
-    categoriaNovaEspaco = (categoria ?? '').trim();
-    if (hintCategoria) {
-      hintCategoria.textContent = categoriaNovaEspaco
-        ? `Categoria herdada: ${categoriaNovaEspaco} — dá pra trocar depois em Editar.`
-        : 'Sem categoria — dá pra definir depois em Editar.';
-    }
     form.classList.remove('is-hidden');
-    nomeInput.focus();
+    if (categoria !== undefined) {
+      categoriaInput.value = categoria;
+      nomeInput.focus();
+    } else {
+      // "Nova pasta" no topo começa sem categoria: não herda o grupo usado antes.
+      categoriaInput.value = '';
+      categoriaInput.focus();
+    }
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   container.querySelector('#btn-novo-espaco')?.addEventListener('click', () => abrirFormEspaco());
@@ -142,13 +155,17 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       abrirFormEspaco(btn.dataset.novoEspacoCategoria ?? '');
     });
   });
-  nomeInput.addEventListener('input', () => limparErroCampo(nomeInput));
+  for (const input of [nomeInput, categoriaInput]) {
+    input.addEventListener('input', () => limparErroCampo(input));
+  }
   container.querySelector('#btn-salvar-espaco')?.addEventListener('click', async () => {
     const nome = nomeInput.value.trim();
+    const categoria = categoriaInput.value.trim();
     const nomeJaExiste = todos.some((e) => e.nome.trim().toLowerCase() === nome.toLowerCase());
 
     if (
       !validarCampos([
+        { input: categoriaInput, ok: categoria.length > 0, mensagem: 'Informe uma categoria para a pasta.' },
         { input: nomeInput, ok: nome.length > 0, mensagem: 'Informe um nome para a pasta.' },
       ])
     ) {
@@ -160,7 +177,12 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       return;
     }
 
-    const novo = await createEspaco(ctx.perfilId, nome, categoriaNovaEspaco);
+    const novo = await createEspaco(
+      ctx.perfilId,
+      nome,
+      categoria,
+      lerEspacoVisual(container, 'novo-espaco'),
+    );
     navigate(`espacos/${novo.id}`);
   });
 

@@ -10,7 +10,7 @@
 function focaveis(dialog: HTMLElement): HTMLElement[] {
   return Array.from(
     dialog.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      'button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])',
     ),
   ).filter((el) => !el.hasAttribute('disabled') && el.getClientRects().length > 0);
 }

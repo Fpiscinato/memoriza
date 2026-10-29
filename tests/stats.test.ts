@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeStreak, isNotaFraca } from '../src/domain/stats';
-import { agruparPorCategoria, distinctCategorias } from '../src/lib/group';
+import { agruparPorCategoria, distinctCategorias, deveAgruparPorCategoria } from '../src/lib/group';
 
 describe('computeStreak', () => {
   it('é 0 quando não há nenhuma atividade recente', () => {
@@ -78,6 +78,16 @@ describe('agruparPorCategoria', () => {
     expect(grupos).toHaveLength(1);
     expect(grupos[0].categoria).toBe('Livros'); // mantém a primeira grafia encontrada
     expect(grupos[0].itens.map((i) => i.nome)).toEqual(['A', 'B', 'C', 'D']);
+  });
+});
+
+describe('deveAgruparPorCategoria', () => {
+  it('só agrupa quando há duas ou mais categorias preenchidas', () => {
+    expect(deveAgruparPorCategoria([{ categoria: '' }, { categoria: '  ' }])).toBe(false);
+    expect(deveAgruparPorCategoria([{ categoria: 'Cursos' }, { categoria: 'cursos' }])).toBe(false);
+    expect(deveAgruparPorCategoria([{ categoria: 'Cursos' }, { categoria: 'Livros' }])).toBe(true);
+    expect(deveAgruparPorCategoria([{ categoria: '' }, { categoria: 'Cursos' }])).toBe(false);
+    expect(deveAgruparPorCategoria([{ categoria: '' }, { categoria: 'Cursos' }, { categoria: 'Livros' }])).toBe(true);
   });
 });
 

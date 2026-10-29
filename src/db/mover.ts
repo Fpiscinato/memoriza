@@ -11,7 +11,8 @@
 
 import { getDB } from './schema';
 import { nowISO } from '../lib/time';
-import { descendentesDe, idsDaSubarvore } from '../domain/arvore';
+import { descendentesDe, idsDaSubarvore, caminhoDe } from '../domain/arvore';
+import { nomeTemaExibicao } from '../domain/rotulos';
 import {
   chaveDestino,
   montarDestinosMover,
@@ -19,6 +20,7 @@ import {
 } from '../domain/mover-destinos';
 import { garantirTemaRaiz } from './temas';
 import { listEspacos } from './espacos';
+import type { Tema } from '../types';
 
 export interface DestinoMoverRef {
   tipo: 'espaco' | 'tema';
@@ -29,10 +31,21 @@ export interface ResultadoDestinosMover {
   grupos: GrupoDestinosMover[];
   /** Chave do destino onde o item está agora (não aparece na lista). */
   atual: string | null;
+  /** Caminho legível de onde o item está agora (ex: "Curso › Módulo 1"). */
+  atualCaminho: string;
 }
 
 function normalizar(valor: string): string {
   return valor.trim().toLowerCase();
+}
+
+/** Caminho legível até uma pasta (usado no topo do seletor de destino). */
+function caminhoDaPasta(temas: Tema[], espacoNome: string, temaId?: string | null): string {
+  if (!temaId) return espacoNome;
+  const alvo = temas.find((tema) => tema.id === temaId);
+  if (!alvo) return espacoNome;
+  const ancestrais = caminhoDe(temas, alvo).map((tema) => nomeTemaExibicao(tema.nome));
+  return [espacoNome, ...ancestrais, nomeTemaExibicao(alvo.nome)].join(' › ');
 }
 
 /**
@@ -56,7 +69,15 @@ export async function listarDestinosMover(
   const temas = listas.flat();
 
   let atual: string | null = null;
+  let atualCaminho = '';
   let excluirTemaId: string | undefined;
+
+  const nomeDoEspaco = async (espacoId: string): Promise<string> => {
+    const naLista = espacos.find((espaco) => espaco.id === espacoId);
+    if (naLista) return naLista.nome;
+    const doBanco = await db.get('espacos', espacoId);
+    return doBanco?.nome ?? 'Pasta principal';
+  };
 
   if (opcoes.temaId) {
     const tema = await db.get('temas', opcoes.temaId);
@@ -65,6 +86,11 @@ export async function listarDestinosMover(
       atual = tema.pai_id
         ? chaveDestino('tema', tema.pai_id)
         : chaveDestino('espaco', tema.espaco_id);
+      atualCaminho = caminhoDaPasta(
+        temas,
+        await nomeDoEspaco(tema.espaco_id),
+        tema.pai_id,
+      );
     }
   } else if (opcoes.notaId) {
     const nota = await db.get('notas', opcoes.notaId);
@@ -73,6 +99,10 @@ export async function listarDestinosMover(
       atual = tema.oculta
         ? chaveDestino('espaco', tema.espaco_id)
         : chaveDestino('tema', tema.id);
+      const espacoNome = await nomeDoEspaco(tema.espaco_id);
+      atualCaminho = tema.oculta
+        ? espacoNome
+        : caminhoDaPasta(temas, espacoNome, tema.id);
     }
   }
 
@@ -84,6 +114,7 @@ export async function listarDestinosMover(
       descricaoRaiz: opcoes.temaId ? 'primeiro nível da pasta' : 'notas soltas nesta pasta',
     }),
     atual,
+    atualCaminho,
   };
 }
 

@@ -260,4 +260,18 @@ describe('listarDestinosMover', () => {
       `espaco:${espaco.id}`,
     );
   });
+
+  it('devolve o caminho de onde a pasta e a nota estão agora', async () => {
+    const perfil = await createProfile('Teste caminho atual');
+    const espaco = await createEspaco(perfil.id, 'Curso', 'Cursos');
+    const pasta = await createTema(espaco.id, 'Módulo 1');
+    const sub = await createTema(espaco.id, 'Aula 1', { paiId: pasta.id });
+    const nota = await createNota(sub.id, notaInput('Resumo'));
+
+    const destinoPasta = await listarDestinosMover(perfil.id, { temaId: sub.id });
+    expect(destinoPasta.atualCaminho).toBe('Curso › Módulo 1');
+
+    const destinoNota = await listarDestinosMover(perfil.id, { notaId: nota.id });
+    expect(destinoNota.atualCaminho).toBe('Curso › Módulo 1 › Aula 1');
+  });
 });

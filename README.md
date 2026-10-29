@@ -58,6 +58,14 @@ nome**, herdando a categoria do grupo/pasta onde foi clicada — categoria,
 ícone de pasta) e **+ Nova nota** (preenchido, ícone de caderno) ficaram
 visualmente distintos.
 
+**v1.24** corrige a criação de pastas dentro de pastas: a pasta nova nasce
+**só dentro da pasta atual**, sem herdar nem repetir a categoria de cima (como
+pastas no Windows). O formulário voltou a oferecer **ícone e cor**, e a
+listagem só mostra cabeçalhos de categoria quando há mais de uma categoria na
+mesma pasta. O **Mover** ganhou confirmação antes de executar, mostra o
+**caminho atual** do item no topo e exibe ícone/cor de cada destino, com os
+grupos recolhidos e a busca abrindo só o que encontrou.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado

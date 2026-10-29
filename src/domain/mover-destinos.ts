@@ -34,12 +34,20 @@ export interface DestinoMover {
   caminho: string;
   /** 0 = raiz do Espaço; 1 = pasta de primeiro nível; 2 = subpasta; etc. */
   profundidade: number;
+  /** Aparência escolhida no destino (ausente = sugestão automática pela UI). */
+  icone?: string;
+  cor?: number;
+  /** Nome usado para sugerir ícone quando o destino não tem escolha manual. */
+  iconeNome: string;
 }
 
 export interface GrupoDestinosMover {
   espacoId: string;
   espacoNome: string;
   categoria: string;
+  /** Aparência da pasta de topo que abre o grupo. */
+  icone?: string;
+  cor?: number;
   destinos: DestinoMover[];
 }
 
@@ -92,6 +100,9 @@ export function montarDestinosMover(
         espacoNome: espaco.nome,
         caminho: espaco.nome,
         profundidade: 0,
+        icone: espaco.icone,
+        cor: espaco.cor,
+        iconeNome: espaco.nome,
       });
     }
 
@@ -121,6 +132,9 @@ export function montarDestinosMover(
           espacoNome: espaco.nome,
           caminho: [espaco.nome, ...ancestrais, nome].join(' › '),
           profundidade,
+          icone: tema.icone,
+          cor: tema.cor,
+          iconeNome: nome,
         });
       }
 
@@ -138,6 +152,8 @@ export function montarDestinosMover(
         espacoId: espaco.id,
         espacoNome: espaco.nome,
         categoria: espaco.categoria,
+        icone: espaco.icone,
+        cor: espaco.cor,
         destinos,
       });
     }

@@ -15,7 +15,7 @@ import { getTempoTotalTema } from '../../db/dashboard';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria, espacoCorVar } from '../../lib/color';
-import { agruparPorCategoria, distinctCategorias } from '../../lib/group';
+import { agruparPorCategoria, distinctCategorias, deveAgruparPorCategoria } from '../../lib/group';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
@@ -30,6 +30,7 @@ import { caminhoDe, idsDaSubarvore } from '../../domain/arvore';
 import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
+import type { Tema } from '../../types';
 
 export async function renderTemaDetail(container: HTMLElement, temaId: string): Promise<void> {
   const tema = await getTema(temaId);
@@ -50,6 +51,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const notaCounts = await countNotasPorTema(todosTemas.map((t) => t.id));
   const subpastaCounts = contarFilhosPorPasta(todosTemas);
   const grupos = agruparPorCategoria(filhos);
+  const agruparPastas = deveAgruparPorCategoria(filhos);
   const coresFilhos = assignEspacoCores(filhos);
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
   const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
@@ -60,9 +62,9 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   // Categorias já usadas nesta pasta de topo — só para os chips do formulário de "Editar".
   const categoriasTema = distinctCategorias(todosTemas.map((t) => t.categoria));
 
-  // Categoria herdada da pasta onde a nova subpasta vai nascer — o formulário de criação
-  // pede só o nome; categoria/ícone/cor continuam editáveis depois em "Editar".
-  let categoriaNova = tema.categoria.trim();
+  // Pasta nova nasce dentro desta pasta sem herdar categoria (como no Windows). Se o
+  // usuário tocar no "+ Pasta" de um grupo, a categoria é escolhida explicitamente.
+  let categoriaNova = '';
 
   const notasDaSubarvore = (id: string): number =>
     idsDaSubarvore(todosTemas, id).reduce((soma, tid) => soma + (notaCounts.get(tid) ?? 0), 0);
@@ -98,6 +100,29 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   }
 
   const pastasVazias = filhos.length === 0 && notas.length === 0;
+
+  const renderLinhaFilho = (filho: Tema, corFallback: string): string => {
+    const cor = coresFilhos.get(filho.id) ?? corFallback;
+    const icone = getEspacoIcone(espacoIconeChave(filho));
+    const subpastas = subpastaCounts.get(filho.id) ?? 0;
+    const meta = [
+      `${notasDaSubarvore(filho.id)} nota(s)`,
+      subpastas > 0 ? `${subpastas} pasta(s)` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    return `
+      <button class="item-row" data-open="${escapeHtml(filho.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${cor}">
+        <span class="item-row__main">
+          <span class="item-row__title-row">
+            <span class="espaco-icon-badge" style="--badge-accent:${cor}" aria-hidden="true">${icone.svg}</span>
+            <span class="item-row__title">${filho.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(filho.nome))}</span>
+          </span>
+          <span class="item-row__meta">${meta}</span>
+        </span>
+      </button>
+    `;
+  };
 
   container.innerHTML = `
     ${renderBreadcrumb(crumbs)}
@@ -168,6 +193,9 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         <p class="field__error" role="alert"></p>
         <p class="field__sugestao-hint" id="hint-categoria-subpasta"></p>
       </div>
+      <div style="margin-top: var(--space-4);">
+        ${renderEspacoVisualPicker({ prefix: 'nova-subpasta' })}
+      </div>
       <div class="form-actions com-margem">
         <button class="btn btn--primary btn--sm" id="btn-salvar-subpasta" type="button">Criar pasta</button>
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-subpasta" type="button">Cancelar</button>
@@ -203,13 +231,20 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         <div class="section-header" style="margin-top: var(--space-5);">
           <span class="section-header__title" style="font-size: var(--font-size-base);">Pastas</span>
         </div>
-        ${grupos
-          .map((grupo) => {
-            const corCategoria =
-              coresCategoria.get(chaveCategoria(grupo.categoria)) ??
-              accentVar(grupo.categoria || 'sem-categoria');
-            const iconeCategoria = getEspacoIcone(categoriaIconeChave(grupo.categoria));
-            return `
+        ${!agruparPastas
+          ? `<div class="item-list">
+              ${grupos
+                .flatMap((grupo) => grupo.itens)
+                .map((filho) => renderLinhaFilho(filho, coresFilhos.get(filho.id) ?? temaCor))
+                .join('')}
+            </div>`
+          : grupos
+              .map((grupo) => {
+                const corCategoria =
+                  coresCategoria.get(chaveCategoria(grupo.categoria)) ??
+                  accentVar(grupo.categoria || 'sem-categoria');
+                const iconeCategoria = getEspacoIcone(categoriaIconeChave(grupo.categoria));
+                return `
       <details class="category-group">
         <summary class="category-group__title" style="--group-accent:${corCategoria}">
           <span class="category-group__label">
@@ -225,35 +260,12 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
           </span>
         </summary>
         <div class="item-list">
-          ${grupo.itens
-            .map((filho) => {
-              const cor = coresFilhos.get(filho.id) ?? corCategoria;
-              const icone = getEspacoIcone(espacoIconeChave(filho));
-              const subpastas = subpastaCounts.get(filho.id) ?? 0;
-              const meta = [
-                `${notasDaSubarvore(filho.id)} nota(s)`,
-                subpastas > 0 ? `${subpastas} pasta(s)` : '',
-              ]
-                .filter(Boolean)
-                .join(' · ');
-              return `
-            <button class="item-row" data-open="${escapeHtml(filho.id)}" type="button" style="cursor:pointer; text-align:left; --row-accent:${cor}">
-              <span class="item-row__main">
-                <span class="item-row__title-row">
-                  <span class="espaco-icon-badge" style="--badge-accent:${cor}" aria-hidden="true">${icone.svg}</span>
-                  <span class="item-row__title">${filho.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(filho.nome))}</span>
-                </span>
-                <span class="item-row__meta">${meta}</span>
-              </span>
-            </button>
-          `;
-            })
-            .join('')}
+          ${grupo.itens.map((filho) => renderLinhaFilho(filho, corCategoria)).join('')}
         </div>
       </details>
     `;
-          })
-          .join('')}
+              })
+              .join('')}
       `
           : `<p class="text-muted">Nenhuma pasta aqui ainda.</p>`
       }
@@ -321,14 +333,21 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const formNovo = container.querySelector<HTMLElement>('#form-nova-subpasta');
   const nomeNovoInput = container.querySelector<HTMLInputElement>('#input-nome-subpasta');
   const hintCategoria = container.querySelector<HTMLElement>('#hint-categoria-subpasta');
+
+  bindEspacoVisualPicker(container, {
+    prefix: 'nova-subpasta',
+    getTexto: () => `${nomeNovoInput?.value ?? ''} ${categoriaNova}`,
+  });
+
   const atualizarHintCategoria = () => {
     if (!hintCategoria) return;
     hintCategoria.textContent = categoriaNova
-      ? `Categoria herdada: ${categoriaNova} — dá pra trocar depois em Editar.`
+      ? `Categoria: ${categoriaNova} — dá pra trocar depois em Editar.`
       : 'Sem categoria — dá pra definir depois em Editar.';
   };
   const abrirFormNova = (categoria?: string) => {
-    categoriaNova = categoria !== undefined ? categoria.trim() : tema.categoria.trim();
+    // Sem herança automática: a pasta nova nasce só dentro desta, como no Windows.
+    categoriaNova = (categoria ?? '').trim();
     atualizarHintCategoria();
     formNovo?.classList.remove('is-hidden');
     nomeNovoInput?.focus();
@@ -366,12 +385,13 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     const nova = await createTema(tema.espaco_id, nome, {
       categoria: categoriaNova,
       paiId: tema.id,
+      visual: lerEspacoVisual(container, 'nova-subpasta'),
     });
     navigate(`temas/${nova.id}`);
   });
 
   container.querySelector('#btn-mover-tema')?.addEventListener('click', async () => {
-    const { grupos } = await listarDestinosMover(espaco.perfil_id, { temaId: tema.id });
+    const { grupos, atualCaminho } = await listarDestinosMover(espaco.perfil_id, { temaId: tema.id });
     if (grupos.length === 0) {
       showInfo({
         title: 'Mover pasta',
@@ -382,6 +402,8 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     abrirModalMover({
       titulo: `Mover "${nomeTemaExibicao(tema.nome)}"`,
       subtitulo: 'As subpastas e as notas dentro dela vão junto.',
+      itemNome: nomeTemaExibicao(tema.nome),
+      atualCaminho,
       grupos,
       onMover: async (destino) => {
         await moverTema(tema.id, { tipo: destino.tipo, id: destino.id });
