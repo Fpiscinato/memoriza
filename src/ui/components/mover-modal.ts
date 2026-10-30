@@ -72,6 +72,9 @@ export function abrirModalMover(opts: MoverModalOptions): void {
           ${grupo.destinos
             .map((destino) => {
               const visual = visualDoDestino(destino);
+              const caminho = destino.tipo === 'espaco'
+                ? `${destino.caminho} · ${destino.descricao}`
+                : destino.caminho;
               return `
             <button
               class="mover-item"
@@ -84,7 +87,7 @@ export function abrirModalMover(opts: MoverModalOptions): void {
               <span class="espaco-icon-inline mover-item__icone" style="--badge-accent:${visual.cor}" aria-hidden="true">${visual.svg}</span>
               <span class="mover-item__texto">
                 <span class="mover-item__nome">${escapeHtml(destino.nome)}</span>
-                <span class="mover-item__meta">${escapeHtml(destino.descricao)}</span>
+                <span class="mover-item__meta">${escapeHtml(caminho)}</span>
               </span>
             </button>
           `;

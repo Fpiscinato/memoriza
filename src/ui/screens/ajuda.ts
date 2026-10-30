@@ -91,14 +91,21 @@ const SECOES: Secao[] = [
       cabeçalhos de categoria quando há mais de uma categoria na pasta; com uma só, as pastas
       aparecem direto.</p>
       <p>Os botões <strong>Nova pasta</strong> e <strong>Nova nota</strong> ficam sempre no
-      mesmo lugar: no topo da pasta, à direita. Para mudar uma pasta de lugar, use
-      <strong>⋯ → Mover pasta</strong>: o topo mostra o caminho atual, os grupos vêm
-      recolhidos, cada destino mostra ícone e cor e, antes de mover, aparece uma confirmação
-      com o caminho de destino. As subpastas e notas vão junto. Notas também podem ser
-      movidas pelo <strong>⋯ → Mover nota</strong> do editor.</p>
+      mesmo lugar — no topo da pasta, à direita — e com o mesmo estilo de contorno. Ao abrir
+      <strong>Editar</strong>, o formulário de <strong>Nova pasta</strong> fecha (e vice-versa),
+      então nunca ficam dois formulários abertos ao mesmo tempo. Para mudar uma pasta de
+      lugar, use <strong>⋯ → Mover pasta</strong>: o topo mostra o caminho atual, os grupos vêm
+      recolhidos, cada destino mostra ícone, cor e o <strong>caminho completo com as
+      categorias</strong> e, antes de mover, aparece uma confirmação com o caminho de destino.
+      As subpastas e notas vão junto. Notas também podem ser movidas pelo
+      <strong>⋯ → Mover nota</strong> do editor.</p>
       <p>Os grupos de categoria ficam <strong>recolhidos</strong> em todos os níveis; toque no
-      título do grupo pra abrir. O caminho completo aparece no topo da tela (breadcrumb), então
-      dá pra voltar pra qualquer nível com um clique.</p>`,
+      título do grupo pra abrir. O caminho completo aparece no topo da tela (breadcrumb) e é
+      <strong>clicável em cada parte</strong>, inclusive nas categorias: <strong>Pastas ›
+      Cursos › MGD9 › Faixa Branca › M1</strong>. Clicar em "Cursos" abre a lista das pastas
+      daquela categoria; clicar em "Faixa Branca" abre as pastas daquela categoria dentro de
+      MGD9. A categoria também aparece no cabeçalho da pasta e da nota, mesmo quando há só uma
+      categoria na lista.</p>`,
   },
   {
     titulo: 'Notas — o que você anota',

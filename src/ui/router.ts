@@ -4,8 +4,11 @@ export type Route =
   | { name: 'perfil' }
   | { name: 'hoje' }
   | { name: 'espacos' }
+  | { name: 'categoria-espacos'; categoria: string }
   | { name: 'espaco'; id: string }
+  | { name: 'categoria-espaco'; espacoId: string; categoria: string }
   | { name: 'espaco-pdf'; id: string; categoria?: string }
+  | { name: 'categoria-tema'; temaId: string; categoria: string }
   | { name: 'tema'; id: string }
   | { name: 'nota-nova'; temaId: string }
   | { name: 'nota-nova-pasta'; espacoId: string }
@@ -28,6 +31,28 @@ function decodeCategoriaSegment(segmento: string): string {
   return segmento === CATEGORIA_VAZIA ? '' : decodeURIComponent(segmento);
 }
 
+/** Onde a categoria está sendo aplicada: no perfil (pastas de topo), num Espaço ou numa pasta. */
+export type EscopoCategoria =
+  | { tipo: 'perfil' }
+  | { tipo: 'espaco'; id: string }
+  | { tipo: 'tema'; id: string };
+
+/**
+ * Rota da visão de uma categoria — funciona como uma pasta virtual no caminho:
+ * no topo do perfil lista as Pastas daquela categoria; dentro de um Espaço ou de uma pasta
+ * lista as pastas daquele nível com aquela categoria. É o que torna cada categoria do
+ * breadcrumb clicável.
+ */
+export function rotaCategoria(
+  categoria: string,
+  escopo: EscopoCategoria = { tipo: 'perfil' },
+): string {
+  const segmento = encodeCategoriaSegment(categoria);
+  if (escopo.tipo === 'tema') return `temas/${escopo.id}/categoria/${segmento}`;
+  if (escopo.tipo === 'espaco') return `espacos/${escopo.id}/categoria/${segmento}`;
+  return `espacos/categoria/${segmento}`;
+}
+
 function segments(): string[] {
   return window.location.hash
     .replace(/^#\/?/, '')
@@ -46,9 +71,19 @@ export function getCurrentRoute(): Route {
   if (parts[0] === 'ajuda') return { name: 'ajuda' };
   if (parts[0] === 'espacos') {
     if (parts.length === 1) return { name: 'espacos' };
+    if (parts.length === 3 && parts[1] === 'categoria') {
+      return { name: 'categoria-espacos', categoria: decodeCategoriaSegment(parts[2]) };
+    }
     if (parts.length === 2) return { name: 'espaco', id: parts[1] };
     if (parts.length === 3 && parts[2] === 'nova-nota') {
       return { name: 'nota-nova-pasta', espacoId: parts[1] };
+    }
+    if (parts.length === 4 && parts[2] === 'categoria') {
+      return {
+        name: 'categoria-espaco',
+        espacoId: parts[1],
+        categoria: decodeCategoriaSegment(parts[3]),
+      };
     }
     if (parts.length === 3 && parts[2] === 'pdf') return { name: 'espaco-pdf', id: parts[1] };
     if (parts.length === 4 && parts[2] === 'pdf') {
@@ -56,6 +91,13 @@ export function getCurrentRoute(): Route {
     }
   }
   if (parts[0] === 'temas' && parts.length === 2) return { name: 'tema', id: parts[1] };
+  if (parts[0] === 'temas' && parts.length === 4 && parts[2] === 'categoria') {
+    return {
+      name: 'categoria-tema',
+      temaId: parts[1],
+      categoria: decodeCategoriaSegment(parts[3]),
+    };
+  }
   if (parts[0] === 'temas' && parts.length === 3 && parts[2] === 'nova-nota') {
     return { name: 'nota-nova', temaId: parts[1] };
   }
@@ -76,8 +118,11 @@ export function topLevelFor(route: Route): TopLevelRoute {
     case 'ajuda':
       return 'ajuda';
     case 'espacos':
+    case 'categoria-espacos':
     case 'espaco':
+    case 'categoria-espaco':
     case 'espaco-pdf':
+    case 'categoria-tema':
     case 'tema':
     case 'nota':
     case 'nota-nova':

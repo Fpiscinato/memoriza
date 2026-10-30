@@ -8,6 +8,11 @@ import { NAV_ICONS, ICONS } from './icons';
 import { renderProfileSelect } from './screens/profile-select';
 import { renderToday } from './screens/today';
 import { renderEspacos } from './screens/espacos';
+import {
+  renderCategoriaEspaco,
+  renderCategoriaEspacos,
+  renderCategoriaTema,
+} from './screens/categoria';
 import { renderEspacoDetail } from './screens/espaco-detail';
 import { renderEspacoPdf } from './screens/espaco-pdf';
 import { renderTemaDetail } from './screens/tema-detail';
@@ -234,8 +239,14 @@ async function renderScreen(
     case 'espacos':
       await renderEspacos(screenContainer, { perfilId: perfil.id });
       break;
+    case 'categoria-espacos':
+      await renderCategoriaEspacos(screenContainer, perfil.id, route.categoria);
+      break;
     case 'espaco':
       await renderEspacoDetail(screenContainer, route.id);
+      break;
+    case 'categoria-espaco':
+      await renderCategoriaEspaco(screenContainer, route.espacoId, route.categoria);
       break;
     case 'espaco-pdf':
       await renderEspacoPdf(screenContainer, route.id, route.categoria);
@@ -248,6 +259,9 @@ async function renderScreen(
       break;
     case 'ajuda':
       renderAjuda(screenContainer);
+      break;
+    case 'categoria-tema':
+      await renderCategoriaTema(screenContainer, route.temaId, route.categoria);
       break;
     case 'tema':
       await renderTemaDetail(screenContainer, route.id);

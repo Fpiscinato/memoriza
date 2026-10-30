@@ -29,7 +29,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
   container.innerHTML = `
     <div style="display:flex; align-items:center; justify-content:space-between; gap: var(--space-3); flex-wrap:wrap; margin-bottom: var(--space-4);">
       <p class="screen-hint sem-margem">Cada pasta é um curso, um livro ou um estudo — agrupe por categoria pra manter organizado.</p>
-      <button class="btn btn--primary btn--sm" id="btn-novo-espaco" type="button">${ICONS.folder} Nova pasta</button>
+      <button class="btn btn--secondary btn--sm" id="btn-novo-espaco" type="button">${ICONS.folder} Nova pasta</button>
     </div>
 
     <div id="form-novo-espaco" class="card is-hidden">

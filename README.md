@@ -73,6 +73,15 @@ de um grupo, a categoria daquele grupo continua mandando. Os botões **Nova past
 **Nova nota** ficam no mesmo lugar — no topo da pasta, à direita — em todas as telas
 de pasta.
 
+**v1.26** transforma o caminho do topo num **endereço navegável de verdade**: cada
+categoria e cada pasta do breadcrumb agora abre a lista daquele nível, como no Windows
+Explorer (inclusive "Cursos" e "Faixa Branca"). A categoria também aparece no
+cabeçalho das telas de pasta e de nota, em vez de só no caminho. O seletor de **Mover**
+passa a mostrar o **caminho completo com as categorias** em cada destino e no caminho
+atual. **Nova nota** usa o mesmo estilo de contorno das demais ações (sem cor primária
+induzindo ao clique), e **Editar** e **Nova pasta** não ficam mais abertos ao mesmo
+tempo.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado

@@ -13,6 +13,30 @@ import { ordenarPorNome } from '../lib/ordem';
 import { descendentesDe } from './arvore';
 import { nomeTemaExibicao } from './rotulos';
 
+/**
+ * Caminho legível de uma pasta, no mesmo formato do breadcrumb: a categoria do Espaço, o
+ * nome do Espaço e, para cada pasta abaixo, a categoria e o nome dela. Categorias repetidas
+ * em sequência (o Tema de topo costuma repetir a do Espaço) aparecem uma vez só.
+ */
+export function caminhoLegivel(
+  espaco: Pick<Espaco, 'nome' | 'categoria'>,
+  pastas: Tema[],
+): string {
+  const partes: string[] = [];
+  const adicionar = (valor: string): void => {
+    const limpo = valor.trim();
+    if (!limpo || limpo === partes[partes.length - 1]) return;
+    partes.push(limpo);
+  };
+  adicionar(espaco.categoria);
+  adicionar(espaco.nome);
+  for (const pasta of pastas) {
+    adicionar(pasta.categoria);
+    adicionar(nomeTemaExibicao(pasta.nome));
+  }
+  return partes.join(' › ');
+}
+
 export type DestinoMoverTipo = 'espaco' | 'tema';
 
 /** Chave estável de um destino — usada no DOM (`data-destino`) e para marcar o atual. */
@@ -98,7 +122,7 @@ export function montarDestinosMover(
         categoria: espaco.categoria,
         espacoId: espaco.id,
         espacoNome: espaco.nome,
-        caminho: espaco.nome,
+        caminho: caminhoLegivel(espaco, []),
         profundidade: 0,
         icone: espaco.icone,
         cor: espaco.cor,
@@ -113,7 +137,7 @@ export function montarDestinosMover(
     );
 
     const visitados = new Set<string>();
-    const visitar = (tema: Tema, profundidade: number, ancestrais: string[]): void => {
+    const visitar = (tema: Tema, profundidade: number, ancestrais: Tema[]): void => {
       if (visitados.has(tema.id)) return;
       visitados.add(tema.id);
       if (excluidos.has(tema.id)) return;
@@ -130,7 +154,7 @@ export function montarDestinosMover(
           categoria: tema.categoria,
           espacoId: espaco.id,
           espacoNome: espaco.nome,
-          caminho: [espaco.nome, ...ancestrais, nome].join(' › '),
+          caminho: caminhoLegivel(espaco, [...ancestrais, tema]),
           profundidade,
           icone: tema.icone,
           cor: tema.cor,
@@ -142,7 +166,7 @@ export function montarDestinosMover(
         doEspaco.filter((filho) => filho.pai_id === tema.id),
         (filho) => nomeTemaExibicao(filho.nome),
       );
-      for (const filho of filhos) visitar(filho, profundidade + 1, [...ancestrais, nome]);
+      for (const filho of filhos) visitar(filho, profundidade + 1, [...ancestrais, tema]);
     };
 
     for (const raiz of raizes) visitar(raiz, 1, []);

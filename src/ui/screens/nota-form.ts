@@ -6,21 +6,20 @@ import { stopReviewing } from '../../db/reviews';
 import { getDB } from '../../db/schema';
 import { clearInputSugestao, escapeHtml } from '../../lib/dom';
 import { validarCampos } from '../../lib/form-validacao';
-import { accentVar, espacoCorVar } from '../../lib/color';
+import { nomeCategoriaOuSemCategoria } from '../../domain/pdf-estrutura';
 import { renderMarkdown, htmlToStoredText, TEXT_COLOR_NAMES, TEXT_COLOR_LABELS } from '../../lib/markdown';
 import { buildNotaPlainText } from '../../lib/pdf-text';
-import { nomeTemaExibicao } from '../../domain/rotulos';
-import { caminhoDe, ehPastaOculta } from '../../domain/arvore';
+import { ehPastaOculta } from '../../domain/arvore';
 import { formatDateBR } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
 import { abrirModalMover } from '../components/mover-modal';
-import { renderBreadcrumb, bindBreadcrumb, type BreadcrumbCrumb } from '../components/breadcrumb';
+import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
+import { crumbsCaminho } from '../caminho-crumbs';
 import { renderFieldHint } from '../components/field-hint';
 import { ativarRovingTabindex } from '../components/roving-tabindex';
 import { clearFormDirty, setFormDirty, setFormDirtyPrompt, canNavigateAway } from '../../lib/form-guard';
-import { espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 import type { Espaco, Tema } from '../../types';
 
@@ -78,7 +77,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   }
 
   const ehOculta = tema ? ehPastaOculta(tema) : params.mode === 'nova-na-pasta';
-  const caminho = tema ? caminhoDe(await listTemas(espaco.id), tema) : [];
+  const todosTemas = tema ? await listTemas(espaco.id) : [];
   const backRoute = !tema || ehOculta ? `espacos/${espaco.id}` : `temas/${tema.id}`;
   const modoNova = params.mode !== 'editar';
   if (params.mode !== 'editar' && espaco.arquivado) {
@@ -105,39 +104,12 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
 
   // Caminho visual: Categoria › Pasta › Categoria › Pasta … A pasta oculta da pasta
   // principal não aparece — a nota pertence visualmente à própria pasta.
-  const crumbs: BreadcrumbCrumb[] = [{ label: 'Pastas', route: 'espacos' }];
-  let ultimoRotulo = 'Pastas';
-  const adicionarCategoria = (categoria: string): void => {
-    const limpa = categoria.trim();
-    if (!limpa || limpa === ultimoRotulo) return;
-    crumbs.push({ label: limpa, colorKey: limpa.toLowerCase() });
-    ultimoRotulo = limpa;
-  };
-  adicionarCategoria(espaco.categoria);
-  crumbs.push({
-    label: espaco.nome,
-    route: `espacos/${espaco.id}`,
-    iconKey: espacoIconeChave(espaco),
-    iconColor: espacoCorVar(espaco.cor, accentVar(espaco.id)),
-  });
-  ultimoRotulo = espaco.nome;
-  if (tema && !ehOculta) {
-    for (const pasta of [...caminho, tema]) {
-      adicionarCategoria(pasta.categoria);
-      const nome = nomeTemaExibicao(pasta.nome);
-      crumbs.push({
-        label: nome,
-        route: `temas/${pasta.id}`,
-        iconKey: espacoIconeChave(pasta),
-        iconColor: espacoCorVar(pasta.cor, accentVar(pasta.id)),
-      });
-      ultimoRotulo = nome;
-    }
-  }
+  const crumbs = crumbsCaminho(espaco, todosTemas, tema && !ehOculta ? tema : null);
   crumbs.push({
     label:
       params.mode === 'editar' ? nota?.titulo || 'Editar nota' : 'Nova nota',
   });
+  const categoriaAtual = tema && !ehOculta ? tema.categoria : espaco.categoria;
 
   container.innerHTML = `
     ${renderBreadcrumb(crumbs)}
@@ -145,11 +117,13 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
     <div class="section-header">
       <div>
         <span class="section-header__title">${modoNova ? 'Nova nota' : 'Editar nota'}</span>
-        ${
-          params.mode === 'editar' && nota
-            ? `<div class="section-header__meta text-muted">Criada em ${formatDateBR(nota.criado_em)}${nota.atualizado_em !== nota.criado_em ? ` · Editada em ${formatDateBR(nota.atualizado_em)}` : ''}</div>`
-            : ''
-        }
+        <div class="section-header__meta text-muted">
+          Categoria: ${escapeHtml(nomeCategoriaOuSemCategoria(categoriaAtual))}${
+            params.mode === 'editar' && nota
+              ? ` · Criada em ${formatDateBR(nota.criado_em)}${nota.atualizado_em !== nota.criado_em ? ` · Editada em ${formatDateBR(nota.atualizado_em)}` : ''}`
+              : ''
+          }
+        </div>
       </div>
       ${
         params.mode === 'editar'

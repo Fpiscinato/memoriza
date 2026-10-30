@@ -9,7 +9,7 @@ import { createEspaco, setEspacoArquivado } from '../src/db/espacos';
 import { createTema, getTema, getTemaRaiz, listTemas } from '../src/db/temas';
 import { createNota, getNota } from '../src/db/notas';
 import { listarDestinosMover, moverNota, moverTema } from '../src/db/mover';
-import { montarDestinosMover } from '../src/domain/mover-destinos';
+import { caminhoLegivel, montarDestinosMover } from '../src/domain/mover-destinos';
 import { idPastaPrincipal } from '../src/domain/arvore';
 import { getDB } from '../src/db/schema';
 import type { Espaco, Tema } from '../src/types';
@@ -76,7 +76,9 @@ describe('destinos do Mover (puro)', () => {
       'tema:b',
     ]);
     expect(grupos[0].destinos.map((destino) => destino.profundidade)).toEqual([0, 1, 2, 3, 1]);
-    expect(grupos[0].destinos[3].caminho).toBe('Curso › Aula 2 › Capítulo 1 › Exercícios');
+    expect(grupos[0].destinos[3].caminho).toBe(
+      'Cursos › Curso › Aula 2 › Capítulo 1 › Exercícios',
+    );
   });
 
   it('tira a pasta em movimento e toda a subárvore das opções', () => {
@@ -91,6 +93,20 @@ describe('destinos do Mover (puro)', () => {
     const grupos = montarDestinosMover([espaco], todos, { destinoAtual: 'tema:a' });
     expect(grupos[0].destinos.map((destino) => destino.chave)).not.toContain('tema:a');
     expect(grupos[0].destinos.map((destino) => destino.chave)).toContain('tema:c');
+  });
+
+  it('monta o caminho com as categorias e não repete um rótulo em sequência', () => {
+    const raiz = espacoFake('e3', 'MGD9', 'Cursos');
+    const modulo = {
+      ...temaFake('p1', 'M1 - Deus e dinheiro', 'e3'),
+      categoria: 'Faixa branca',
+    };
+    expect(caminhoLegivel(raiz, [modulo])).toBe(
+      'Cursos › MGD9 › Faixa branca › M1 - Deus e dinheiro',
+    );
+
+    const repetido = { ...modulo, categoria: 'M1 - Deus e dinheiro' };
+    expect(caminhoLegivel(raiz, [repetido])).toBe('Cursos › MGD9 › M1 - Deus e dinheiro');
   });
 
   it('agrupa por Espaço e descarta grupos sem nenhum destino', () => {
@@ -269,9 +285,9 @@ describe('listarDestinosMover', () => {
     const nota = await createNota(sub.id, notaInput('Resumo'));
 
     const destinoPasta = await listarDestinosMover(perfil.id, { temaId: sub.id });
-    expect(destinoPasta.atualCaminho).toBe('Curso › Módulo 1');
+    expect(destinoPasta.atualCaminho).toBe('Cursos › Curso › Módulo 1');
 
     const destinoNota = await listarDestinosMover(perfil.id, { notaId: nota.id });
-    expect(destinoNota.atualCaminho).toBe('Curso › Módulo 1 › Aula 1');
+    expect(destinoNota.atualCaminho).toBe('Cursos › Curso › Módulo 1 › Aula 1');
   });
 });

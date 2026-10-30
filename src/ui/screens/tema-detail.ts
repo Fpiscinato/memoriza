@@ -22,11 +22,13 @@ import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
 import { abrirModalMover } from '../components/mover-modal';
 import { iniciarAvaliacao, type AvaliacaoContexto } from '../components/avaliacao-aleatoria';
-import { renderBreadcrumb, bindBreadcrumb, type BreadcrumbCrumb } from '../components/breadcrumb';
+import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
+import { crumbsCaminho } from '../caminho-crumbs';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
 import { nomeTemaExibicao } from '../../domain/rotulos';
-import { caminhoDe, idsDaSubarvore } from '../../domain/arvore';
+import { nomeCategoriaOuSemCategoria } from '../../domain/pdf-estrutura';
+import { idsDaSubarvore } from '../../domain/arvore';
 import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
@@ -46,7 +48,6 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
 
   const todosTemas = await listTemas(tema.espaco_id);
   const filhos = todosTemas.filter((t) => (t.pai_id ?? null) === tema.id);
-  const ancestrais = caminhoDe(todosTemas, tema);
   const notas = await listNotas(temaId);
   const notaCounts = await countNotasPorTema(todosTemas.map((t) => t.id));
   const subpastaCounts = contarFilhosPorPasta(todosTemas);
@@ -54,8 +55,6 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const agruparPastas = deveAgruparPorCategoria(filhos);
   const coresFilhos = assignEspacoCores(filhos);
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
-  const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
-  const espacoIcone = getEspacoIcone(espacoIconeChave(espaco));
   const temaCor = espacoCorVar(tema.cor, accentVar(tema.id));
   const temaIcone = getEspacoIcone(espacoIconeChave(tema));
 
@@ -71,35 +70,8 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const notasDaSubarvore = (id: string): number =>
     idsDaSubarvore(todosTemas, id).reduce((soma, tid) => soma + (notaCounts.get(tid) ?? 0), 0);
 
-  // Caminho visual: Categoria › Pasta › Categoria › Pasta … Como o Tema de topo costuma
-  // repetir a categoria da pasta principal, categorias iguais em sequência são omitidas.
-  const crumbs: BreadcrumbCrumb[] = [{ label: 'Pastas', route: 'espacos' }];
-  let ultimoRotulo = 'Pastas';
-  const adicionarCategoria = (categoria: string): void => {
-    const limpa = categoria.trim();
-    if (!limpa || limpa === ultimoRotulo) return;
-    crumbs.push({ label: limpa, colorKey: limpa.toLowerCase() });
-    ultimoRotulo = limpa;
-  };
-  adicionarCategoria(espaco.categoria);
-  crumbs.push({
-    label: espaco.nome,
-    route: `espacos/${espaco.id}`,
-    iconKey: espacoIcone.chave,
-    iconColor: espacoCor,
-  });
-  ultimoRotulo = espaco.nome;
-  for (const pasta of [...ancestrais, tema]) {
-    adicionarCategoria(pasta.categoria);
-    const nome = nomeTemaExibicao(pasta.nome);
-    crumbs.push({
-      label: nome,
-      route: `temas/${pasta.id}`,
-      iconKey: espacoIconeChave(pasta),
-      iconColor: espacoCorVar(pasta.cor, accentVar(pasta.id)),
-    });
-    ultimoRotulo = nome;
-  }
+  // Caminho visual: Categoria › Pasta › Categoria › Pasta … com cada nível clicável.
+  const crumbs = crumbsCaminho(espaco, todosTemas, tema);
 
   const pastasVazias = filhos.length === 0 && notas.length === 0;
 
@@ -130,15 +102,18 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
     ${renderBreadcrumb(crumbs)}
 
     <div class="section-header">
-      <span class="section-header__title">
-        <span class="espaco-icon-badge" style="--badge-accent:${temaCor}" aria-hidden="true">${temaIcone.svg}</span>${tema.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(tema.nome))}
-      </span>
+      <div>
+        <span class="section-header__title">
+          <span class="espaco-icon-badge" style="--badge-accent:${temaCor}" aria-hidden="true">${temaIcone.svg}</span>${tema.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(tema.nome))}
+        </span>
+        <div class="section-header__meta text-muted">Categoria: ${escapeHtml(nomeCategoriaOuSemCategoria(tema.categoria))}</div>
+      </div>
       <div class="section-header__actions">
         ${
           !espaco.arquivado
             ? `
           <button class="btn btn--secondary btn--sm" id="btn-nova-subpasta" type="button">${ICONS.folder} Nova pasta</button>
-          <button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
+          <button class="btn btn--secondary btn--sm" id="btn-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
         `
             : ''
         }
@@ -344,6 +319,8 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       : 'Sem categoria — dá pra definir depois em Editar.';
   };
   const abrirFormNova = (categoria?: string) => {
+    // Um formulário por vez: abrir "Nova pasta" fecha o "Editar" (e vice-versa).
+    container.querySelector<HTMLElement>('#form-editar-tema')?.classList.add('is-hidden');
     // Sem categoria vinda do contexto, a pasta nova repete a categoria das irmãs.
     categoriaNova = (categoria ?? categoriaSugerida).trim();
     atualizarHintCategoria();
@@ -457,6 +434,7 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   const nomeEditarInput = container.querySelector<HTMLInputElement>('#input-nome-tema-editar')!;
   const categoriaEditarInput = container.querySelector<HTMLInputElement>('#input-categoria-tema-editar')!;
   container.querySelector('#btn-editar-tema')?.addEventListener('click', () => {
+    container.querySelector<HTMLElement>('#form-nova-subpasta')?.classList.add('is-hidden');
     formEditar.classList.remove('is-hidden');
     categoriaEditarInput.focus();
   });

@@ -12,15 +12,15 @@
 import { getDB } from './schema';
 import { nowISO } from '../lib/time';
 import { descendentesDe, idsDaSubarvore, caminhoDe } from '../domain/arvore';
-import { nomeTemaExibicao } from '../domain/rotulos';
 import {
+  caminhoLegivel,
   chaveDestino,
   montarDestinosMover,
   type GrupoDestinosMover,
 } from '../domain/mover-destinos';
 import { garantirTemaRaiz } from './temas';
 import { listEspacos } from './espacos';
-import type { Tema } from '../types';
+import type { Espaco, Tema } from '../types';
 
 export interface DestinoMoverRef {
   tipo: 'espaco' | 'tema';
@@ -40,12 +40,11 @@ function normalizar(valor: string): string {
 }
 
 /** Caminho legível até uma pasta (usado no topo do seletor de destino). */
-function caminhoDaPasta(temas: Tema[], espacoNome: string, temaId?: string | null): string {
-  if (!temaId) return espacoNome;
+function caminhoDaPasta(temas: Tema[], espaco: Espaco, temaId?: string | null): string {
+  if (!temaId) return caminhoLegivel(espaco, []);
   const alvo = temas.find((tema) => tema.id === temaId);
-  if (!alvo) return espacoNome;
-  const ancestrais = caminhoDe(temas, alvo).map((tema) => nomeTemaExibicao(tema.nome));
-  return [espacoNome, ...ancestrais, nomeTemaExibicao(alvo.nome)].join(' › ');
+  if (!alvo) return caminhoLegivel(espaco, []);
+  return caminhoLegivel(espaco, [...caminhoDe(temas, alvo), alvo]);
 }
 
 /**
@@ -72,12 +71,8 @@ export async function listarDestinosMover(
   let atualCaminho = '';
   let excluirTemaId: string | undefined;
 
-  const nomeDoEspaco = async (espacoId: string): Promise<string> => {
-    const naLista = espacos.find((espaco) => espaco.id === espacoId);
-    if (naLista) return naLista.nome;
-    const doBanco = await db.get('espacos', espacoId);
-    return doBanco?.nome ?? 'Pasta principal';
-  };
+  const espacoDoId = async (espacoId: string): Promise<Espaco | undefined> =>
+    espacos.find((espaco) => espaco.id === espacoId) ?? db.get('espacos', espacoId);
 
   if (opcoes.temaId) {
     const tema = await db.get('temas', opcoes.temaId);
@@ -86,11 +81,10 @@ export async function listarDestinosMover(
       atual = tema.pai_id
         ? chaveDestino('tema', tema.pai_id)
         : chaveDestino('espaco', tema.espaco_id);
-      atualCaminho = caminhoDaPasta(
-        temas,
-        await nomeDoEspaco(tema.espaco_id),
-        tema.pai_id,
-      );
+      const espacoAtual = await espacoDoId(tema.espaco_id);
+      if (espacoAtual) {
+        atualCaminho = caminhoDaPasta(temas, espacoAtual, tema.pai_id);
+      }
     }
   } else if (opcoes.notaId) {
     const nota = await db.get('notas', opcoes.notaId);
@@ -99,10 +93,12 @@ export async function listarDestinosMover(
       atual = tema.oculta
         ? chaveDestino('espaco', tema.espaco_id)
         : chaveDestino('tema', tema.id);
-      const espacoNome = await nomeDoEspaco(tema.espaco_id);
-      atualCaminho = tema.oculta
-        ? espacoNome
-        : caminhoDaPasta(temas, espacoNome, tema.id);
+      const espacoAtual = await espacoDoId(tema.espaco_id);
+      if (espacoAtual) {
+        atualCaminho = tema.oculta
+          ? caminhoLegivel(espacoAtual, [])
+          : caminhoDaPasta(temas, espacoAtual, tema.id);
+      }
     }
   }
 

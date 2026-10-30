@@ -7,7 +7,7 @@ import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria, categoriaSugeridaParaNovoItem, deveAgruparPorCategoria } from '../../lib/group';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria, espacoCorVar } from '../../lib/color';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
-import { navigate, encodeCategoriaSegment } from '../router';
+import { navigate, encodeCategoriaSegment, rotaCategoria } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { showInfo } from '../components/info-modal';
 import { iniciarAvaliacao, type AvaliacaoContexto } from '../components/avaliacao-aleatoria';
@@ -17,6 +17,7 @@ import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } fro
 import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
 import { idsDaSubarvore } from '../../domain/arvore';
 import { nomeTemaExibicao } from '../../domain/rotulos';
+import { nomeCategoriaOuSemCategoria } from '../../domain/pdf-estrutura';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
 import { ICONS } from '../icons';
 import type { Tema } from '../../types';
@@ -78,20 +79,29 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   container.innerHTML = `
     ${renderBreadcrumb([
       { label: 'Pastas', route: 'espacos' },
-      ...(espaco.categoria ? [{ label: espaco.categoria, colorKey: espaco.categoria.toLowerCase() }] : []),
+      ...(espaco.categoria
+        ? [{
+            label: espaco.categoria,
+            route: rotaCategoria(espaco.categoria),
+            colorKey: espaco.categoria.toLowerCase(),
+          }]
+        : []),
       { label: espaco.nome, iconKey: espacoIcone.chave, iconColor: espacoCor },
     ])}
 
     <div class="section-header">
-      <span class="section-header__title">
-        <span class="espaco-icon-badge" style="--badge-accent:${espacoCor}" aria-hidden="true">${espacoIcone.svg}</span>${escapeHtml(espaco.nome)}
-      </span>
+      <div>
+        <span class="section-header__title">
+          <span class="espaco-icon-badge" style="--badge-accent:${espacoCor}" aria-hidden="true">${espacoIcone.svg}</span>${escapeHtml(espaco.nome)}
+        </span>
+        <div class="section-header__meta text-muted">Categoria: ${escapeHtml(nomeCategoriaOuSemCategoria(espaco.categoria))}</div>
+      </div>
       <div class="section-header__actions">
         ${
           !espaco.arquivado
             ? `
           <button class="btn btn--secondary btn--sm" id="btn-novo-tema" type="button">${ICONS.folder} Nova pasta</button>
-          <button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
+          <button class="btn btn--secondary btn--sm" id="btn-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
         `
             : ''
         }
@@ -288,6 +298,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const nomeEditarInput = container.querySelector<HTMLInputElement>('#input-nome-espaco-editar')!;
   const categoriaEditarInput = container.querySelector<HTMLInputElement>('#input-categoria-espaco-editar')!;
   container.querySelector('#btn-editar')?.addEventListener('click', () => {
+    container.querySelector<HTMLElement>('#form-nova-pasta')?.classList.add('is-hidden');
     formEditar.classList.remove('is-hidden');
     categoriaEditarInput.focus();
   });
@@ -407,6 +418,8 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       : 'Sem categoria — dá pra definir depois em Editar.';
   };
   const abrirFormTema = (categoria?: string) => {
+    // Um formulário por vez: abrir "Nova pasta" fecha o "Editar" (e vice-versa).
+    formEditar.classList.add('is-hidden');
     // Sem categoria vinda do contexto, a pasta nova repete a categoria das irmãs.
     categoriaNovaTema = (categoria ?? categoriaSugerida).trim();
     atualizarHintCategoria();
