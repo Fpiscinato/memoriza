@@ -70,6 +70,46 @@ export function deveAgruparPorCategoria(itens: { categoria: string }[]): boolean
 }
 
 /**
+ * Categoria provável para uma pasta nova criada dentro de outra: os irmãos já existentes
+ * mandam mais que a pasta de cima. Se todos usam a mesma categoria, a nova usa a mesma;
+ * se há categorias diferentes, usa a mais comum (empate pela mais recente). Sem irmãos
+ * com categoria, devolve vazio — a pasta nasce "sem categoria" e pode ser ajustada depois.
+ */
+export function categoriaSugeridaParaNovoItem(
+  itens: { categoria: string; atualizado_em?: string }[],
+): string {
+  const mapa = new Map<string, { rotulo: string; quantidade: number; recente: string }>();
+  for (const item of itens) {
+    const rotulo = item.categoria.trim();
+    if (!rotulo) continue;
+    const chave = chaveCategoria(rotulo);
+    const atual = mapa.get(chave);
+    if (atual) {
+      atual.quantidade += 1;
+      if ((item.atualizado_em ?? '') > atual.recente) atual.recente = item.atualizado_em ?? '';
+    } else {
+      mapa.set(chave, {
+        rotulo,
+        quantidade: 1,
+        recente: item.atualizado_em ?? '',
+      });
+    }
+  }
+
+  let melhor: { rotulo: string; quantidade: number; recente: string } | undefined;
+  for (const candidato of mapa.values()) {
+    if (
+      !melhor ||
+      candidato.quantidade > melhor.quantidade ||
+      (candidato.quantidade === melhor.quantidade && candidato.recente > melhor.recente)
+    ) {
+      melhor = candidato;
+    }
+  }
+  return melhor?.rotulo ?? '';
+}
+
+/**
  * Lista de categorias distintas (pra sugestão/autocomplete), ignorando maiúsculas/minúsculas
  * e espaços nas pontas — mantém a primeira grafia encontrada, ordenada alfabeticamente
  * (meses em ordem de calendário, quando as categorias forem todas meses).

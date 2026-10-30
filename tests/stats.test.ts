@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeStreak, isNotaFraca } from '../src/domain/stats';
-import { agruparPorCategoria, distinctCategorias, deveAgruparPorCategoria } from '../src/lib/group';
+import { agruparPorCategoria, categoriaSugeridaParaNovoItem, distinctCategorias, deveAgruparPorCategoria } from '../src/lib/group';
 
 describe('computeStreak', () => {
   it('é 0 quando não há nenhuma atividade recente', () => {
@@ -78,6 +78,42 @@ describe('agruparPorCategoria', () => {
     expect(grupos).toHaveLength(1);
     expect(grupos[0].categoria).toBe('Livros'); // mantém a primeira grafia encontrada
     expect(grupos[0].itens.map((i) => i.nome)).toEqual(['A', 'B', 'C', 'D']);
+  });
+});
+
+describe('categoriaSugeridaParaNovoItem', () => {
+  it('repete a categoria das pastas irmãs quando todas usam a mesma', () => {
+    expect(
+      categoriaSugeridaParaNovoItem([
+        { categoria: 'Cursos' },
+        { categoria: 'cursos' },
+        { categoria: '  Cursos  ' },
+      ]),
+    ).toBe('Cursos');
+  });
+
+  it('usa a categoria mais comum quando as irmãs estão divididas', () => {
+    expect(
+      categoriaSugeridaParaNovoItem([
+        { categoria: 'Aulas' },
+        { categoria: 'Aulas' },
+        { categoria: 'Exercícios' },
+      ]),
+    ).toBe('Aulas');
+  });
+
+  it('desempata pela pasta mais recente', () => {
+    expect(
+      categoriaSugeridaParaNovoItem([
+        { categoria: 'Aulas', atualizado_em: '2026-01-01T00:00:00.000Z' },
+        { categoria: 'Exercícios', atualizado_em: '2026-02-01T00:00:00.000Z' },
+      ]),
+    ).toBe('Exercícios');
+  });
+
+  it('devolve vazio quando nenhuma irmã tem categoria', () => {
+    expect(categoriaSugeridaParaNovoItem([])).toBe('');
+    expect(categoriaSugeridaParaNovoItem([{ categoria: '' }, { categoria: '   ' }])).toBe('');
   });
 });
 

@@ -83,15 +83,19 @@ const SECOES: Secao[] = [
       </ul>
       <p>Para criar uma pasta de topo, use <strong>Nova pasta</strong> e preencha
       <strong>categoria, nome, ícone e cor</strong>. Dentro de uma pasta, <strong>Nova
-      pasta</strong> cria a pasta <strong>ali dentro, sem herdar nem repetir a categoria de
-      cima</strong> — o formulário pede nome, ícone e cor, e a categoria pode ser definida
-      depois em <strong>Editar</strong>. Se você tocar no <strong>+ Pasta</strong> de um grupo,
-      a categoria daquele grupo é usada. A lista só mostra cabeçalhos de categoria quando há
-      mais de uma categoria na pasta; com uma só, as pastas aparecem direto.</p>
-      <p>Para mudar uma pasta de lugar, use <strong>⋯ → Mover pasta</strong>: o topo mostra o
-      caminho atual, os grupos vêm recolhidos, cada destino mostra ícone e cor e, antes de
-      mover, aparece uma confirmação com o caminho de destino. As subpastas e notas vão junto.
-      Notas também podem ser movidas pelo <strong>⋯ → Mover nota</strong> do editor.</p>
+      pasta</strong> cria a pasta ali dentro usando a <strong>categoria das pastas
+      irmãs</strong> (a mais comum, se houver mais de uma) — assim ela aparece junto delas,
+      em vez de cair em "Sem categoria". O formulário pede nome, ícone e cor, e a categoria
+      pode ser ajustada depois em <strong>Editar</strong>. Se você tocar no
+      <strong>+ Pasta</strong> de um grupo, a categoria daquele grupo manda. A lista só mostra
+      cabeçalhos de categoria quando há mais de uma categoria na pasta; com uma só, as pastas
+      aparecem direto.</p>
+      <p>Os botões <strong>Nova pasta</strong> e <strong>Nova nota</strong> ficam sempre no
+      mesmo lugar: no topo da pasta, à direita. Para mudar uma pasta de lugar, use
+      <strong>⋯ → Mover pasta</strong>: o topo mostra o caminho atual, os grupos vêm
+      recolhidos, cada destino mostra ícone e cor e, antes de mover, aparece uma confirmação
+      com o caminho de destino. As subpastas e notas vão junto. Notas também podem ser
+      movidas pelo <strong>⋯ → Mover nota</strong> do editor.</p>
       <p>Os grupos de categoria ficam <strong>recolhidos</strong> em todos os níveis; toque no
       título do grupo pra abrir. O caminho completo aparece no topo da tela (breadcrumb), então
       dá pra voltar pra qualquer nível com um clique.</p>`,

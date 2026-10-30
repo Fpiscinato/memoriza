@@ -15,7 +15,7 @@ import { getTempoTotalTema } from '../../db/dashboard';
 import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria, espacoCorVar } from '../../lib/color';
-import { agruparPorCategoria, distinctCategorias, deveAgruparPorCategoria } from '../../lib/group';
+import { agruparPorCategoria, categoriaSugeridaParaNovoItem, distinctCategorias, deveAgruparPorCategoria } from '../../lib/group';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate } from '../router';
 import { confirmAction } from '../components/confirm-modal';
@@ -62,9 +62,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
   // Categorias já usadas nesta pasta de topo — só para os chips do formulário de "Editar".
   const categoriasTema = distinctCategorias(todosTemas.map((t) => t.categoria));
 
-  // Pasta nova nasce dentro desta pasta sem herdar categoria (como no Windows). Se o
-  // usuário tocar no "+ Pasta" de um grupo, a categoria é escolhida explicitamente.
-  let categoriaNova = '';
+  // Pasta nova nasce dentro desta pasta e repete a categoria das pastas irmãs — assim ela
+  // aparece junto delas, em vez de cair em "Sem categoria". Se o usuário tocar no "+ Pasta"
+  // de um grupo, a categoria daquele grupo manda.
+  const categoriaSugerida = categoriaSugeridaParaNovoItem(filhos);
+  let categoriaNova = categoriaSugerida;
 
   const notasDaSubarvore = (id: string): number =>
     idsDaSubarvore(todosTemas, id).reduce((soma, tid) => soma + (notaCounts.get(tid) ?? 0), 0);
@@ -132,10 +134,6 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         <span class="espaco-icon-badge" style="--badge-accent:${temaCor}" aria-hidden="true">${temaIcone.svg}</span>${tema.favorito ? `${ICONS.star} ` : ''}${escapeHtml(nomeTemaExibicao(tema.nome))}
       </span>
       <div class="section-header__actions">
-        <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
-          ${tema.favorito ? '★ Favorito' : '☆ Favoritar'}
-        </button>
-        <button class="btn btn--secondary btn--sm" id="btn-editar-tema" type="button">Editar</button>
         ${
           !espaco.arquivado
             ? `
@@ -144,6 +142,10 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         `
             : ''
         }
+        <button class="btn btn--secondary btn--sm" id="btn-favoritar-tema" type="button" title="Aparece na sua lista de Favoritos, separada da fila Hoje">
+          ${tema.favorito ? '★ Favorito' : '☆ Favoritar'}
+        </button>
+        <button class="btn btn--secondary btn--sm" id="btn-editar-tema" type="button">Editar</button>
         <details class="item-menu">
           <summary aria-label="Mais opções">⋯</summary>
           <div class="item-menu__panel">
@@ -211,17 +213,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.folder}</div>
         <div class="empty-state__title">Esta pasta ainda está vazia</div>
-        <p class="empty-state__hint">Crie uma pasta para organizar o conteúdo ou uma nota direto nesta pasta.</p>
-        ${
-          !espaco.arquivado
-            ? `
-          <div class="form-actions" style="justify-content:center;">
-            <button class="btn btn--secondary btn--sm" id="btn-empty-nova-subpasta" type="button">${ICONS.folder} Nova pasta</button>
-            <button class="btn btn--primary btn--sm" id="btn-empty-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
-          </div>
-        `
-            : ''
-        }
+        <p class="empty-state__hint">${
+          espaco.arquivado
+            ? 'A pasta de topo está arquivada.'
+            : 'Use <strong>Nova pasta</strong> ou <strong>Nova nota</strong> no topo para começar a organizar.'
+        }</p>
       </div>
     `
         : `
@@ -279,8 +275,11 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
         <div class="empty-state">
           <div class="empty-state__icon" aria-hidden="true">${ICONS.pen}</div>
           <div class="empty-state__title">Nenhuma nota nesta pasta ainda</div>
-          <p class="empty-state__hint">Cada nota criada aqui já entra na fila de revisão automaticamente, a partir de amanhã.</p>
-          ${!espaco.arquivado ? `<button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-nova-nota" type="button">Criar a primeira nota</button>` : ''}
+          <p class="empty-state__hint">${
+            espaco.arquivado
+              ? 'A pasta de topo está arquivada.'
+              : 'Use <strong>Nova nota</strong> no topo — cada nota criada aqui já entra na fila de revisão automaticamente, a partir de amanhã.'
+          }</p>
         </div>
       `
           : `
@@ -322,7 +321,6 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
 
   const irParaNovaNota = () => navigate(`temas/${temaId}/nova-nota`);
   container.querySelector('#btn-nova-nota')?.addEventListener('click', irParaNovaNota);
-  container.querySelector('#btn-empty-nova-nota')?.addEventListener('click', irParaNovaNota);
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`temas/${btn.dataset.open}`));
   });
@@ -346,15 +344,14 @@ export async function renderTemaDetail(container: HTMLElement, temaId: string): 
       : 'Sem categoria — dá pra definir depois em Editar.';
   };
   const abrirFormNova = (categoria?: string) => {
-    // Sem herança automática: a pasta nova nasce só dentro desta, como no Windows.
-    categoriaNova = (categoria ?? '').trim();
+    // Sem categoria vinda do contexto, a pasta nova repete a categoria das irmãs.
+    categoriaNova = (categoria ?? categoriaSugerida).trim();
     atualizarHintCategoria();
     formNovo?.classList.remove('is-hidden');
     nomeNovoInput?.focus();
     formNovo?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   container.querySelector('#btn-nova-subpasta')?.addEventListener('click', () => abrirFormNova());
-  container.querySelector('#btn-empty-nova-subpasta')?.addEventListener('click', () => abrirFormNova());
   container.querySelectorAll<HTMLButtonElement>('[data-nova-pasta-categoria]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();

@@ -66,6 +66,13 @@ mesma pasta. O **Mover** ganhou confirmação antes de executar, mostra o
 **caminho atual** do item no topo e exibe ícone/cor de cada destino, com os
 grupos recolhidos e a busca abrindo só o que encontrou.
 
+**v1.25** corrige a criação de pasta dentro de outra pasta: a pasta nova usa a
+**categoria das pastas irmãs** (a mais comum, se houver mais de uma), então nasce
+junto delas em vez de cair em "Sem categoria". Quando o usuário toca no **+ Pasta**
+de um grupo, a categoria daquele grupo continua mandando. Os botões **Nova pasta** e
+**Nova nota** ficam no mesmo lugar — no topo da pasta, à direita — em todas as telas
+de pasta.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado

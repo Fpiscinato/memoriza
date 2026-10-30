@@ -4,7 +4,7 @@ import { listNotas, listNotasPorEspaco } from '../../db/notas';
 import { getDB } from '../../db/schema';
 import { getTempoTotalEspaco } from '../../db/dashboard';
 import { escapeHtml } from '../../lib/dom';
-import { agruparPorCategoria, deveAgruparPorCategoria } from '../../lib/group';
+import { agruparPorCategoria, categoriaSugeridaParaNovoItem, deveAgruparPorCategoria } from '../../lib/group';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria, espacoCorVar } from '../../lib/color';
 import { daysBetweenISODates, formatDateBR, formatDuracao, toLondonISODate } from '../../lib/time';
 import { navigate, encodeCategoriaSegment } from '../router';
@@ -38,9 +38,11 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   const grupos = agruparPorCategoria(temasRaiz);
   const agruparPastas = deveAgruparPorCategoria(temasRaiz);
   const categoriasEspaco = await listCategoriasEspacos(espaco.perfil_id);
-  // Pasta nova nasce direto dentro desta pasta, sem herdar categoria (como no Windows).
-  // Se o usuário clicar no "+ Pasta" de um grupo, aí a categoria é escolhida explicitamente.
-  let categoriaNovaTema = '';
+  // A pasta nova fica dentro desta pasta e usa a categoria das pastas irmãs — assim ela
+  // aparece junto delas, em vez de cair em "Sem categoria". Sem irmãs categorizadas, nasce
+  // sem categoria; se o usuário clicar no "+ Pasta" de um grupo, aquele grupo manda.
+  const categoriaSugerida = categoriaSugeridaParaNovoItem(temasRaiz);
+  let categoriaNovaTema = categoriaSugerida;
   const espacoCor = espacoCorVar(espaco.cor, accentVar(espaco.id));
   const espacoIcone = getEspacoIcone(espacoIconeChave(espaco));
   const coresCategoria = assignCategoriaCores(grupos.map((g) => g.categoria));
@@ -85,6 +87,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <span class="espaco-icon-badge" style="--badge-accent:${espacoCor}" aria-hidden="true">${espacoIcone.svg}</span>${escapeHtml(espaco.nome)}
       </span>
       <div class="section-header__actions">
+        ${
+          !espaco.arquivado
+            ? `
+          <button class="btn btn--secondary btn--sm" id="btn-novo-tema" type="button">${ICONS.folder} Nova pasta</button>
+          <button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
+        `
+            : ''
+        }
         <button class="btn btn--secondary btn--sm" id="btn-editar" type="button">Editar</button>
         <button class="btn btn--secondary btn--sm" id="btn-arquivar" type="button" ${espaco.arquivado ? '' : 'title="As revisões já agendadas continuam normalmente — só some da lista principal"'}>
           ${espaco.arquivado ? 'Reativar' : 'Arquivar'}
@@ -146,10 +156,6 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <button class="btn btn--secondary btn--sm" id="btn-cancelar-tema" type="button">Cancelar</button>
       </div>
     </div>
-    <div class="form-actions" style="justify-content:flex-start; margin-bottom: var(--space-5);">
-      <button class="btn btn--secondary btn--sm" id="btn-novo-tema" type="button">${ICONS.folder} Nova pasta</button>
-      <button class="btn btn--primary btn--sm" id="btn-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
-    </div>
     `
         : ''
     }
@@ -160,17 +166,11 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.folder}</div>
         <div class="empty-state__title">Esta pasta ainda está vazia</div>
-        <p class="empty-state__hint">Crie uma pasta para organizar o conteúdo ou uma nota direto nesta pasta.</p>
-        ${
-          !espaco.arquivado
-            ? `
-          <div class="form-actions" style="justify-content:center;">
-            <button class="btn btn--secondary btn--sm" id="btn-empty-novo-tema" type="button">${ICONS.folder} Nova pasta</button>
-            <button class="btn btn--primary btn--sm" id="btn-empty-nova-nota" type="button">${ICONS.notebook} Nova nota</button>
-          </div>
-        `
-            : ''
-        }
+        <p class="empty-state__hint">${
+          espaco.arquivado
+            ? 'Esta pasta está arquivada.'
+            : 'Use <strong>Nova pasta</strong> ou <strong>Nova nota</strong> no topo para começar a organizar.'
+        }</p>
       </div>
     `
         : `
@@ -222,12 +222,11 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
         <div class="empty-state">
           <div class="empty-state__icon" aria-hidden="true">${ICONS.pen}</div>
           <div class="empty-state__title">Nenhuma nota nesta pasta ainda</div>
-          <p class="empty-state__hint">Cada nota criada aqui já entra na fila de revisão automaticamente, a partir de amanhã.</p>
-          ${
-            !espaco.arquivado
-              ? `<button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-nova-nota" type="button">Criar a primeira nota</button>`
-              : ''
-          }
+          <p class="empty-state__hint">${
+            espaco.arquivado
+              ? 'Esta pasta está arquivada.'
+              : 'Use <strong>Nova nota</strong> no topo — cada nota criada aqui já entra na fila de revisão automaticamente, a partir de amanhã.'
+          }</p>
         </div>
       `
           : `
@@ -408,16 +407,14 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
       : 'Sem categoria — dá pra definir depois em Editar.';
   };
   const abrirFormTema = (categoria?: string) => {
-    // Criar pasta dentro desta pasta não herda a categoria do lugar (como no Windows):
-    // só usa categoria quando veio do "+ Pasta" de um grupo específico.
-    categoriaNovaTema = (categoria ?? '').trim();
+    // Sem categoria vinda do contexto, a pasta nova repete a categoria das irmãs.
+    categoriaNovaTema = (categoria ?? categoriaSugerida).trim();
     atualizarHintCategoria();
     if (formTema) formTema.classList.remove('is-hidden');
     nomeTemaInput.focus();
     formTema?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   container.querySelector('#btn-novo-tema')?.addEventListener('click', () => abrirFormTema());
-  container.querySelector('#btn-empty-novo-tema')?.addEventListener('click', () => abrirFormTema());
   container.querySelector('#btn-cancelar-tema')?.addEventListener('click', () => {
     if (formTema) formTema.classList.add('is-hidden');
   });
@@ -453,7 +450,6 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
   });
 
   container.querySelector('#btn-nova-nota')?.addEventListener('click', () => navigate(`espacos/${espacoId}/nova-nota`));
-  container.querySelector('#btn-empty-nova-nota')?.addEventListener('click', () => navigate(`espacos/${espacoId}/nova-nota`));
 
   container.querySelectorAll<HTMLButtonElement>('[data-open]').forEach((btn) => {
     btn.addEventListener('click', () => navigate(`temas/${btn.dataset.open}`));

@@ -59,8 +59,7 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       <div class="empty-state">
         <div class="empty-state__icon" aria-hidden="true">${ICONS.bookOpen}</div>
         <div class="empty-state__title">Nenhuma pasta ainda</div>
-        <p class="empty-state__hint">Crie uma pasta (ex: "Curso de Investimentos") para organizar outras pastas e notas.</p>
-        <button class="btn btn--primary btn--sm empty-state__action" id="btn-empty-novo-espaco" type="button">Criar a primeira pasta</button>
+        <p class="empty-state__hint">Use <strong>Nova pasta</strong> no topo para criar a primeira (ex: "Curso de Investimentos").</p>
       </div>
     `
         : grupos
@@ -144,7 +143,6 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
     form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   container.querySelector('#btn-novo-espaco')?.addEventListener('click', () => abrirFormEspaco());
-  container.querySelector('#btn-empty-novo-espaco')?.addEventListener('click', () => abrirFormEspaco());
   container.querySelector('#btn-cancelar-espaco')?.addEventListener('click', () => {
     form.classList.add('is-hidden');
   });
