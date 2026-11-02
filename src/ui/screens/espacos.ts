@@ -3,7 +3,7 @@ import { getDB } from '../../db/schema';
 import { escapeHtml } from '../../lib/dom';
 import { agruparPorCategoria } from '../../lib/group';
 import { accentVar, assignCategoriaCores, assignEspacoCores, chaveCategoria } from '../../lib/color';
-import { navigate } from '../router';
+import { navigate, rotaCategoria } from '../router';
 import { confirmAction } from '../components/confirm-modal';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
@@ -72,10 +72,10 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
               return `
       <details class="category-group">
         <summary class="category-group__title" style="--group-accent:${corGrupo}">
-          <span class="category-group__label">
+          <button class="category-group__link" type="button" data-open-categoria="${escapeHtml(rotaCategoria(grupo.categoria))}" title="Abrir categoria">
             <span class="espaco-icon-inline" style="--badge-accent:${corGrupo}" aria-hidden="true">${iconeGrupo.svg}</span>
             ${escapeHtml(grupo.categoria || 'Sem categoria')}
-          </span>
+          </button>
           <span class="category-group__actions">
             <button class="category-group__action" type="button" data-novo-espaco-categoria="${escapeHtml(grupo.categoria)}" title="Criar pasta já nesta categoria">+ Pasta</button>
           </span>
@@ -151,6 +151,14 @@ export async function renderEspacos(container: HTMLElement, ctx: EspacosContext)
       e.preventDefault();
       e.stopPropagation();
       abrirFormEspaco(btn.dataset.novoEspacoCategoria ?? '');
+    });
+  });
+  container.querySelectorAll<HTMLButtonElement>('[data-open-categoria]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      // Dentro do <summary>: sem isso o clique também recolheria/expandiria o grupo.
+      e.preventDefault();
+      e.stopPropagation();
+      navigate(btn.dataset.openCategoria!);
     });
   });
   for (const input of [nomeInput, categoriaInput]) {

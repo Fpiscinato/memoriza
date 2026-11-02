@@ -116,6 +116,17 @@ describe('destinos do Mover (puro)', () => {
     });
     expect(grupos.map((grupo) => grupo.espacoId)).toEqual(['e1']);
   });
+
+  it('não esconde pastas órfãs nem presas num ciclo nos destinos', () => {
+    const orfa = temaFake('orfa', 'Pasta antiga', 'e1', 'pai-que-sumiu');
+    const x = temaFake('x', 'X', 'e1', 'y');
+    const y = temaFake('y', 'Y', 'e1', 'x');
+    const grupos = montarDestinosMover([espaco], [...todos, orfa, x, y]);
+    const chaves = grupos[0].destinos.map((destino) => destino.chave);
+    expect(chaves).toContain('tema:orfa');
+    expect(chaves).toContain('tema:x');
+    expect(chaves).toContain('tema:y');
+  });
 });
 
 describe('mover pasta (IndexedDB)', () => {

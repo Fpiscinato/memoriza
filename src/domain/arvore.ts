@@ -23,6 +23,28 @@ export function filhosDe(temas: Tema[], paiId: string | null): Tema[] {
 }
 
 /**
+ * A pasta deve aparecer na raiz do Espaço? Sim quando não tem pai, quando o pai não está
+ * entre as pastas visíveis (pai excluído, de outro Espaço ou a pasta oculta das notas
+ * soltas) e também quando os dados antigos/importados formam um ciclo (pasta apontando
+ * para si mesma ou para um ancestral). Sem essa última proteção, uma pasta presa num
+ * ciclo nunca apareceria na listagem — ficaria "oculta" sem o usuário entender por quê.
+ */
+export function ehRaizVisivel(temas: Tema[], tema: Tema): boolean {
+  if (!tema.pai_id || tema.pai_id === tema.id) return true;
+  const porId = new Map(temas.map((item) => [item.id, item]));
+  if (!porId.has(tema.pai_id)) return true;
+
+  const visitados = new Set<string>([tema.id]);
+  let pai = porId.get(tema.pai_id);
+  while (pai) {
+    if (visitados.has(pai.id)) return true;
+    visitados.add(pai.id);
+    pai = pai.pai_id ? porId.get(pai.pai_id) : undefined;
+  }
+  return false;
+}
+
+/**
  * Todas as pastas abaixo de `raizId` (sem incluir a própria raiz), em pré-ordem.
  * Protege contra ciclos (dados importados corrompidos) com um conjunto de visitados.
  */

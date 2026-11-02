@@ -82,6 +82,14 @@ atual. **Nova nota** usa o mesmo estilo de contorno das demais ações (sem cor 
 induzindo ao clique), e **Editar** e **Nova pasta** não ficam mais abertos ao mesmo
 tempo.
 
+**v1.27** dá ações à tela de categoria — antes ela abria só uma lista, sem botão
+nenhum, e parecia a pasta travada. Agora a categoria tem **Nova pasta** (já com a
+categoria preenchida), um texto explicando que aquelas são as pastas daquela categoria,
+e o nome da categoria na tela **Pastas** também abre essa visão. Pastas antigas com pai
+excluído, de outro Espaço, apontando para a pasta oculta ou presas num ciclo deixam de
+sumir: aparecem na raiz do Espaço, no seletor de **Mover** e no PDF, com proteção contra
+recursão infinita.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado

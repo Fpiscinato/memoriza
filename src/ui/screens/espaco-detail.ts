@@ -15,7 +15,7 @@ import { renderBreadcrumb, bindBreadcrumb } from '../components/breadcrumb';
 import { renderCategoriaChips, bindCategoriaChips } from '../components/categoria-chips';
 import { renderEspacoVisualPicker, bindEspacoVisualPicker, lerEspacoVisual } from '../components/espaco-visual';
 import { limparErroCampo, marcarErroCampo, validarCampos } from '../../lib/form-validacao';
-import { idsDaSubarvore } from '../../domain/arvore';
+import { ehRaizVisivel, idsDaSubarvore } from '../../domain/arvore';
 import { nomeTemaExibicao } from '../../domain/rotulos';
 import { nomeCategoriaOuSemCategoria } from '../../domain/pdf-estrutura';
 import { categoriaIconeChave, getEspacoIcone, espacoIconeChave } from '../espaco-icons';
@@ -29,10 +29,7 @@ export async function renderEspacoDetail(container: HTMLElement, espacoId: strin
     return;
   }
   const temas = await listTemas(espacoId);
-  const idsTemas = new Set(temas.map((t) => t.id));
-  // Pastas de primeiro nível aparecem agrupadas por categoria; as subpastas opcionais ficam
-  // dentro da pasta pai (ou de outra subpasta), não repetidas na lista principal.
-  const temasRaiz = temas.filter((t) => !t.pai_id || !idsTemas.has(t.pai_id));
+  const temasRaiz = temas.filter((t) => ehRaizVisivel(temas, t));
   const notaCounts = await countNotasPorTema(temas.map((t) => t.id));
   const raiz = await getTemaRaiz(espacoId);
   const notasDiretas = raiz ? await listNotas(raiz.id) : [];

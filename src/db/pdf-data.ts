@@ -2,6 +2,7 @@ import { getDB } from './schema';
 import { agruparPorCategoria } from '../lib/group';
 import { getNotasOrdem } from '../lib/settings';
 import { ordenarPorNome } from '../lib/ordem';
+import { ehRaizVisivel } from '../domain/arvore';
 import { isNotaFraca } from '../domain/stats';
 import { nomeTemaExibicao } from '../domain/rotulos';
 import type { Avaliacao, Espaco, Nota, Tema } from '../types';
@@ -57,7 +58,7 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
 
   // Só os Temas de primeiro nível entram nos grupos de categoria; as subpastas (filhas)
   // aparecem logo abaixo do Tema pai, em pré-ordem.
-  const raizes = temas.filter((t) => !t.pai_id || !idsValidos.has(t.pai_id));
+  const raizes = temas.filter((t) => ehRaizVisivel(temas, t));
   const gruposTemas = agruparPorCategoria(raizes);
 
   const montarNotas = async (tema: Tema): Promise<NotaPdf[]> => {
@@ -75,9 +76,14 @@ export async function buildEspacoPdfData(espacoId: string): Promise<EspacoPdfDat
   };
 
   const grupos: CategoriaPdf[] = [];
+  const visitados = new Set<string>();
   for (const grupo of gruposTemas) {
     const temasPdf: TemaPdf[] = [];
     const visitar = async (tema: Tema, prefixo: string): Promise<void> => {
+      // Dados antigos/importados podem ter ciclos (pasta apontando para si mesma ou para um
+      // ancestral); sem esta guarda o PDF entraria em recursão infinita.
+      if (visitados.has(tema.id)) return;
+      visitados.add(tema.id);
       // A pasta oculta representa as notas soltas da própria pasta principal: no PDF ela
       // vira a seção “Notas da pasta”, em vez de repetir o nome da pasta.
       const nome = tema.oculta ? 'Notas da pasta' : nomeTemaExibicao(tema.nome);

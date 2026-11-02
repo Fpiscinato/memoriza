@@ -10,7 +10,7 @@
 
 import type { Espaco, Tema } from '../types';
 import { ordenarPorNome } from '../lib/ordem';
-import { descendentesDe } from './arvore';
+import { descendentesDe, ehRaizVisivel } from './arvore';
 import { nomeTemaExibicao } from './rotulos';
 
 /**
@@ -108,7 +108,6 @@ export function montarDestinosMover(
 
   for (const espaco of ordenarPorNome(espacos, (e) => e.nome)) {
     const doEspaco = temas.filter((tema) => tema.espaco_id === espaco.id);
-    const porId = new Map(doEspaco.map((tema) => [tema.id, tema]));
     const destinos: DestinoMover[] = [];
 
     const chaveRaiz = chaveDestino('espaco', espaco.id);
@@ -130,9 +129,10 @@ export function montarDestinosMover(
       });
     }
 
-    // Raízes = sem pai, ou com pai fora deste Espaço (dados antigos/importados).
+    // Raízes = sem pai, com pai fora deste Espaço (dados antigos/importados) ou presas num
+    // ciclo — ehRaizVisivel cobre os três casos.
     const raizes = ordenarPorNome(
-      doEspaco.filter((tema) => !tema.pai_id || !porId.has(tema.pai_id)),
+      doEspaco.filter((tema) => ehRaizVisivel(doEspaco, tema)),
       (tema) => nomeTemaExibicao(tema.nome),
     );
 

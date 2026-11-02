@@ -1641,6 +1641,29 @@ button.item-row:hover {
   min-width: 0;
 }
 
+/* Nome da categoria como atalho para a pasta virtual dela — herda a tipografia do
+   <summary> e cancela só a aparência padrão de botão. */
+.category-group__link {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.category-group__link:hover,
+.category-group__link:focus-visible {
+  text-decoration: underline;
+}
+
 /* Botão "PDF" desta categoria, dentro do <summary> — precisa cancelar o toggle nativo do
    <details> no clique (ver preventDefault/stopPropagation no listener). */
 .category-group__actions {
