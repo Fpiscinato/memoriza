@@ -90,6 +90,14 @@ excluído, de outro Espaço, apontando para a pasta oculta ou presas num ciclo d
 sumir: aparecem na raiz do Espaço, no seletor de **Mover** e no PDF, com proteção contra
 recursão infinita.
 
+**v1.28** alinha o caminho com o que a lista realmente mostra: a categoria só aparece no
+breadcrumb quando existe mais de uma categoria naquele nível (que é quando os cabeçalhos
+de grupo aparecem). Antes, uma categoria como "2026" surgia no caminho depois de entrar
+numa pasta, mesmo sem ter aparecido na tela anterior. No editor de nota, **Remover cor**
+agora limpa o trecho colorido inteiro que a seleção tocar — inclusive quando a seleção
+deixada pelo botão de cor está dentro do próprio `<span>` — e trocar de cor não aninha
+mais um destaque dentro do outro.
+
 ## Stack e decisões de arquitetura
 
 - **Vite + TypeScript, sem framework de UI.** A Fase 1a não tem estado

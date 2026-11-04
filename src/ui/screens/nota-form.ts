@@ -49,6 +49,34 @@ function unwrapColorSpans(root: DocumentFragment | HTMLElement): void {
   root.querySelectorAll('.text-color').forEach((el) => el.replaceWith(...Array.from(el.childNodes)));
 }
 
+/**
+ * Alarga a seleção até as bordas dos trechos coloridos que ela toca. Sem isso, selecionar
+ * só o miolo de um trecho (ou a seleção que o próprio botão de cor deixa, que é o conteúdo
+ * do <span>, não o <span> inteiro) fazia o "Remover cor" extrair e reinserir o texto dentro
+ * do mesmo span — a cor nunca saía. Também evita aninhar um span de cor dentro do outro ao
+ * trocar de cor.
+ */
+function expandirSelecaoParaCores(range: Range, root: HTMLElement): void {
+  const spans = Array.from(root.querySelectorAll<HTMLElement>('.text-color')).filter((span) =>
+    range.intersectsNode(span),
+  );
+  if (spans.length === 0) return;
+  const primeiro = spans[0];
+  const ultimo = spans[spans.length - 1];
+
+  const inicio = document.createRange();
+  inicio.setStartBefore(primeiro);
+  if (range.compareBoundaryPoints(Range.START_TO_START, inicio) > 0) {
+    range.setStartBefore(primeiro);
+  }
+
+  const fim = document.createRange();
+  fim.setEndAfter(ultimo);
+  if (range.compareBoundaryPoints(Range.END_TO_END, fim) < 0) {
+    range.setEndAfter(ultimo);
+  }
+}
+
 export async function renderNotaForm(container: HTMLElement, params: NotaFormParams): Promise<void> {
   const nota = params.mode === 'editar' ? await getNota(params.notaId) : undefined;
   if (params.mode === 'editar' && !nota) {
@@ -451,6 +479,32 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   });
   atualizarPlaceholder();
 
+  /** Tira a cor do texto selecionado (ou do trecho onde está o cursor). Usado pelo ✕ e pelo
+   *  "Limpar formatação": o execCommand('removeFormat') sozinho não remove o span de cor. */
+  const limparCorDaSelecao = (): void => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    if (!conteudoInput.contains(range.commonAncestorContainer)) return;
+    if (range.collapsed) {
+      // Sem texto selecionado (só o cursor) — remove a cor do span onde o cursor está, se houver.
+      let node: Node | null = range.commonAncestorContainer;
+      while (node && node !== conteudoInput) {
+        if (node instanceof HTMLElement && node.classList.contains('text-color')) {
+          node.replaceWith(...Array.from(node.childNodes));
+          break;
+        }
+        node = node.parentNode;
+      }
+    } else {
+      // Inclui o trecho colorido inteiro que a seleção tocar, não só o pedaço selecionado.
+      expandirSelecaoParaCores(range, conteudoInput);
+      const fragment = range.extractContents();
+      unwrapColorSpans(fragment);
+      range.insertNode(fragment);
+    }
+  };
+
   // Botões de formatação perdem o foco/seleção do editor ao serem clicados — preventDefault
   // no mousedown evita isso, então o comando age sobre o texto selecionado, não sobre o botão.
   container.querySelectorAll<HTMLButtonElement>('.editor-toolbar__btn[data-cmd]').forEach((btn) => {    btn.addEventListener('mousedown', (e) => e.preventDefault());
@@ -471,6 +525,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
         }
       } else if (cmd === 'removeFormat') {
         document.execCommand('removeFormat');
+        limparCorDaSelecao();
       } else {
         document.execCommand(cmd);
       }
@@ -492,6 +547,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
       const range = sel.getRangeAt(0);
       if (!conteudoInput.contains(range.commonAncestorContainer)) return;
+      expandirSelecaoParaCores(range, conteudoInput);
       const fragment = range.extractContents();
       // Se a seleção já contém (ou está dentro de) um trecho colorido, remove essa cor antes
       // de aplicar a nova — sem isso o span novo fica ANINHADO no antigo, e a serialização
@@ -514,31 +570,7 @@ export async function renderNotaForm(container: HTMLElement, params: NotaFormPar
   btnLimparCor.addEventListener('mousedown', (e) => e.preventDefault());
   btnLimparCor.addEventListener('click', () => {
     assentarQuebraPendente();
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    if (!conteudoInput.contains(range.commonAncestorContainer)) return;
-    if (range.collapsed) {
-      // Sem texto selecionado (só o cursor) — remove a cor do span onde o cursor está, se houver.
-      let node: Node | null = range.commonAncestorContainer;
-      while (node && node !== conteudoInput) {
-        if (node instanceof HTMLElement && node.classList.contains('text-color')) {
-          const parent = node.parentNode;
-          if (parent) {
-            const frag = document.createDocumentFragment();
-            Array.from(node.childNodes).forEach((c) => frag.appendChild(c));
-            parent.replaceChild(frag, node);
-            unwrapColorSpans(parent as HTMLElement);
-          }
-          break;
-        }
-        node = node.parentNode;
-      }
-    } else {
-      const fragment = range.extractContents();
-      unwrapColorSpans(fragment);
-      range.insertNode(fragment);
-    }
+    limparCorDaSelecao();
     conteudoInput.focus();
   });
 

@@ -3,7 +3,8 @@
 // a visão de categoria usem exatamente a mesma regra, inclusive nas rotas clicáveis.
 
 import type { Espaco, Tema } from '../types';
-import { caminhoDe } from '../domain/arvore';
+import { caminhoDe, ehRaizVisivel } from '../domain/arvore';
+import { deveAgruparPorCategoria } from '../lib/group';
 import { nomeTemaExibicao } from '../domain/rotulos';
 import { accentVar, espacoCorVar } from '../lib/color';
 import { espacoIconeChave } from './espaco-icons';
@@ -54,6 +55,24 @@ export function crumbPasta(pasta: Tema): BreadcrumbCrumb {
 }
 
 /**
+ * A categoria de uma pasta só entra no caminho quando ela também aparece como cabeçalho na
+ * lista daquele nível. A listagem esconde os cabeçalhos quando só há uma categoria preenchida
+ * (ver deveAgruparPorCategoria) — mostrar a categoria no caminho nesse caso criava uma "pasta
+ * fantasma": o usuário via "2026" no breadcrumb, mas não via esse nível na tela anterior.
+ */
+function categoriaApareceNaLista(
+  todosTemas: Tema[],
+  pasta: Tema,
+  ids: Set<string>,
+): boolean {
+  const paiId = pasta.pai_id && ids.has(pasta.pai_id) ? pasta.pai_id : null;
+  const irmaos = paiId
+    ? todosTemas.filter((item) => item.pai_id === paiId)
+    : todosTemas.filter((item) => ehRaizVisivel(todosTemas, item));
+  return deveAgruparPorCategoria(irmaos);
+}
+
+/**
  * Caminho completo: Pastas › Categoria do Espaço › Espaço › Categoria › Pasta … até `tema`
  * (quando informado). Categorias iguais ao rótulo anterior são omitidas — o Tema de topo
  * costuma repetir a categoria do Espaço, e repetir "Cursos › Cursos" não ajuda em nada.
@@ -76,7 +95,9 @@ export function crumbsCaminho(
   if (tema) {
     const ids = new Set(todosTemas.map((pasta) => pasta.id));
     for (const pasta of [...caminhoDe(todosTemas, tema), tema]) {
-      adicionar(crumbCategoria(pasta.categoria, escopoDaPasta(espaco, pasta, ids)));
+      if (categoriaApareceNaLista(todosTemas, pasta, ids)) {
+        adicionar(crumbCategoria(pasta.categoria, escopoDaPasta(espaco, pasta, ids)));
+      }
       adicionar(crumbPasta(pasta));
     }
   }
